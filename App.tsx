@@ -8,6 +8,7 @@ import {
 import {
   Colors,
 } from 'react-native/Libraries/NewAppScreen';
+import { MenuProvider } from 'react-native-popup-menu'
 import ChatUI from './ChatUI';
 
 
@@ -19,11 +20,13 @@ function App(): React.JSX.Element {
   };
 
   return (
-    <View style={styles.container}>
-      <View style={styles.chatbotContainer}>
-        <ChatUI></ChatUI>
+    <MenuProvider customStyles={menuProviderStyles}>
+      <View style={styles.container}>
+        <View style={styles.chatbotContainer}>
+          <ChatUI></ChatUI>
+        </View>
       </View>
-    </View>
+    </MenuProvider>
   );
 }
 
@@ -59,5 +62,12 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
 });
+
+const menuProviderStyles = {
+  backdrop: {
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    opacity: 1,
+  },
+};
 
 export default App;

@@ -2,6 +2,13 @@ import { LlamaContext, initLlama, releaseAllLlama } from 'llama.rn';
 import React, { useState, useCallback, useRef, useEffect } from 'react';
 import Markdown from 'react-native-markdown-display';
 import Toast from 'react-native-simple-toast';
+import {
+  Menu,
+  MenuOptions,
+  MenuOption,
+  MenuTrigger,
+  MenuProvider,
+} from 'react-native-popup-menu';
 
 import {
   View,
@@ -27,6 +34,7 @@ import {
   Alert,
 } from 'react-native';
 import { ChevronLeft, Info, Send, Settings, Square, StopCircle, Trash2 } from 'lucide-react-native';
+import DeviceInfo from 'react-native-device-info';
 
 interface Message {
   id: number;
@@ -102,17 +110,70 @@ const ChatUI: React.FC = () => {
       }
   }, [modelLoading])
 
+  function getModelParamsForDevice() {
+    const modelParams = {
+      model: 'file://Llama-3.2-3B-Instruct-Q4_K_M.gguf',
+      is_model_asset: true,
+    }
+
+    const deviceId = DeviceInfo.getDeviceId();
+    console.log(`deviceId: ${deviceId}`);
+    switch(deviceId) {
+      case "iPhone11,2": { 
+        return {...modelParams,  n_ctx: 1024,  n_gpu_layers: 8}
+      }
+      case "iPhone11,4": { 
+        return {...modelParams,  n_ctx: 1024,  n_gpu_layers: 8}
+      }
+      case "iPhone11,6": { 
+        return {...modelParams,  n_ctx: 1024,  n_gpu_layers: 8}
+      }
+      case "iPhone11,8": { 
+        return {...modelParams,  n_ctx: 1024,  n_gpu_layers: 8}
+      }
+      case "iPhone12,1": {
+        return {...modelParams,  n_ctx: 1024,  n_gpu_layers: 8}
+      }
+      case "iPhone12,3": {
+        return {...modelParams,  n_ctx: 1024,  n_gpu_layers: 8}
+      }
+      case "iPhone12,5": {
+        return {...modelParams,  n_ctx: 1024,  n_gpu_layers: 8}
+      }
+      case "iPhone12,8": {
+        return {...modelParams,  n_ctx: 1024,  n_gpu_layers: 8}
+      }
+      case "iPhone13,1": {
+        return {...modelParams,  n_ctx: 1024,  n_gpu_layers: 8}
+      }
+      case "iPhone13,2": {
+        return {...modelParams,  n_ctx: 1024,  n_gpu_layers: 8}
+      }
+      case "iPhone13,3": {
+        return {...modelParams,  n_ctx: 2048,  n_gpu_layers: 16}
+      }
+      case "iPhone13,4": {
+        return {...modelParams,  n_ctx: 2048,  n_gpu_layers: 16}
+      }
+      case "iPhone14,4": {
+        return {...modelParams,  n_ctx: 2048,  n_gpu_layers: 16}
+      }
+      case "iPhone14,5": {
+        return {...modelParams,  n_ctx: 2048,  n_gpu_layers: 16}
+      }
+      default: {
+        return {...modelParams,  n_ctx: 4096,  n_gpu_layers: 48}
+      }
+    }
+  }
+
   const loadModel = async () => {
     console.log("Loading model");
     console.log("Started load and predict");
     try {
-      const newContext = await initLlama({
-        model: 'file://Llama-3.2-3B-Instruct-Q4_K_M.gguf',
-        is_model_asset: true,
-        use_mmap: true,
-        n_ctx: 4096,
-        n_gpu_layers: 48, // > 0: enable Metal on iOS
-      });
+      const modelParams = getModelParamsForDevice();
+      console.log("model params:", modelParams)
+      const newContext = await initLlama(modelParams);
 
       setContext(newContext);
       setModelLoading(false);
@@ -194,11 +255,6 @@ const ChatUI: React.FC = () => {
     }
   }, [inputText, addMessage]);
 
-  function copyToClipboard(text: string): void {
-    Clipboard.setString(text);
-    Toast.show("Text copied to Clipboard", Toast.SHORT);
-  }
-
   function handleStop(event: GestureResponderEvent): void {
     context?.stopCompletion();
     setIsTyping(false);
@@ -228,6 +284,40 @@ const ChatUI: React.FC = () => {
     // do nothing for now, will be implemented later
     setShowInfo(true);
   }
+
+  const handleCopyText = (text: string) => {
+    Clipboard.setString(text);
+    Toast.show("Text copied to Clipboard", Toast.SHORT);
+  };
+
+  // ... (previous useEffect hooks and functions remain the same)
+
+  const renderMessage = (message: Message) => (
+    <Menu key={message.id}>
+      <MenuTrigger
+        triggerOnLongPress
+        customStyles={{
+          triggerTouchable: {
+            underlayColor: 'transparent',
+            activeOpacity: 0.6,
+          },
+        }}
+      >
+        <View
+          style={[
+            styles.messageBubble,
+            message.isUser ? styles.userMessage : styles.aiMessage
+          ]}
+        >
+          <Markdown style={markdownStyles}>{message.text}</Markdown>
+        </View>
+      </MenuTrigger>
+      <MenuOptions customStyles={popoverStyles(message.isUser)}>
+        <MenuOption onSelect={() => handleCopyText(message.text)} text="Copy" customStyles={menuOptionStyles}/>
+      </MenuOptions>
+    </Menu>
+  );
+
 
   const InfoScreen = () => (
     <Modal
@@ -319,19 +409,7 @@ const ChatUI: React.FC = () => {
         onContentSizeChange={handleContentSizeChange}
         scrollEventThrottle={16} 
       >
-        {messages.map(message => (
-          <View
-            key={message.id}
-            style={[
-              styles.messageBubble,
-              message.isUser ? styles.userMessage : styles.aiMessage
-            ]}
-          > 
-            <TouchableWithoutFeedback onLongPress={() => copyToClipboard(message.text)}>
-                <Markdown style={markdownStyles}>{message.text}</Markdown>
-            </TouchableWithoutFeedback>
-          </View>
-        ))}
+        {messages.map(renderMessage)}
         {isTyping && (
           <View style={[styles.messageBubble, styles.aiMessage]}>
             <Text style={styles.aiMessageText}> {currentResponse}</Text>
@@ -343,7 +421,7 @@ const ChatUI: React.FC = () => {
           style={styles.input}
           value={inputText}
           onChangeText={setInputText}
-          placeholder="Ask MyDeviceAI Anything!"
+          placeholder={modelLoading? "Loading Model..." : "Ask MyDeviceAI Anything!"}
           placeholderTextColor="#999"
           ref={textInputRef}
           multiline={true}
@@ -583,5 +661,33 @@ const markdownStyles = {
     color: '#000'
   }
 }
+
+const popoverStyles = (isUser: boolean) => ({
+  optionsContainer: {
+    backgroundColor: '#2c2c2c',
+    padding: 5,
+    borderRadius: 8,
+    width: 70,
+    shadowColor: "#000",
+    marginLeft: isUser ? 1 : 297, // Adjust these values as needed
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
+    elevation: 5,
+  }
+});
+
+const menuOptionStyles = {
+  optionWrapper: {
+    padding: 10,
+  },
+  optionText: {
+    color: '#fff',
+    fontSize: 16,
+  },
+};
 
 export default ChatUI;
