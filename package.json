@@ -10,6 +10,7 @@
     "test": "jest"
   },
   "dependencies": {
+    "@react-native-async-storage/async-storage": "^2.0.0",
     "ios": "^0.0.1",
     "llama.rn": "^0.3.11",
     "lucide-react-native": "^0.446.0",

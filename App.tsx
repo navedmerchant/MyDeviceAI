@@ -9,7 +9,7 @@ import {
   Colors,
 } from 'react-native/Libraries/NewAppScreen';
 import { MenuProvider } from 'react-native-popup-menu'
-import ChatUI from './ChatUI';
+import ChatUI from './src/ChatUI';
 
 
 function App(): React.JSX.Element {
