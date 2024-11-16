@@ -185,6 +185,18 @@ const styles = StyleSheet.create({
       fontSize: 14,
       textAlign: 'center',
     },
+    unsupportedContainer: {
+      flex: 1,
+      alignItems: 'center',
+      justifyContent: 'center',
+      backgroundColor: '#f3f4f6',
+      padding: 16
+    },
+    unsupportedText: {
+      fontSize: 18,
+      color: '#4b5563',
+      textAlign: 'center'
+    },
   });
   
   const markdownStyles = {

@@ -10,46 +10,46 @@ function getModelParamsForDevice() {
     console.log(`deviceId: ${deviceId}`);
     switch(deviceId) {
       case "iPhone11,2": { 
-        return {...modelParams,  n_ctx: 1024,  n_gpu_layers: 8}
+        return null;
       }
       case "iPhone11,4": { 
-        return {...modelParams,  n_ctx: 1024,  n_gpu_layers: 8}
+        return null;
       }
       case "iPhone11,6": { 
-        return {...modelParams,  n_ctx: 1024,  n_gpu_layers: 8}
+        return null;
       }
       case "iPhone11,8": { 
-        return {...modelParams,  n_ctx: 1024,  n_gpu_layers: 8}
+        return null;
       }
       case "iPhone12,1": {
-        return {...modelParams,  n_ctx: 1024,  n_gpu_layers: 8}
+        return null;
       }
       case "iPhone12,3": {
-        return {...modelParams,  n_ctx: 1024,  n_gpu_layers: 8}
+        return null;
       }
       case "iPhone12,5": {
-        return {...modelParams,  n_ctx: 1024,  n_gpu_layers: 8}
+        return null;
       }
       case "iPhone12,8": {
-        return {...modelParams,  n_ctx: 1024,  n_gpu_layers: 8}
+        return null;
       }
       case "iPhone13,1": {
-        return {...modelParams,  n_ctx: 1024,  n_gpu_layers: 8}
+        return null;
       }
       case "iPhone13,2": {
-        return {...modelParams,  n_ctx: 1024,  n_gpu_layers: 8}
+        return null;
       }
       case "iPhone13,3": {
-        return {...modelParams,  n_ctx: 2048,  n_gpu_layers: 16}
+        return null;
       }
       case "iPhone13,4": {
-        return {...modelParams,  n_ctx: 2048,  n_gpu_layers: 16}
+        return null;
       }
       case "iPhone14,4": {
-        return {...modelParams,  n_ctx: 2048,  n_gpu_layers: 16}
+        return null;
       }
       case "iPhone14,5": {
-        return {...modelParams,  n_ctx: 2048,  n_gpu_layers: 16}
+        return null;
       }
       default: {
         return {...modelParams,  n_ctx: 4096,  n_gpu_layers: 48}

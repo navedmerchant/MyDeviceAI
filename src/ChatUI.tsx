@@ -31,10 +31,9 @@ import {
   Linking,
   Alert,
 } from 'react-native';
-import { ChevronLeft, Info, Send, Square, Trash2 } from 'lucide-react-native';
+import { ChevronLeft, Flag, Info, Send, Square, Trash2 } from 'lucide-react-native';
 import { getModelParamsForDevice } from './Utils';
 import { styles, markdownStyles, popoverStyles, menuOptionStyles } from './Syles';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 
 interface Message {
   id: number;
@@ -52,7 +51,7 @@ const ChatUI: React.FC = () => {
   const [isAutoScrolling, setIsAutoScrolling] = useState(true);
   const [contentHeight, setContentHeight] = useState(0);
   const [showInfo, setShowInfo] = useState(false);
-  const [isFirstLaunch, setIsFirstLaunch] = useState<boolean>();
+  const [unsppportedDevice, setUnsupportedDevice] = useState(false);
 
   const chatContext = useRef('');
   const scrollViewRef = useRef<ScrollView>(null);
@@ -61,25 +60,12 @@ const ChatUI: React.FC = () => {
   const appState = useRef(AppState.currentState);
 
   useEffect(() => {
+    const modelParams = getModelParamsForDevice();
+    if (modelParams == null) {
+      setUnsupportedDevice(true)
+    }
     let keyboardDidShowListener: EmitterSubscription;
     let keyboardDidHideListener: EmitterSubscription;
-
-    async function checkFirstLaunch() {
-      try {
-        const hasLaunched = await AsyncStorage.getItem('hasLaunched');
-        console.log(`isLaunched: ${hasLaunched}`);
-        if (hasLaunched === null) {
-          setIsFirstLaunch(true);
-          await AsyncStorage.setItem('hasLaunched', 'true');
-        } else {
-          setIsFirstLaunch(false);
-        }
-      } catch (error) {
-        console.error('Error checking first launch:', error);
-      }
-    }
-
-    checkFirstLaunch();
 
     if (Platform.OS === 'ios') {
       keyboardDidShowListener = Keyboard.addListener('keyboardDidShow', scrollToBottom);
@@ -133,7 +119,10 @@ const ChatUI: React.FC = () => {
     console.log("Started load and predict");
     try {
       const modelParams = getModelParamsForDevice();
-      
+      if (modelParams == null) {
+        console.log("Model params null! Unsupported device!");
+        return;
+      }
       console.log("model params:", modelParams)
       const newContext = await initLlama(modelParams);
       setContext(newContext);
@@ -178,11 +167,10 @@ const ChatUI: React.FC = () => {
       setIsTyping(true);
 
       const firstPrompt = `<|begin_of_text|><|start_header_id|>system<|end_header_id|>
-      You are a personal, empathetic AI assistant. Your aim is to be a friend to 
-      the user and assist with questions. You need to be emotionally 
-      available for them to talk about any personal topic they want to talk 
-      about. Always be friendly, and be funny at times. You are also running locally
-      so users dont complete privacy about their conversations. It never leaves their phone
+      You are a helpful personal AI assistant. Your name is Wilfred, and you will be 
+      a professional AI assitant trying to answer all your users questions. You will
+      also be their confidant since you are locally running on their phone. Be professional
+      and funny at times.
       <|eot_id|><|start_header_id|>user<|end_header_id|> 
       ${inputText}<|eot_id|><|start_header_id|>assistant<|end_header_id|>`
 
@@ -360,6 +348,17 @@ const ChatUI: React.FC = () => {
       </View>
     </Modal>
   );
+
+  if (unsppportedDevice) {
+    return (
+      <View style={styles.unsupportedContainer}>
+        <Text style={styles.unsupportedText}>
+        Sorry, this chat interface is not supported on your device.
+        Please try accessing it from a compatible device.
+      </Text>
+    </View>
+    )
+  }
 
 
   return (
