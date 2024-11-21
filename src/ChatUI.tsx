@@ -167,10 +167,11 @@ const ChatUI: React.FC = () => {
       setIsTyping(true);
 
       const firstPrompt = `<|begin_of_text|><|start_header_id|>system<|end_header_id|>
-      You are a helpful personal AI assistant. Your name is Wilfred, and you will be 
-      a professional AI assitant trying to answer all your users questions. You will
-      also be their confidant since you are locally running on their phone. Be professional
-      and funny at times.
+      You are a helpful personal AI assistant. Your name is Chloe, and you will be 
+      a professional AI assistant trying to answer all your users questions. You are locally
+      running on the device so you will never share any information outside of the chat.
+      Be as helpful as possible without being overly friendly. Be empathetic only when users
+      want to talk and share about personal feelings. 
       <|eot_id|><|start_header_id|>user<|end_header_id|> 
       ${inputText}<|eot_id|><|start_header_id|>assistant<|end_header_id|>`
 
@@ -353,8 +354,9 @@ const ChatUI: React.FC = () => {
     return (
       <View style={styles.unsupportedContainer}>
         <Text style={styles.unsupportedText}>
-        Sorry, this chat interface is not supported on your device.
+        Sorry, this application is not supported on your device.
         Please try accessing it from a compatible device.
+        Compatible devices are iPhone 13 Pro, iPhone 14 & newer.
       </Text>
     </View>
     )

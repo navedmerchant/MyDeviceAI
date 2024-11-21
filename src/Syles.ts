@@ -189,12 +189,12 @@ const styles = StyleSheet.create({
       flex: 1,
       alignItems: 'center',
       justifyContent: 'center',
-      backgroundColor: '#f3f4f6',
+      backgroundColor: '#1c1c1c',
       padding: 16
     },
     unsupportedText: {
       fontSize: 18,
-      color: '#4b5563',
+      color: '#fff',
       textAlign: 'center'
     },
   });
