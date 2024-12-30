@@ -11,6 +11,8 @@
   },
   "dependencies": {
     "@react-native-async-storage/async-storage": "^2.0.0",
+    "@react-navigation/drawer": "^7.1.1",
+    "@react-navigation/native": "^7.0.14",
     "ios": "^0.0.1",
     "llama.rn": "^0.3.11",
     "lucide-react-native": "^0.446.0",
@@ -18,9 +20,14 @@
     "react-native": "0.75.3",
     "react-native-collapsible": "^1.6.2",
     "react-native-device-info": "^13.1.0",
+    "react-native-gesture-handler": "^2.21.2",
     "react-native-markdown-display": "^7.0.2",
     "react-native-popup-menu": "^0.16.1",
+    "react-native-reanimated": "^3.16.6",
+    "react-native-safe-area-context": "^5.0.0",
+    "react-native-screens": "^4.4.0",
     "react-native-simple-toast": "^3.3.1",
+    "react-native-sqlite-storage": "^6.0.1",
     "react-native-svg": "^15.7.1"
   },
   "devDependencies": {
@@ -32,6 +39,7 @@
     "@react-native/metro-config": "0.75.3",
     "@react-native/typescript-config": "0.75.3",
     "@types/react": "^18.2.6",
+    "@types/react-native-sqlite-storage": "^6.0.5",
     "@types/react-test-renderer": "^18.0.0",
     "babel-jest": "^29.6.3",
     "eslint": "^8.19.0",

@@ -1,6 +1,12 @@
 import { StyleSheet } from "react-native";
 
 const styles = StyleSheet.create({
+    chatScreenContainer: {
+      flex: 1,
+      paddingTop: 50,
+      paddingBottom: 20,
+      backgroundColor: '#000',
+    },
     container: {
       flex: 1,
       backgroundColor: '#1c1c1c',

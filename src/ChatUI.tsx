@@ -14,7 +14,6 @@ import {
   Text,
   TextInput,
   ScrollView,
-  StyleSheet,
   TouchableOpacity,
   KeyboardAvoidingView,
   Platform,
@@ -31,17 +30,30 @@ import {
   Linking,
   Alert,
 } from 'react-native';
-import { ChevronLeft, Flag, Info, Send, Square, Trash2 } from 'lucide-react-native';
+import { ChevronLeft, Send, Square, CirclePlus } from 'lucide-react-native';
 import { getModelParamsForDevice } from './Utils';
 import { styles, markdownStyles, popoverStyles, menuOptionStyles } from './Syles';
+import { Message } from './Message';
+import {
+  initDatabase,
+  saveNewChatHistory,
+  saveChatMessage,
+  loadChatHistory} from './DatabaseHelper';
+import { DrawerNavigationProp } from '@react-navigation/drawer';
+import { DrawerParamList } from './CustomDrawerContent';
+import { useDatabase } from './DatabaseContext';
 
-interface Message {
-  id: number;
-  text: string;
-  isUser: boolean;
+type ChatScreenNavigationProp = DrawerNavigationProp<DrawerParamList, 'Chat'>;
+
+interface ChatUIProps {
+  historyId?: number;
+  onMenuPress: () => void;
+  MenuIcon: React.ComponentType<any>;
+  navigation: ChatScreenNavigationProp;
+  setParentIsTyping: (isTyping: boolean) => void;
 }
 
-const ChatUI: React.FC = () => {
+const ChatUI: React.FC<ChatUIProps> = ({ historyId, onMenuPress, MenuIcon, navigation, setParentIsTyping }) => {
   const [messages, setMessages] = useState<Message[]>([]);
   const [inputText, setInputText] = useState('');
   const [isTyping, setIsTyping] = useState(false);
@@ -52,12 +64,63 @@ const ChatUI: React.FC = () => {
   const [contentHeight, setContentHeight] = useState(0);
   const [showInfo, setShowInfo] = useState(false);
   const [unsppportedDevice, setUnsupportedDevice] = useState(false);
+  const [currentHistoryId, setCurrentHistoryId] = useState<number | null>(null);
+  const { setGlobalHistoryId, loadHistories } = useDatabase();
 
   const chatContext = useRef('');
   const scrollViewRef = useRef<ScrollView>(null);
   const textInputRef = useRef<TextInput>(null);
+  const currentHistoryIdRef = useRef(currentHistoryId);
+
+  const systemPrompt = useRef('');
+  systemPrompt.current =  `<|begin_of_text|><|start_header_id|>system<|end_header_id|>
+      You are a helpful personal AI assistant. Your name is Chloe, and you will be 
+      a professional AI assistant trying to answer all your users questions. You are locally
+      running on the device so you will never share any information outside of the chat.
+      Be as helpful as possible without being overly friendly. Be empathetic only when users
+      want to talk and share about personal feelings. 
+      <|eot_id|>`;
+
   
   const appState = useRef(AppState.currentState);
+
+  useEffect(() => {
+    initDatabase();
+  }, []);
+
+  useEffect(() => {
+    if (historyId) {
+      handleSelectHistory(historyId);
+    } else if (currentHistoryId) {
+      // History was deleted from drawer, clear the chat
+      setMessages([]);
+      setCurrentHistoryId(null);
+      currentHistoryIdRef.current = null;
+      chatContext.current = '';
+    }
+  }, [historyId]);  
+
+  const handleSelectHistory = async (historyId: number) => {
+    try {
+      const messages = await loadChatHistory(historyId);
+      setMessages(messages);
+      setCurrentHistoryId(historyId);
+      rebuildChatContext(messages);
+      currentHistoryIdRef.current = historyId;
+      setGlobalHistoryId(historyId);
+    } catch (error) {
+      console.error('Error loading chat history:', error);
+    }
+  };
+
+  const handleMenuPress = () => {
+    if (navigation) {
+      navigation.openDrawer();
+    } else {
+      onMenuPress();
+    }
+    Keyboard.dismiss();
+  };
 
   useEffect(() => {
     const modelParams = getModelParamsForDevice();
@@ -106,13 +169,17 @@ const ChatUI: React.FC = () => {
     if (isAutoScrolling) {
       scrollToBottom();
     }
-  }, [contentHeight])
+  }, [contentHeight]);
 
   useEffect(() => {
       if (!modelLoading) {
         textInputRef.current?.focus();
       }
-  }, [modelLoading])
+  }, [modelLoading]);
+
+  useEffect(() => {
+    setParentIsTyping(isTyping);
+  }, [isTyping]);
 
   const loadModel = async () => {
     console.log("Loading model");
@@ -145,13 +212,46 @@ const ChatUI: React.FC = () => {
     scrollViewRef.current?.scrollToEnd({ animated: true });
   };
 
-  const addMessage = useCallback((text: string, isUser: boolean) => {
-    setMessages(prevMessages => [
-      ...prevMessages,
-      { id: Date.now(), text, isUser }
-    ]);
+  const rebuildChatContext = (messages: Message[]) => {
+    const userHeader = `<|start_header_id|>user<|end_header_id|>`;
+    const assistantHeader = `<|start_header_id|>assistant<|end_header_id|>`;
+
+    const endToken = `<|eot_id|>`;
+
+    for (const idx in messages) {
+      const message = messages[idx];
+      if (idx == '0') {
+        chatContext.current += systemPrompt.current + userHeader + message.text + endToken;
+      } else if (message.isUser) {
+        chatContext.current += userHeader + message.text + endToken;
+      } else {
+        chatContext.current += assistantHeader + message.text + endToken;
+      }
+    }
+  }
+
+  const addMessage = useCallback(async (text: string, isUser: boolean) => {
+    const newMessage = { id: Date.now(), text, isUser };
+    setMessages(prevMessages => [...prevMessages, newMessage]);
+    if (currentHistoryIdRef.current) {
+      await saveChatMessage(currentHistoryIdRef.current, text, isUser);
+      loadHistories();
+    } else if (isUser) {
+      // Create new chat history for first message
+      const newHistoryId = await saveNewChatHistory(
+        text.slice(0, 50) + (text.length > 50 ? '...' : ''),
+        text
+      );
+      setCurrentHistoryId(newHistoryId);
+      currentHistoryIdRef.current = newHistoryId;
+      // reload histories to update chat history list
+      loadHistories();
+      setGlobalHistoryId(newHistoryId);
+      saveChatMessage(newHistoryId, text, isUser);
+    }
+
     setTimeout(scrollToBottom, 100);
-  }, []);
+  }, [currentHistoryId]);
 
 
   const handleSend = useCallback(async () => {
@@ -166,13 +266,7 @@ const ChatUI: React.FC = () => {
       setInputText('');
       setIsTyping(true);
 
-      const firstPrompt = `<|begin_of_text|><|start_header_id|>system<|end_header_id|>
-      You are a helpful personal AI assistant. Your name is Chloe, and you will be 
-      a professional AI assistant trying to answer all your users questions. You are locally
-      running on the device so you will never share any information outside of the chat.
-      Be as helpful as possible without being overly friendly. Be empathetic only when users
-      want to talk and share about personal feelings. 
-      <|eot_id|><|start_header_id|>user<|end_header_id|> 
+      const firstPrompt = `${systemPrompt.current}<|start_header_id|>user<|end_header_id|> 
       ${inputText}<|eot_id|><|start_header_id|>assistant<|end_header_id|>`
 
       const otherPrompts = `<|start_header_id|>user<|end_header_id|> 
@@ -240,10 +334,13 @@ const ChatUI: React.FC = () => {
     setContentHeight(h);
   }
 
-  function handleClear(event: GestureResponderEvent): void {
+  const handleNewChat = useCallback(async () => {
     setMessages([]);
-    chatContext.current='';
-  }
+    chatContext.current = '';
+    setCurrentHistoryId(null);
+    currentHistoryIdRef.current = null;
+    setGlobalHistoryId(null);
+  }, []);
 
   function handleInfoPress(event: GestureResponderEvent): void {
     // do nothing for now, will be implemented later
@@ -342,7 +439,7 @@ const ChatUI: React.FC = () => {
           
           <View style={styles.copyrightSection}>
             <Text style={styles.copyrightText}>
-              © 2024 Naved Merchant. All rights reserved.
+              © 2025 Naved Merchant. All rights reserved.
             </Text>
           </View>
         </ScrollView>
@@ -370,14 +467,15 @@ const ChatUI: React.FC = () => {
     >
       <StatusBar barStyle="light-content" />
       <View style={styles.header}>
-        <TouchableOpacity style={styles.headerButton} onPress={handleInfoPress} disabled={isTyping}>
-            <Info color="#fff" size={24} />
+        <TouchableOpacity style={styles.headerButton} onPress={handleMenuPress} disabled={isTyping}>
+          <MenuIcon color="#fff" size={24} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>MyDeviceAI</Text>
-        <TouchableOpacity style={styles.headerButton} onPress={handleClear} disabled={isTyping}>
-           <Trash2 color="#fff" size={24} />
+        <TouchableOpacity style={styles.headerButton} onPress={handleNewChat} disabled={isTyping}>
+          <CirclePlus color="#fff" size={24} />
         </TouchableOpacity>
       </View>
+
       <ScrollView 
         ref={scrollViewRef}
         style={styles.messagesContainer}
