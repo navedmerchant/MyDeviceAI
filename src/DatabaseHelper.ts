@@ -1,15 +1,8 @@
 // DatabaseHelper.ts
-import SQLite from 'react-native-sqlite-storage';
+import { open, type DB } from '@op-engineering/op-sqlite';
 import { Message } from './Message';
 
-const db = SQLite.openDatabase(
-  {
-    name: 'chathistory.db',
-    location: 'default'
-  },
-  () => console.log('Database connected'),
-  error => console.error('Database error', error)
-);
+let db: DB | null = null;
 
 export interface ChatHistory {
   id: number;
@@ -18,9 +11,14 @@ export interface ChatHistory {
   timestamp: number;
 }
 
-export const initDatabase = () => {
-  db.transaction(tx => {
-    tx.executeSql(
+export const initDatabase = async () => {
+  try {
+    db = open({
+      name: 'chathistory.db',
+      location: 'default'
+    });
+    
+    await db.execute(
       `CREATE TABLE IF NOT EXISTS chat_histories (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         title TEXT NOT NULL,
@@ -28,7 +26,8 @@ export const initDatabase = () => {
         timestamp INTEGER NOT NULL
       );`
     );
-    tx.executeSql(
+    
+    await db.execute(
       `CREATE TABLE IF NOT EXISTS chat_messages (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         history_id INTEGER,
@@ -38,124 +37,125 @@ export const initDatabase = () => {
         FOREIGN KEY (history_id) REFERENCES chat_histories (id)
       );`
     );
-  });
+    
+    console.log('Database initialized');
+  } catch (error) {
+    console.error('Database initialization error', error);
+  }
 };
 
-export const saveNewChatHistory = (title: string, firstMessage: string): Promise<number> => {
-  return new Promise((resolve, reject) => {
-    db.transaction(tx => {
-      tx.executeSql(
-        'INSERT INTO chat_histories (title, last_message, timestamp) VALUES (?, ?, ?)',
-        [title, firstMessage, Date.now()],
-        (_, result) => resolve(result.insertId),
-        (_, error) => {
-          reject(error);
-          return false;
-        }
-      );
-    });
-  });
+export const saveNewChatHistory = async (title: string, firstMessage: string): Promise<number> => {
+  if (!db) {
+    await initDatabase();
+  }
+  
+  try {
+    const result = await db!.execute(
+      'INSERT INTO chat_histories (title, last_message, timestamp) VALUES (?, ?, ?)',
+      [title, firstMessage, Date.now()]
+    );
+    
+    return result.insertId ?? 0;
+  } catch (error) {
+    console.error('Error saving chat history', error);
+    throw error;
+  }
 };
 
-export const saveChatMessage = (historyId: number, message: string, isUser: boolean) => {
-  return new Promise((resolve, reject) => {
-    db.transaction(tx => {
-      tx.executeSql(
-        'INSERT INTO chat_messages (history_id, message, is_user, timestamp) VALUES (?, ?, ?, ?)',
-        [historyId, message, isUser ? 1 : 0, Date.now()],
-        (_, result) => {
-          tx.executeSql(
-            'UPDATE chat_histories SET last_message = ?, timestamp = ? WHERE id = ?',
-            [message, Date.now(), historyId]
-          );
-          resolve(result);
-        },
-        (_, error) => {
-          reject(error);
-          return false;
-        }
-      );
-    });
-  });
+export const saveChatMessage = async (historyId: number, message: string, isUser: boolean) => {
+  if (!db) {
+    await initDatabase();
+  }
+  
+  try {
+    await db!.execute(
+      'INSERT INTO chat_messages (history_id, message, is_user, timestamp) VALUES (?, ?, ?, ?)',
+      [historyId, message, isUser ? 1 : 0, Date.now()]
+    );
+    
+    await db!.execute(
+      'UPDATE chat_histories SET last_message = ?, timestamp = ? WHERE id = ?',
+      [message, Date.now(), historyId]
+    );
+    
+    return true;
+  } catch (error) {
+    console.error('Error saving chat message', error);
+    throw error;
+  }
 };
 
-export const loadChatHistory = (historyId: number): Promise<Message[]> => {
-  return new Promise((resolve, reject) => {
-    db.transaction(tx => {
-      tx.executeSql(
-        'SELECT * FROM chat_messages WHERE history_id = ? ORDER BY timestamp ASC',
-        [historyId],
-        (_, result) => {
-          const messages: Message[] = [];
-          for (let i = 0; i < result.rows.length; i++) {
-            const row = result.rows.item(i);
-            messages.push({
-              id: row.id,
-              text: row.message,
-              isUser: Boolean(row.is_user)
-            });
-          }
-          resolve(messages);
-        },
-        (_, error) => {
-          reject(error);
-          return false;
-        }
-      );
-    });
-  });
+export const loadChatHistory = async (historyId: number): Promise<Message[]> => {
+  if (!db) {
+    await initDatabase();
+  }
+  
+  try {
+    const result = await db!.execute(
+      'SELECT * FROM chat_messages WHERE history_id = ? ORDER BY timestamp ASC',
+      [historyId]
+    );
+    
+    const messages: Message[] = [];
+    for (const row of result.rows) {
+      messages.push({
+        id: Number(row.id),
+        text: String(row.message),
+        isUser: Boolean(row.is_user)
+      });
+    }
+    
+    return messages;
+  } catch (error) {
+    console.error('Error loading chat history', error);
+    throw error;
+  }
 };
 
-export const getAllChatHistories = (): Promise<ChatHistory[]> => {
-  return new Promise((resolve, reject) => {
-    db.transaction(tx => {
-      tx.executeSql(
-        'SELECT * FROM chat_histories ORDER BY timestamp DESC',
-        [],
-        (_, result) => {
-          const histories: ChatHistory[] = [];
-          for (let i = 0; i < result.rows.length; i++) {
-            const row = result.rows.item(i);
-            histories.push({
-              id: row.id,
-              title: row.title,
-              lastMessage: row.last_message,
-              timestamp: row.timestamp
-            });
-          }
-          resolve(histories);
-        },
-        (_, error) => {
-          reject(error);
-          return false;
-        }
-      );
-    });
-  });
+export const getAllChatHistories = async (): Promise<ChatHistory[]> => {
+  if (!db) {
+    await initDatabase();
+  }
+  
+  try {
+    const result = await db!.execute(
+      'SELECT * FROM chat_histories ORDER BY timestamp DESC'
+    );
+    
+    const histories: ChatHistory[] = [];
+    for (const row of result.rows) {
+      histories.push({
+        id: Number(row.id),
+        title: String(row.title),
+        lastMessage: String(row.last_message),
+        timestamp: Number(row.timestamp)
+      });
+    }
+    
+    return histories;
+  } catch (error) {
+    console.error('Error getting chat histories', error);
+    throw error;
+  }
 };
 
-export const deleteChatHistory = (historyId: number): Promise<void> => {
-  return new Promise((resolve, reject) => {
-    db.transaction(tx => {
-      tx.executeSql(
-        'DELETE FROM chat_messages WHERE history_id = ?',
-        [historyId],
-        (_, result) => {
-          tx.executeSql(
-            'DELETE FROM chat_histories WHERE id = ?',
-            [historyId],
-            (_, result) => resolve(),
-            (_, error) => {
-              reject(error);
-              return false;
-            }
-          );
-        },
-        (_, error) => {
-          reject(error);
-          return false;
-        }
-      );
-    });
-  });
+export const deleteChatHistory = async (historyId: number): Promise<void> => {
+  if (!db) {
+    await initDatabase();
+  }
+  
+  try {
+    await db!.execute(
+      'DELETE FROM chat_messages WHERE history_id = ?',
+      [historyId]
+    );
+    
+    await db!.execute(
+      'DELETE FROM chat_histories WHERE id = ?',
+      [historyId]
+    );
+  } catch (error) {
+    console.error('Error deleting chat history', error);
+    throw error;
+  }
 };

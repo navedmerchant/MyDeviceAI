@@ -52,7 +52,7 @@ function getModelParamsForDevice() {
         return null;
       }
       default: {
-        return {...modelParams,  n_ctx: 4096,  n_gpu_layers: 48}
+        return {...modelParams,  n_ctx: 4096,  n_gpu_layers: 32}
       }
     }
   }

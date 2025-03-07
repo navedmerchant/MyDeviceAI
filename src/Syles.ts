@@ -1,4 +1,4 @@
-import { StyleSheet } from "react-native";
+import { StyleSheet, Platform } from "react-native";
 
 const styles = StyleSheet.create({
     chatScreenContainer: {
@@ -208,30 +208,97 @@ const styles = StyleSheet.create({
   const markdownStyles = {
     text: {
       color: '#fff', // White text
+      fontSize: 16,
+      lineHeight: 22,
     },
     heading1: {
       color: '#fff', // White heading
+      fontSize: 24,
+      marginTop: 10,
+      marginBottom: 8,
+    },
+    heading2: {
+      color: '#fff',
+      fontSize: 20,
+      marginTop: 8,
+      marginBottom: 6,
+    },
+    heading3: {
+      color: '#fff',
+      fontSize: 18,
+      marginTop: 6,
+      marginBottom: 4,
     },
     strong: {
       color: '#fff', // White bold text
+      fontWeight: 'bold' as const,
     },
     em: {
       color: '#fff', // White italic text
+      fontStyle: 'italic' as const,
     },
     link: {
       color: '#1E90FF', // Blue color for links
+      textDecorationLine: 'underline' as const,
     },
     list_item: {
       color: '#fff', // White list items
+      marginBottom: 4,
+    },
+    bullet_list: {
+      marginVertical: 6,
+    },
+    ordered_list: {
+      marginVertical: 6,
+    },
+    code_block: {
+      backgroundColor: '#f0f0f0',
+      padding: 10,
+      borderRadius: 4,
+      marginVertical: 8,
     },
     code: {
-      color: '#000' // code should be black
+      color: '#000', // code should be black
+      fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace',
+      backgroundColor: '#f0f0f0',
+      padding: 10,
+      borderRadius: 4,
     },
     code_inline: {
-      color: '#000'
+      color: '#000',
+      fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace',
+      backgroundColor: '#f0f0f0',
+      paddingHorizontal: 4,
+      paddingVertical: 2,
+      borderRadius: 3,
     },
     blockquote: {
-      color: '#000'
+      borderLeftWidth: 4,
+      borderLeftColor: '#1E90FF',
+      paddingLeft: 10,
+      marginLeft: 10,
+      marginVertical: 8,
+    },
+    hr: {
+      backgroundColor: '#555',
+      height: 1,
+      marginVertical: 10,
+    },
+    table: {
+      borderWidth: 1,
+      borderColor: '#555',
+      marginVertical: 10,
+    },
+    tr: {
+      borderBottomWidth: 1,
+      borderColor: '#555',
+    },
+    th: {
+      padding: 6,
+      backgroundColor: '#333',
+    },
+    td: {
+      padding: 6,
     }
   }
   

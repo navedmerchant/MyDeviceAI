@@ -53,6 +53,28 @@ interface ChatUIProps {
   setParentIsTyping: (isTyping: boolean) => void;
 }
 
+// Add this component for the typing indicator
+const TypingIndicator = () => {
+  const [dots, setDots] = useState('');
+  
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setDots(prev => {
+        if (prev.length >= 3) return '';
+        return prev + '.';
+      });
+    }, 500);
+    
+    return () => clearInterval(interval);
+  }, []);
+  
+  return (
+    <Text style={{ color: '#fff', opacity: 0.7 }}>
+      AI is typing{dots}
+    </Text>
+  );
+};
+
 const ChatUI: React.FC<ChatUIProps> = ({ historyId, onMenuPress, MenuIcon, navigation, setParentIsTyping }) => {
   const [messages, setMessages] = useState<Message[]>([]);
   const [inputText, setInputText] = useState('');
@@ -141,7 +163,7 @@ const ChatUI: React.FC<ChatUIProps> = ({ historyId, onMenuPress, MenuIcon, navig
         nextAppState === 'active'
       ) {
         console.log('App has come to the foreground!');
-        loadModel()
+        loadModel();
       } else if (
         appState.current === 'active' &&
         nextAppState.match(/inactive|background/)
@@ -261,6 +283,34 @@ const ChatUI: React.FC<ChatUIProps> = ({ historyId, onMenuPress, MenuIcon, navig
       Toast.show("Text too long, please try something shorter", Toast.SHORT);
       return;
     }
+
+    // Check if model needs to be loaded
+    if (!context) {
+      setModelLoading(true);
+      // Add loading message
+      const loadingMessageId = Date.now();
+      const loadingMessage = { id: loadingMessageId, text: "Loading AI model... This may take a few moments.", isUser: false };
+      setMessages(prevMessages => [...prevMessages, loadingMessage]);
+      
+      try {
+        await loadModel();
+        // Remove loading message after successful load
+        setMessages(prevMessages => prevMessages.filter(msg => msg.id !== loadingMessageId));
+      } catch (error) {
+        console.error('Error loading model:', error);
+        // Update loading message to error message
+        setMessages(prevMessages => 
+          prevMessages.map(msg => 
+            msg.id === loadingMessageId 
+              ? { ...msg, text: "Failed to load model. Please try sending your message again." }
+              : msg
+          )
+        );
+        setModelLoading(false);
+        return;
+      }
+    }
+
     if (inputText.trim()) {
       addMessage(inputText, true);
       setInputText('');
@@ -295,10 +345,37 @@ const ChatUI: React.FC<ChatUIProps> = ({ historyId, onMenuPress, MenuIcon, navig
             temperature: 0.7,
           },
           (data) => {
-            if  (data.token == "<|eot_id|>") {
+            if (data.token == "<|eot_id|>") {
                 return;
             }
-            setCurrentResponse(prev => prev + data.token);
+            
+            // Add token to current response
+            setCurrentResponse(prev => {
+              // Handle special cases for better Markdown formatting
+              let token = data.token;
+              
+              // Ensure proper spacing for punctuation
+              if (['.', ',', '!', '?', ':', ';'].includes(token) && prev.endsWith(' ')) {
+                return prev.slice(0, -1) + token;
+              }
+              
+              // Handle code blocks better
+              if (token === '```' && !prev.endsWith('\n') && prev.length > 0) {
+                token = '\n```';
+              }
+              
+              // Handle list items better
+              if ((token === '- ' || token === '* ' || /^\d+\.\s$/.test(token)) && !prev.endsWith('\n') && prev.length > 0) {
+                token = '\n' + token;
+              }
+              
+              return prev + token;
+            });
+            
+            // Auto-scroll to bottom as new content arrives
+            if (isAutoScrolling) {
+              scrollToBottom();
+            }
           },
         )
         chatContext.current = chatContext.current + text;
@@ -487,7 +564,11 @@ const ChatUI: React.FC<ChatUIProps> = ({ historyId, onMenuPress, MenuIcon, navig
         {messages.map(renderMessage)}
         {isTyping && (
           <View style={[styles.messageBubble, styles.aiMessage]}>
-            <Text style={styles.aiMessageText}> {currentResponse}</Text>
+            {currentResponse ? (
+              <Markdown style={markdownStyles}>{currentResponse}</Markdown>
+            ) : (
+              <TypingIndicator />
+            )}
           </View>
         )}
       </ScrollView>
@@ -496,23 +577,20 @@ const ChatUI: React.FC<ChatUIProps> = ({ historyId, onMenuPress, MenuIcon, navig
           style={styles.input}
           value={inputText}
           onChangeText={setInputText}
-          placeholder={modelLoading? "Loading Model..." : "Ask me anything, or just chat!"}
+          placeholder="Ask me anything, or just chat!"
           placeholderTextColor="#999"
           ref={textInputRef}
           multiline={true}
-          editable={!modelLoading}
+          editable={true}
           numberOfLines={2}
         />
-        {
-        modelLoading ? 
-        (<ActivityIndicator></ActivityIndicator>) :
-        (isTyping ? 
-        (<TouchableOpacity style={styles.stopButton} onPress={handleStop}>
-          <Square color="#fff"></Square>
-        </TouchableOpacity>) : 
-        (<TouchableOpacity style={styles.sendButton} onPress={handleSend}>
-          <Send color="#fff"></Send>
-        </TouchableOpacity>))
+        {isTyping ? 
+          (<TouchableOpacity style={styles.stopButton} onPress={handleStop}>
+            <Square color="#fff"></Square>
+          </TouchableOpacity>) : 
+          (<TouchableOpacity style={styles.sendButton} onPress={handleSend}>
+            <Send color="#fff"></Send>
+          </TouchableOpacity>)
         }
       </View>
       <InfoScreen/>
