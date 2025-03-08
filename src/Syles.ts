@@ -309,7 +309,7 @@ const styles = StyleSheet.create({
       borderRadius: 8,
       width: 70,
       shadowColor: "#000",
-      marginLeft: isUser ? 1 : 297, // Adjust these values as needed
+      marginLeft: isUser ? 0 : 350, // Adjust these values as needed
       shadowOffset: {
         width: 0,
         height: 2,

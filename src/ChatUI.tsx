@@ -42,6 +42,7 @@ import {
 import { DrawerNavigationProp } from '@react-navigation/drawer';
 import { DrawerParamList } from './CustomDrawerContent';
 import { useDatabase } from './DatabaseContext';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 type ChatScreenNavigationProp = DrawerNavigationProp<DrawerParamList, 'Chat'>;
 
@@ -95,20 +96,41 @@ const ChatUI: React.FC<ChatUIProps> = ({ historyId, onMenuPress, MenuIcon, navig
   const currentHistoryIdRef = useRef(currentHistoryId);
 
   const systemPrompt = useRef('');
-  systemPrompt.current =  `<|begin_of_text|><|start_header_id|>system<|end_header_id|>
-      You are a helpful personal AI assistant. Your name is Chloe, and you will be 
-      a professional AI assistant trying to answer all your users questions. You are locally
-      running on the device so you will never share any information outside of the chat.
-      Be as helpful as possible without being overly friendly. Be empathetic only when users
-      want to talk and share about personal feelings. 
-      <|eot_id|>`;
-
-  
   const appState = useRef(AppState.currentState);
 
   useEffect(() => {
     initDatabase();
+    loadSystemPrompt();
   }, []);
+
+  const loadSystemPrompt = async () => {
+    try {
+      const savedPrompt = await AsyncStorage.getItem('systemPrompt');
+      if (savedPrompt) {
+        systemPrompt.current = savedPrompt;
+      } else {
+        // Set default prompt only if no saved prompt exists
+        systemPrompt.current = `<|begin_of_text|><|start_header_id|>system<|end_header_id|>
+You are a helpful personal AI assistant. Your name is Chloe, and you will be 
+a professional AI assistant trying to answer all your users questions. You are locally
+running on the device so you will never share any information outside of the chat.
+Be as helpful as possible without being overly friendly. Be empathetic only when users
+want to talk and share about personal feelings.
+<|eot_id|>`;
+      }
+    } catch (error) {
+      console.error('Error loading system prompt:', error);
+    }
+  };
+
+  // Add a listener for when the settings screen is focused
+  useEffect(() => {
+    const unsubscribe = navigation.addListener('focus', () => {
+      loadSystemPrompt();
+    });
+
+    return unsubscribe;
+  }, [navigation]);
 
   useEffect(() => {
     if (historyId) {

@@ -13,9 +13,11 @@ import ChatUI from './src/ChatUI';
 import CustomDrawerContent from './src/CustomDrawerContent';
 import 'react-native-gesture-handler';
 import ChatScreen from './src/ChatScreen';
+import SettingsScreen from './src/SettingsScreen';
 
 export type DrawerParamList = {
   Chat: { historyId?: number };
+  Settings: undefined;
 };
 
 const Drawer = createDrawerNavigator<DrawerParamList>();
@@ -49,6 +51,13 @@ function App(): React.JSX.Element {
               component={ChatScreen}
               options={{
                 swipeEnabled: true,
+              }}
+            />
+            <Drawer.Screen 
+              name="Settings"
+              component={SettingsScreen}
+              options={{
+                swipeEnabled: false,
               }}
             />
           </Drawer.Navigator>

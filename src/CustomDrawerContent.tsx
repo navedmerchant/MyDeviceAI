@@ -17,6 +17,7 @@ import Markdown from 'react-native-markdown-display';
 // Define the drawer param list type
 export type DrawerParamList = {
   Chat: { historyId?: number } | undefined;
+  Settings: undefined;
 };
 
 // Define the navigation prop type
