@@ -105,6 +105,15 @@ const menuProviderStyles = {
     backgroundColor: 'rgba(0, 0, 0, 0.5)',
     opacity: 1,
   },
+  menuProviderWrapper: {
+    flex: 1,
+  },
+  menuOptions: {
+    optionsContainer: {
+      width: 70,
+      position: 'relative',
+    }
+  }
 };
 
 export default App;

@@ -6,7 +6,7 @@ import {
   Menu,
   MenuOptions,
   MenuOption,
-  MenuTrigger
+  MenuTrigger,
 } from 'react-native-popup-menu';
 
 import {
@@ -26,6 +26,7 @@ import {
   AppState,
   StatusBar,
   Alert,
+  Dimensions,
 } from 'react-native';
 import { Send, Square, CirclePlus } from 'lucide-react-native';
 import { getModelParamsForDevice } from './Utils';
@@ -68,7 +69,7 @@ const TypingIndicator = () => {
   
   return (
     <Text style={{ color: '#fff', opacity: 0.7 }}>
-      AI is typing{dots}
+      Thinking{dots}
     </Text>
   );
 };
@@ -86,6 +87,8 @@ const ChatUI: React.FC<ChatUIProps> = ({ historyId, onMenuPress, MenuIcon, navig
   const [unsppportedDevice, setUnsupportedDevice] = useState(false);
   const [currentHistoryId, setCurrentHistoryId] = useState<number | null>(null);
   const { setGlobalHistoryId, loadHistories } = useDatabase();
+  const [selectedMessage, setSelectedMessage] = useState<Message | null>(null);
+  const [menuVisible, setMenuVisible] = useState(false);
 
   const chatContext = useRef('');
   const scrollViewRef = useRef<ScrollView>(null);
@@ -393,7 +396,7 @@ want to talk and share about personal feelings.
             
             // Auto-scroll to bottom as new content arrives
             if (isAutoScrolling) {
-              scrollToBottom();
+              setTimeout(scrollToBottom, 100);
             }
           },
         )
@@ -443,39 +446,33 @@ want to talk and share about personal feelings.
     setShowInfo(true);
   }
 
+  const handleMessageLongPress = (message: Message) => {
+    setSelectedMessage(message);
+    setMenuVisible(true);
+  };
+
   const handleCopyText = (text: string) => {
     Clipboard.setString(text);
     Toast.show("Text copied to Clipboard", Toast.SHORT);
+    setMenuVisible(false);
   };
 
-  // ... (previous useEffect hooks and functions remain the same)
-
   const renderMessage = (message: Message) => (
-    <Menu key={message.id}>
-      <MenuTrigger
-        triggerOnLongPress
-        customStyles={{
-          triggerTouchable: {
-            underlayColor: 'transparent',
-            activeOpacity: 0.6,
-          },
-        }}
+    <TouchableOpacity
+      key={message.id}
+      onLongPress={() => handleMessageLongPress(message)}
+      delayLongPress={200}
+    >
+      <View
+        style={[
+          styles.messageBubble,
+          message.isUser ? styles.userMessage : styles.aiMessage
+        ]}
       >
-        <View
-          style={[
-            styles.messageBubble,
-            message.isUser ? styles.userMessage : styles.aiMessage
-          ]}
-        >
-          <Markdown style={markdownStyles}>{message.text}</Markdown>
-        </View>
-      </MenuTrigger>
-      <MenuOptions customStyles={popoverStyles(message.isUser)}>
-        <MenuOption onSelect={() => handleCopyText(message.text)} text="Copy" customStyles={menuOptionStyles}/>
-      </MenuOptions>
-    </Menu>
+        <Markdown style={markdownStyles}>{message.text}</Markdown>
+      </View>
+    </TouchableOpacity>
   );
-
 
   if (unsppportedDevice) {
     return (
@@ -496,6 +493,31 @@ want to talk and share about personal feelings.
       behavior={Platform.OS === "ios" ? "padding" : "height"}
     >
       <StatusBar barStyle="light-content" />
+      <View style={{
+        position: 'absolute',
+        width: '100%',
+        height: '100%',
+        justifyContent: 'center',
+        alignItems: 'flex-start',
+        paddingLeft: 200,
+        zIndex: 1000,
+        pointerEvents: menuVisible ? 'auto' : 'none',
+      }}>
+        <Menu
+          opened={menuVisible}
+          onBackdropPress={() => setMenuVisible(false)}
+        >
+          <MenuTrigger />
+          <MenuOptions customStyles={popoverStyles(selectedMessage?.isUser || false)}>
+            <MenuOption 
+              onSelect={() => selectedMessage && handleCopyText(selectedMessage.text)} 
+              text="Copy" 
+              customStyles={menuOptionStyles}
+            />
+          </MenuOptions>
+        </Menu>
+      </View>
+      
       <View style={styles.header}>
         <TouchableOpacity style={styles.headerButton} onPress={handleMenuPress} disabled={isTyping}>
           <MenuIcon color="#fff" size={24} />

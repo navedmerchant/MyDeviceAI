@@ -309,20 +309,20 @@ const styles = StyleSheet.create({
       borderRadius: 8,
       width: 70,
       shadowColor: "#000",
-      marginLeft: isUser ? 0 : 350, // Adjust these values as needed
       shadowOffset: {
         width: 0,
         height: 2,
       },
       shadowOpacity: 0.25,
       shadowRadius: 3.84,
-      elevation: 5,
+      elevation: 5
     }
   });
   
   const menuOptionStyles = {
     optionWrapper: {
       padding: 10,
+      backgroundColor: '#2c2c2c',
     },
     optionText: {
       color: '#fff',
