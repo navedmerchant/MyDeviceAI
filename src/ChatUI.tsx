@@ -27,8 +27,9 @@ import {
   StatusBar,
   Alert,
   Dimensions,
+  Image,
 } from 'react-native';
-import { Send, Square, CirclePlus } from 'lucide-react-native';
+import { Send, Square, CirclePlus, Search, Settings } from 'lucide-react-native';
 import { getModelParamsForDevice } from './Utils';
 import { styles, markdownStyles, popoverStyles, menuOptionStyles } from './Syles';
 import { Message } from './Message';
@@ -41,6 +42,7 @@ import { DrawerNavigationProp } from '@react-navigation/drawer';
 import { DrawerParamList } from './CustomDrawerContent';
 import { useDatabase } from './DatabaseContext';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { performBraveSearch } from './BraveSearch';
 
 type ChatScreenNavigationProp = DrawerNavigationProp<DrawerParamList, 'Chat'>;
 
@@ -86,6 +88,7 @@ const ChatUI: React.FC<ChatUIProps> = ({ historyId, onMenuPress, MenuIcon, navig
   const [showInfo, setShowInfo] = useState(false);
   const [unsppportedDevice, setUnsupportedDevice] = useState(false);
   const [currentHistoryId, setCurrentHistoryId] = useState<number | null>(null);
+  const [searchModeEnabled, setSearchModeEnabled] = useState(false);
   const { setGlobalHistoryId, loadHistories } = useDatabase();
   const [selectedMessage, setSelectedMessage] = useState<Message | null>(null);
   const [menuVisible, setMenuVisible] = useState(false);
@@ -116,6 +119,10 @@ a professional AI assistant trying to answer all your users questions. You are l
 running on the device so you will never share any information outside of the chat.
 Be as helpful as possible without being overly friendly. Be empathetic only when users
 want to talk and share about personal feelings.
+
+When provided with search results, use them to enhance your responses with current and accurate information.
+The search results will be clearly marked with "Search Results:" in the user's messages.
+Use these results to provide up-to-date information while maintaining your helpful and professional demeanor.
 <|eot_id|>`;
       }
     } catch (error) {
@@ -214,12 +221,6 @@ want to talk and share about personal feelings.
       scrollToBottom();
     }
   }, [contentHeight]);
-
-  useEffect(() => {
-      if (!modelLoading) {
-        textInputRef.current?.focus();
-      }
-  }, [modelLoading]);
 
   useEffect(() => {
     setParentIsTyping(isTyping);
@@ -338,11 +339,25 @@ want to talk and share about personal feelings.
       setInputText('');
       setIsTyping(true);
 
+      let searchResults = '';
+      if (searchModeEnabled) {
+        try {
+          searchResults = await performBraveSearch(inputText);
+        } catch (error) {
+          console.log('Search error:', error);
+          if (error instanceof Error) {
+            Toast.show(error.message, Toast.LONG);
+          }
+        }
+      }
+
       const firstPrompt = `${systemPrompt.current}<|start_header_id|>user<|end_header_id|> 
-      ${inputText}<|eot_id|><|start_header_id|>assistant<|end_header_id|>`
+      ${inputText}
+      ${searchResults ? `\nSearch Results: ${searchResults}` : ''}<|eot_id|><|start_header_id|>assistant<|end_header_id|>`
 
       const otherPrompts = `<|start_header_id|>user<|end_header_id|> 
-      ${inputText}<|eot_id|><|start_header_id|>assistant<|end_header_id|>`
+      ${inputText}
+      ${searchResults ? `\nSearch Results: ${searchResults}` : ''}<|eot_id|><|start_header_id|>assistant<|end_header_id|>`
 
       let prompt;
       if (messages.length == 0) {
@@ -519,13 +534,30 @@ want to talk and share about personal feelings.
       </View>
       
       <View style={styles.header}>
-        <TouchableOpacity style={styles.headerButton} onPress={handleMenuPress} disabled={isTyping}>
-          <MenuIcon color="#fff" size={24} />
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>MyDeviceAI</Text>
-        <TouchableOpacity style={styles.headerButton} onPress={handleNewChat} disabled={isTyping}>
-          <CirclePlus color="#fff" size={24} />
-        </TouchableOpacity>
+        <View style={styles.headerLeftButtons}>
+          <TouchableOpacity style={styles.headerButton} onPress={handleMenuPress} disabled={isTyping}>
+            <MenuIcon color="#fff" size={24} />
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.headerButton} onPress={() => navigation.navigate('Settings')} disabled={isTyping}>
+            <Settings color="#fff" size={24} />
+          </TouchableOpacity>
+        </View>
+        <Image 
+          source={require('./images/MyDeviceAI.png')}
+          style={styles.headerLogo}
+        />
+        <View style={styles.headerRightButtons}>
+          <TouchableOpacity 
+            style={[styles.headerButton, searchModeEnabled && styles.headerButtonActive]} 
+            onPress={() => setSearchModeEnabled(!searchModeEnabled)}
+            disabled={isTyping}
+          >
+            <Search color={searchModeEnabled ? "#28a745" : "#fff"} size={24} />
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.headerButton} onPress={handleNewChat} disabled={isTyping}>
+            <CirclePlus color="#fff" size={24} />
+          </TouchableOpacity>
+        </View>
       </View>
 
       <ScrollView 
@@ -552,7 +584,7 @@ want to talk and share about personal feelings.
           style={styles.input}
           value={inputText}
           onChangeText={setInputText}
-          placeholder="Ask me anything, or just chat!"
+          placeholder={searchModeEnabled ? "Ask me anything (with web search)" : "Ask me anything, or just chat!"}
           placeholderTextColor="#999"
           ref={textInputRef}
           multiline={true}

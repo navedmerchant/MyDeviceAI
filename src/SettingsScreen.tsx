@@ -45,6 +45,8 @@ const addMetaTags = (prompt: string): string => {
 const SettingsScreen: React.FC<Props> = ({ navigation }) => {
   const [systemPrompt, setSystemPrompt] = useState('');
   const [historyDays, setHistoryDays] = useState('30');
+  const [braveApiKey, setBraveApiKey] = useState('');
+  const [monthlyQueries, setMonthlyQueries] = useState('0');
 
   // Load settings when component mounts
   React.useEffect(() => {
@@ -55,6 +57,8 @@ const SettingsScreen: React.FC<Props> = ({ navigation }) => {
     try {
       const savedPrompt = await AsyncStorage.getItem('systemPrompt');
       const savedDays = await AsyncStorage.getItem('historyDays');
+      const savedApiKey = await AsyncStorage.getItem('braveApiKey');
+      const savedQueries = await AsyncStorage.getItem('monthlyQueries');
       
       if (savedPrompt) {
         setSystemPrompt(stripMetaTags(savedPrompt));
@@ -62,6 +66,8 @@ const SettingsScreen: React.FC<Props> = ({ navigation }) => {
         setSystemPrompt(stripMetaTags(DEFAULT_SYSTEM_PROMPT));
       }
       if (savedDays) setHistoryDays(savedDays);
+      if (savedApiKey) setBraveApiKey(savedApiKey);
+      if (savedQueries) setMonthlyQueries(savedQueries);
     } catch (error) {
       console.error('Error loading settings:', error);
     }
@@ -72,6 +78,8 @@ const SettingsScreen: React.FC<Props> = ({ navigation }) => {
       const formattedPrompt = addMetaTags(systemPrompt);
       await AsyncStorage.setItem('systemPrompt', formattedPrompt);
       await AsyncStorage.setItem('historyDays', historyDays);
+      await AsyncStorage.setItem('braveApiKey', braveApiKey);
+      await AsyncStorage.setItem('monthlyQueries', monthlyQueries);
       navigation.goBack();
     } catch (error) {
       console.error('Error saving settings:', error);
@@ -133,6 +141,24 @@ const SettingsScreen: React.FC<Props> = ({ navigation }) => {
             placeholder="Number of days to keep chat history"
             placeholderTextColor="#666"
           />
+        </View>
+
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Brave Search API</Text>
+          <Text style={styles.description}>
+            Enter your Brave Search API key to enable web search capabilities
+          </Text>
+          <TextInput
+            style={styles.textInput}
+            value={braveApiKey}
+            onChangeText={setBraveApiKey}
+            placeholder="Enter Brave Search API key"
+            placeholderTextColor="#666"
+            secureTextEntry={true}
+          />
+          <Text style={styles.description}>
+            Monthly queries used: {monthlyQueries}/2000
+          </Text>
         </View>
 
         <View style={styles.section}>

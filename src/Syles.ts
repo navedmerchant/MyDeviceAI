@@ -18,6 +18,16 @@ const styles = StyleSheet.create({
       padding: 10,
       backgroundColor: '#000',
     },
+    headerLeftButtons: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 5,
+    },
+    headerLogo: {
+      width: 40,
+      height: 40,
+      resizeMode: 'contain',
+    },
     headerTitle: {
       color: '#fff',
       fontSize: 18,
@@ -27,6 +37,16 @@ const styles = StyleSheet.create({
       padding: 5,
       color: '#fff',
       fontWeight: 'bold',
+    },
+    headerButtonActive: {
+      padding: 5,
+      color: '#28a745',
+      fontWeight: 'bold',
+    },
+    headerRightButtons: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 5,
     },
     messagesContainer: {
       flex: 1,
@@ -78,6 +98,22 @@ const styles = StyleSheet.create({
       backgroundColor: '#007AFF',
       borderRadius: 20,
       paddingHorizontal: 20,
+    },
+    searchButton: {
+      justifyContent: 'center',
+      alignItems: 'center',
+      backgroundColor: '#28a745',
+      borderRadius: 20,
+      paddingHorizontal: 20,
+      marginRight: 10,
+    },
+    searchButtonActive: {
+      justifyContent: 'center',
+      alignItems: 'center',
+      backgroundColor: '#1e7e34',
+      borderRadius: 20,
+      paddingHorizontal: 20,
+      marginRight: 10,
     },
     stopButton: {
       justifyContent: 'center',
