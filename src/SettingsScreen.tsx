@@ -8,6 +8,7 @@ import {
   TextInput,
   KeyboardAvoidingView,
   Platform,
+  Linking,
 } from 'react-native';
 import { ChevronLeft } from 'lucide-react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -142,6 +143,41 @@ const SettingsScreen: React.FC<Props> = ({ navigation }) => {
             <Text style={styles.aboutDescription}>
               Built with Llama 3.2
             </Text>
+
+            <View style={styles.licenseSection}>
+              <Text style={styles.licenseSectionTitle}>Open Source Licenses</Text>
+              
+              <View style={styles.licenseItem}>
+                <Text style={styles.licenseTitle}>Llama 3.2 Model</Text>
+                <Text style={styles.licenseText}>
+                  Llama 3.2 is licensed under the Llama 3.2 Community License, Copyright © Meta Platforms, Inc. All Rights Reserved.
+                </Text>
+                <TouchableOpacity 
+                  onPress={() => Linking.openURL('https://raw.githubusercontent.com/meta-llama/llama-models/refs/heads/main/models/llama3_2/LICENSE')}
+                >
+                  <Text style={styles.linkText}>View License</Text>
+                </TouchableOpacity>
+              </View>
+
+              <View style={styles.licenseItem}>
+                <Text style={styles.licenseTitle}>Additional Libraries</Text>
+                <Text style={styles.licenseText}>
+                  This application uses various open-source libraries, each with their respective licenses.
+                  For a complete list of licenses, please visit the link below.
+                </Text>
+                <TouchableOpacity 
+                  onPress={() => Linking.openURL('https://github.com/navedmerchant/MyDeviceAILicenses/blob/main/README.md')}
+                >
+                  <Text style={styles.linkText}>View License</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+
+            <View style={styles.copyrightSection}>
+              <Text style={styles.copyrightText}>
+                © 2025 Naved Merchant. All rights reserved.
+              </Text>
+            </View>
           </View>
         </View>
       </ScrollView>
@@ -256,6 +292,40 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 16,
     lineHeight: 22,
+  },
+  licenseSection: {
+    marginBottom: 24,
+  },
+  licenseSectionTitle: {
+    color: '#fff',
+    fontSize: 18,
+    fontWeight: 'bold',
+    marginBottom: 8,
+  },
+  licenseItem: {
+    marginBottom: 12,
+  },
+  licenseTitle: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: 'bold',
+    marginBottom: 5,
+  },
+  licenseText: {
+    color: '#999',
+    fontSize: 14,
+  },
+  linkText: {
+    color: '#007AFF',
+    fontSize: 14,
+  },
+  copyrightSection: {
+    marginTop: 24,
+    alignItems: 'center',
+  },
+  copyrightText: {
+    color: '#999',
+    fontSize: 14,
   },
 });
 

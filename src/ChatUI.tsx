@@ -480,72 +480,6 @@ want to talk and share about personal feelings.
   );
 
 
-  const InfoScreen = () => (
-    <Modal
-      animationType="slide"
-      visible={showInfo}
-      onRequestClose={() => setShowInfo(false)}
-    >
-      <View style={styles.infoContainer}>
-        <View style={styles.infoHeader}>
-          <TouchableOpacity 
-            style={styles.backButton} 
-            onPress={() => setShowInfo(false)}
-          >
-            <ChevronLeft color="#fff" size={24} />
-            <Text style={styles.backButtonText}>Back</Text>
-          </TouchableOpacity>
-          <Text style={styles.infoTitle}>About</Text>
-        </View>
-        
-        <ScrollView style={styles.infoContent}>
-          <View style={styles.infoSection}>
-            <Text style={styles.infoSectionTitle}>MyDeviceAI</Text>
-            <Text style={styles.versionText}>Version 1.0.0</Text>
-            <Text style={styles.infoDescription}>
-              Built with Llama 3.2
-            </Text>
-          </View>
-          
-          <View style={styles.licenseSection}>
-            <Text style={styles.licenseSectionTitle}>Open Source Licenses</Text>
-            
-            <View style={styles.licenseItem}>
-              <Text style={styles.licenseTitle}>Llama 3.2 Model</Text>
-              <Text style={styles.licenseText}>
-                Llama 3.2 is licensed under the Llama 3.2 Community License, Copyright © Meta Platforms, Inc. All Rights Reserved.
-              </Text>
-              <TouchableOpacity 
-                onPress={() => Linking.openURL('https://raw.githubusercontent.com/meta-llama/llama-models/refs/heads/main/models/llama3_2/LICENSE')}
-              >
-                <Text style={styles.linkText}>View License</Text>
-              </TouchableOpacity>
-            </View>
-
-            <View style={styles.licenseItem}>
-              <Text style={styles.licenseTitle}>Additional Libraries</Text>
-              <Text style={styles.licenseText}>
-                This application uses various open-source libraries, each with their respective licenses.
-                For a complete list of licenses, please visit the link below.
-              </Text>
-              <TouchableOpacity 
-                onPress={() => Linking.openURL('https://github.com/navedmerchant/MyDeviceAILicenses/blob/main/README.md')}
-              >
-                <Text style={styles.linkText}>View License</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-          
-          <View style={styles.copyrightSection}>
-            <Text style={styles.copyrightText}>
-              © 2025 Naved Merchant. All rights reserved.
-            </Text>
-          </View>
-        </ScrollView>
-      </View>
-    </Modal>
-  );
-
   if (unsppportedDevice) {
     return (
       <View style={styles.unsupportedContainer}>
@@ -615,7 +549,6 @@ want to talk and share about personal feelings.
           </TouchableOpacity>)
         }
       </View>
-      <InfoScreen/>
     </KeyboardAvoidingView>
   );
 };
