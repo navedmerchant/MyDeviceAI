@@ -159,3 +159,20 @@ export const deleteChatHistory = async (historyId: number): Promise<void> => {
     throw error;
   }
 };
+
+export const deleteAllHistories = async (): Promise<void> => {
+  if (!db) {
+    await initDatabase();
+  }
+  
+  try {
+    // Delete all messages first due to foreign key constraint
+    await db!.execute('DELETE FROM chat_messages');
+    
+    // Then delete all histories
+    await db!.execute('DELETE FROM chat_histories');
+  } catch (error) {
+    console.error('Error deleting all chat histories:', error);
+    throw error;
+  }
+};

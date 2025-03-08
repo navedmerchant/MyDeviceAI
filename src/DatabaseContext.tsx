@@ -5,6 +5,7 @@ import {
   getAllChatHistories,
   ChatHistory,
   deleteChatHistory,
+  deleteAllHistories,
 } from './DatabaseHelper';
 
 interface DatabaseContextType {
@@ -12,6 +13,7 @@ interface DatabaseContextType {
   histories: ChatHistory[];
   loadHistories: () => Promise<void>;
   deleteHistory: (historyId: number) => Promise<void>;
+  deleteAllHistories: () => Promise<void>;
   setGlobalHistoryId: (historyId: number | null) => void;
 }
 
@@ -45,7 +47,22 @@ export const DatabaseProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   };
 
   return (
-    <DatabaseContext.Provider value={{ histories, loadHistories, deleteHistory, globalHistoryId, setGlobalHistoryId }}>
+    <DatabaseContext.Provider value={{ 
+      histories, 
+      loadHistories, 
+      deleteHistory, 
+      deleteAllHistories: async () => {
+        try {
+          await deleteAllHistories();
+          setGlobalHistoryId(null);
+          await loadHistories();
+        } catch (error) {
+          console.error('Error deleting all histories:', error);
+        }
+      },
+      globalHistoryId, 
+      setGlobalHistoryId 
+    }}>
       {children}
     </DatabaseContext.Provider>
   );

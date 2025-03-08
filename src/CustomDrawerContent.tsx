@@ -5,12 +5,14 @@ import {
   StyleSheet,
   TouchableOpacity,
   ScrollView,
+  Alert,
 } from 'react-native';
 import { DrawerContentScrollView, DrawerContentComponentProps } from '@react-navigation/drawer';
 import { Trash2 } from 'lucide-react-native';
 import { useDatabase } from './DatabaseContext';
 import { DrawerNavigationProp } from '@react-navigation/drawer';
 import { CompositeNavigationProp, useFocusEffect, useNavigation } from '@react-navigation/native';
+import Markdown from 'react-native-markdown-display';
 
 // Define the drawer param list type
 export type DrawerParamList = {
@@ -24,7 +26,7 @@ type DrawerNavigation = CompositeNavigationProp<
 >;
 
 const CustomDrawerContent = (props: DrawerContentComponentProps) => {
-  const { histories, loadHistories, deleteHistory, globalHistoryId } = useDatabase();
+  const { histories, loadHistories, deleteHistory, deleteAllHistories, globalHistoryId } = useDatabase();
   const navigation = useNavigation<DrawerNavigation>();
 
   // Memoize formatDate function
@@ -52,6 +54,28 @@ const CustomDrawerContent = (props: DrawerContentComponentProps) => {
     }
   }, [deleteHistory, globalHistoryId, navigation]);
 
+  const handleDeleteAllHistories = useCallback(() => {
+    Alert.alert(
+      'Delete All Chats',
+      'Are you sure you want to delete all chats? This action cannot be undone.',
+      [
+        {
+          text: 'Cancel',
+          style: 'cancel'
+        },
+        {
+          text: 'Delete All',
+          style: 'destructive',
+          onPress: async () => {
+            await deleteAllHistories();
+            navigation.navigate('Chat');
+            props.navigation.closeDrawer();
+          }
+        }
+      ]
+    );
+  }, [deleteAllHistories, navigation, props.navigation]);
+
   useFocusEffect(
     useCallback(() => {
       // This will run every time the drawer is focused
@@ -70,7 +94,9 @@ const CustomDrawerContent = (props: DrawerContentComponentProps) => {
       onPress={() => handleSelectHistory(id)}
     >
       <View style={styles.historyContent}>
-        <Text style={styles.historyTitle}>{getShortLastMessage(lastMessage)}</Text>
+        <Markdown style={markdownStyles}>
+          {getShortLastMessage(lastMessage)}
+        </Markdown>
         <View style={styles.historyFooter}>
           <Text style={styles.historyDate}>
             {formatDate(timestamp)}
@@ -96,6 +122,46 @@ const CustomDrawerContent = (props: DrawerContentComponentProps) => {
       </ScrollView>
     </DrawerContentScrollView>
   );
+};
+
+const markdownStyles = {
+  body: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '500' as const,
+  },
+  heading1: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '500' as const,
+  },
+  heading2: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '500' as const,
+  },
+  paragraph: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '500' as const,
+    marginTop: 0,
+    marginBottom: 0,
+  },
+  link: {
+    color: '#3498db',
+  },
+  list: {
+    color: '#fff',
+  },
+  listItem: {
+    color: '#fff',
+  },
+  strong: {
+    color: '#fff',
+  },
+  em: {
+    color: '#fff',
+  },
 };
 
 const styles = StyleSheet.create({
