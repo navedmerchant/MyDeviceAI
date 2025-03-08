@@ -19,18 +19,15 @@ import {
   Platform,
   Keyboard,
   EmitterSubscription,
-  ActivityIndicator,
   GestureResponderEvent,
   Clipboard,
   NativeSyntheticEvent,
   NativeScrollEvent,
   AppState,
   StatusBar,
-  Modal,
-  Linking,
   Alert,
 } from 'react-native';
-import { ChevronLeft, Send, Square, CirclePlus } from 'lucide-react-native';
+import { Send, Square, CirclePlus } from 'lucide-react-native';
 import { getModelParamsForDevice } from './Utils';
 import { styles, markdownStyles, popoverStyles, menuOptionStyles } from './Syles';
 import { Message } from './Message';
