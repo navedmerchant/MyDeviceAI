@@ -103,10 +103,10 @@ class ContextManager {
            results.rows[0].distance > DISTANCE_THRESHOLD;
   }
 
-  public async addContext(text: string): Promise<boolean> {
+  public async addContext(text: string, skipSelfReferentialCheck: boolean = false): Promise<boolean> {
     if (!this.settings.enabled) return false;
 
-    if (!(await this.isSelfReferential(text))) return false;
+    if (!skipSelfReferentialCheck && !(await this.isSelfReferential(text))) return false;
 
     try {
       const embedding = await this.getEmbedding(text);

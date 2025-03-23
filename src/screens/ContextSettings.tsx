@@ -71,7 +71,7 @@ const ContextSettings: React.FC<Props> = ({ navigation }) => {
     if (!newMemory.trim()) return;
     
     try {
-      await contextManager.addContext(newMemory.trim());
+      await contextManager.addContext(newMemory.trim(), true);
       setNewMemory('');
       loadSavedContexts(); // Refresh the list
     } catch (err) {

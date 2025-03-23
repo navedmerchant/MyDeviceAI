@@ -39,7 +39,7 @@ import {
   saveChatMessage,
   loadChatHistory} from './DatabaseHelper';
 import { DrawerNavigationProp } from '@react-navigation/drawer';
-import { DrawerParamList } from './CustomDrawerContent';
+import { DrawerParamList } from '../App';
 import { useDatabase } from './DatabaseContext';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { performBraveSearch } from './BraveSearch';
