@@ -29,7 +29,7 @@ import {
   Dimensions,
   Image,
 } from 'react-native';
-import { Send, Square, CirclePlus, Search, Settings } from 'lucide-react-native';
+import { Send, Square, CirclePlus, Search, Settings, ArrowDown } from 'lucide-react-native';
 import { getModelParamsForDevice } from './Utils';
 import { styles, markdownStyles, popoverStyles, menuOptionStyles } from './Syles';
 import { Message } from './Message';
@@ -92,6 +92,7 @@ const ChatUI: React.FC<ChatUIProps> = ({ historyId, onMenuPress, MenuIcon, navig
   const { setGlobalHistoryId, loadHistories } = useDatabase();
   const [selectedMessage, setSelectedMessage] = useState<Message | null>(null);
   const [menuVisible, setMenuVisible] = useState(false);
+  const [showScrollButton, setShowScrollButton] = useState(false);
 
   const chatContext = useRef('');
   const scrollViewRef = useRef<ScrollView>(null);
@@ -416,6 +417,7 @@ want to talk and share about personal feelings.${constantPromptInfo}
   function handleScrollEvent(event: NativeSyntheticEvent<NativeScrollEvent>): void {
     const bottom = isCloseToBottom(event.nativeEvent);
     setIsAutoScrolling(bottom);
+    setShowScrollButton(!bottom);
   }
 
   function handleContentSizeChange(w: number, h: number): void {
@@ -563,6 +565,8 @@ want to talk and share about personal feelings.${constantPromptInfo}
         ref={scrollViewRef}
         style={styles.messagesContainer}
         contentContainerStyle={styles.scrollViewContent}
+        onScroll={handleScrollEvent}
+        scrollEventThrottle={16}
       >
         {messages.map(renderMessage)}
         {isTyping && (
@@ -575,6 +579,16 @@ want to talk and share about personal feelings.${constantPromptInfo}
           </View>
         )}
       </ScrollView>
+
+      {showScrollButton && (
+        <TouchableOpacity 
+          style={styles.scrollToBottomButton}
+          onPress={scrollToBottom}
+        >
+          <ArrowDown color="#fff" size={24} />
+        </TouchableOpacity>
+      )}
+
       <View style={styles.inputContainer}>
         <TextInput
           style={styles.input}
