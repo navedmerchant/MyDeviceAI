@@ -25,17 +25,24 @@ const DEFAULT_SYSTEM_PROMPT = `<|begin_of_text|><|start_header_id|>system<|end_h
 You are a helpful AI assistant.
 <|eot_id|>`;
 
+const CONSTANT_PROMPT_INFO = `
+You have access to the internet and can use it to search for information, if it is enabled by the user.
+When provided with search results, use them to enhance your responses with current and accurate information.
+The search results will be clearly marked with "Search Results:" in the user's messages.
+Use these results to provide up-to-date information while maintaining your helpful and professional demeanor.`;
+
 // Helper function to strip meta tags from the prompt
 const stripMetaTags = (prompt: string): string => {
   return prompt
     .replace('<|begin_of_text|><|start_header_id|>system<|end_header_id|>', '')
+    .replace(CONSTANT_PROMPT_INFO, '') // Also remove the constant info when displaying
     .replace('<|eot_id|>', '')
     .trim();
 };
 
 // Helper function to add meta tags to the prompt
 const addMetaTags = (prompt: string): string => {
-  return `<|begin_of_text|><|start_header_id|>system<|end_header_id|>\n${prompt.trim()}\n<|eot_id|>`;
+  return `<|begin_of_text|><|start_header_id|>system<|end_header_id|>\n${prompt.trim()}\n${CONSTANT_PROMPT_INFO}\n<|eot_id|>`;
 };
 
 const SettingsScreen: React.FC<Props> = ({ navigation }) => {

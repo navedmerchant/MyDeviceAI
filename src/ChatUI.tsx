@@ -109,8 +109,20 @@ const ChatUI: React.FC<ChatUIProps> = ({ historyId, onMenuPress, MenuIcon, navig
   const loadSystemPrompt = async () => {
     try {
       const savedPrompt = await AsyncStorage.getItem('systemPrompt');
+      const constantPromptInfo = `
+You have access to the internet and can use it to search for information, if it is enabled by the user.
+When provided with search results, use them to enhance your responses with current and accurate information.
+The search results will be clearly marked with "Search Results:" in the user's messages.
+Use these results to provide up-to-date information while maintaining your helpful and professional demeanor.`;
+
       if (savedPrompt) {
-        systemPrompt.current = savedPrompt;
+        // For custom prompts, ensure they have the begin/header tags and append constant info
+        if (!savedPrompt.includes('<|begin_of_text|>')) {
+          systemPrompt.current = `<|begin_of_text|><|start_header_id|>system<|end_header_id|>\n${savedPrompt}\n${constantPromptInfo}\n<|eot_id|>`;
+        } else {
+          // If the prompt already has the tags, insert constant info before the end tag
+          systemPrompt.current = savedPrompt.replace('<|eot_id|>', `${constantPromptInfo}\n<|eot_id|>`);
+        }
       } else {
         // Set default prompt only if no saved prompt exists
         systemPrompt.current = `<|begin_of_text|><|start_header_id|>system<|end_header_id|>
@@ -118,11 +130,7 @@ You are a helpful personal AI assistant. Your name is Chloe, and you will be
 a professional AI assistant trying to answer all your users questions. You are locally
 running on the device so you will never share any information outside of the chat.
 Be as helpful as possible without being overly friendly. Be empathetic only when users
-want to talk and share about personal feelings.
-
-When provided with search results, use them to enhance your responses with current and accurate information.
-The search results will be clearly marked with "Search Results:" in the user's messages.
-Use these results to provide up-to-date information while maintaining your helpful and professional demeanor.
+want to talk and share about personal feelings.${constantPromptInfo}
 <|eot_id|>`;
       }
     } catch (error) {
@@ -181,11 +189,6 @@ Use these results to provide up-to-date information while maintaining your helpf
     let keyboardDidShowListener: EmitterSubscription;
     let keyboardDidHideListener: EmitterSubscription;
 
-    if (Platform.OS === 'ios') {
-      keyboardDidShowListener = Keyboard.addListener('keyboardDidShow', scrollToBottom);
-      keyboardDidHideListener = Keyboard.addListener('keyboardDidHide', scrollToBottom);
-    }
-
     const subscription = AppState.addEventListener('change', nextAppState => {
       if (
         appState.current.match(/inactive|background/) &&
@@ -207,20 +210,7 @@ Use these results to provide up-to-date information while maintaining your helpf
 
       appState.current = nextAppState;
     });
-
-    return () => {
-      if (Platform.OS === 'ios') {
-        keyboardDidShowListener.remove();
-        keyboardDidHideListener.remove();
-      }
-    };
   }, []);
-
-  useEffect(() => {
-    if (isAutoScrolling) {
-      scrollToBottom();
-    }
-  }, [contentHeight]);
 
   useEffect(() => {
     setParentIsTyping(isTyping);
@@ -295,7 +285,6 @@ Use these results to provide up-to-date information while maintaining your helpf
       saveChatMessage(newHistoryId, text, isUser);
     }
 
-    setTimeout(scrollToBottom, 100);
   }, [currentHistoryId]);
 
 
@@ -306,6 +295,8 @@ Use these results to provide up-to-date information while maintaining your helpf
       Toast.show("Text too long, please try something shorter", Toast.SHORT);
       return;
     }
+
+    scrollToBottom();
 
     // Check if model needs to be loaded
     if (!context) {
@@ -335,6 +326,7 @@ Use these results to provide up-to-date information while maintaining your helpf
     }
 
     if (inputText.trim()) {
+      Keyboard.dismiss();  // Dismiss keyboard when AI starts typing
       addMessage(inputText, true);
       setInputText('');
       setIsTyping(true);
@@ -342,7 +334,7 @@ Use these results to provide up-to-date information while maintaining your helpf
       let searchResults = '';
       if (searchModeEnabled) {
         try {
-          searchResults = await performBraveSearch(inputText);
+          searchResults = await performBraveSearch(getUserMessages(inputText, messages));
         } catch (error) {
           console.log('Search error:', error);
           if (error instanceof Error) {
@@ -395,10 +387,6 @@ Use these results to provide up-to-date information while maintaining your helpf
               return prev + token;
             });
             
-            // Auto-scroll to bottom as new content arrives
-            if (isAutoScrolling) {
-              setTimeout(scrollToBottom, 100);
-            }
           },
         )
         chatContext.current = chatContext.current + text;
@@ -487,6 +475,19 @@ Use these results to provide up-to-date information while maintaining your helpf
     setSearchModeEnabled(!searchModeEnabled);
   };
 
+  const getUserMessages = (currentInput: string, messages: Message[]): string => {
+    // Get all user messages from history
+    const userMessages = messages
+      .filter(msg => msg.isUser)
+      .map(msg => msg.text);
+    
+    // Add the current input as the last message
+    userMessages.push(currentInput);
+    
+    // Join all messages with newlines, limited to last 5 messages to keep context relevant
+    return userMessages.slice(-5).join('\n');
+  };
+
   if (unsppportedDevice) {
     return (
       <View style={styles.unsupportedContainer}>
@@ -562,9 +563,6 @@ Use these results to provide up-to-date information while maintaining your helpf
         ref={scrollViewRef}
         style={styles.messagesContainer}
         contentContainerStyle={styles.scrollViewContent}
-        onScroll={handleScrollEvent}
-        onContentSizeChange={handleContentSizeChange}
-        scrollEventThrottle={16} 
       >
         {messages.map(renderMessage)}
         {isTyping && (
