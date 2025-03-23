@@ -351,6 +351,8 @@ Use these results to provide up-to-date information while maintaining your helpf
         }
       }
 
+      console.log("searchResults: " + searchResults);
+
       const firstPrompt = `${systemPrompt.current}<|start_header_id|>user<|end_header_id|> 
       ${inputText}
       ${searchResults ? `\nSearch Results: ${searchResults}` : ''}<|eot_id|><|start_header_id|>assistant<|end_header_id|>`
@@ -390,22 +392,6 @@ Use these results to provide up-to-date information while maintaining your helpf
             setCurrentResponse(prev => {
               // Handle special cases for better Markdown formatting
               let token = data.token;
-              
-              // Ensure proper spacing for punctuation
-              if (['.', ',', '!', '?', ':', ';'].includes(token) && prev.endsWith(' ')) {
-                return prev.slice(0, -1) + token;
-              }
-              
-              // Handle code blocks better
-              if (token === '```' && !prev.endsWith('\n') && prev.length > 0) {
-                token = '\n```';
-              }
-              
-              // Handle list items better
-              if ((token === '- ' || token === '* ' || /^\d+\.\s$/.test(token)) && !prev.endsWith('\n') && prev.length > 0) {
-                token = '\n' + token;
-              }
-              
               return prev + token;
             });
             
@@ -489,6 +475,18 @@ Use these results to provide up-to-date information while maintaining your helpf
     </TouchableOpacity>
   );
 
+  const handleSearchToggle = async () => {
+    if (!searchModeEnabled) {
+      // Check for API key before enabling search
+      const apiKey = await AsyncStorage.getItem('braveApiKey');
+      if (!apiKey) {
+        Toast.show('Please enter your Brave Search API key in settings to enable web search.', Toast.LONG);
+        return;
+      }
+    }
+    setSearchModeEnabled(!searchModeEnabled);
+  };
+
   if (unsppportedDevice) {
     return (
       <View style={styles.unsupportedContainer}>
@@ -549,7 +547,7 @@ Use these results to provide up-to-date information while maintaining your helpf
         <View style={styles.headerRightButtons}>
           <TouchableOpacity 
             style={[styles.headerButton, searchModeEnabled && styles.headerButtonActive]} 
-            onPress={() => setSearchModeEnabled(!searchModeEnabled)}
+            onPress={handleSearchToggle}
             disabled={isTyping}
           >
             <Search color={searchModeEnabled ? "#28a745" : "#fff"} size={24} />
