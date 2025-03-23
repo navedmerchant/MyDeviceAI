@@ -14,10 +14,12 @@ import CustomDrawerContent from './src/CustomDrawerContent';
 import 'react-native-gesture-handler';
 import ChatScreen from './src/ChatScreen';
 import SettingsScreen from './src/SettingsScreen';
+import ContextSettings from './src/screens/ContextSettings';
 
 export type DrawerParamList = {
   Chat: { historyId?: number };
   Settings: undefined;
+  ContextSettings: undefined;
 };
 
 const Drawer = createDrawerNavigator<DrawerParamList>();
@@ -56,6 +58,13 @@ function App(): React.JSX.Element {
             <Drawer.Screen 
               name="Settings"
               component={SettingsScreen}
+              options={{
+                swipeEnabled: false,
+              }}
+            />
+            <Drawer.Screen 
+              name="ContextSettings"
+              component={ContextSettings}
               options={{
                 swipeEnabled: false,
               }}

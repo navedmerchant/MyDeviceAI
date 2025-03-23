@@ -43,6 +43,7 @@ import { DrawerParamList } from './CustomDrawerContent';
 import { useDatabase } from './DatabaseContext';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { performBraveSearch } from './BraveSearch';
+import useContextManager from './hooks/useContextManager';
 
 type ChatScreenNavigationProp = DrawerNavigationProp<DrawerParamList, 'Chat'>;
 
@@ -101,6 +102,7 @@ const ChatUI: React.FC<ChatUIProps> = ({ historyId, onMenuPress, MenuIcon, navig
 
   const systemPrompt = useRef('');
   const appState = useRef(AppState.currentState);
+  const { contextManager, error: contextError } = useContextManager();
 
   useEffect(() => {
     initDatabase();
@@ -113,7 +115,6 @@ const ChatUI: React.FC<ChatUIProps> = ({ historyId, onMenuPress, MenuIcon, navig
       const constantPromptInfo = `
 You have access to the internet and can use it to search for information, if it is enabled by the user.
 When provided with search results, use them to enhance your responses with current and accurate information.
-The search results will be clearly marked with "Search Results:" in the user's messages.
 Use these results to provide up-to-date information while maintaining your helpful and professional demeanor.`;
 
       if (savedPrompt) {
@@ -347,15 +348,37 @@ want to talk and share about personal feelings.${constantPromptInfo}
         }
       }
 
+      // Add user message to context if it contains personal information
+      if (contextManager) {
+        const wasContextSaved = await contextManager.addContext(inputText);
+        if (wasContextSaved) {
+          Toast.show("Personal context saved for future reference", Toast.SHORT);
+        }
+      }
+
+      // Get relevant context from previous conversations
+      let userContext = '';
+      if (contextManager) {
+        const similarContexts = await contextManager.findSimilarContext(inputText);
+        // print list of similar contexts
+        console.log("similar contexts: " + similarContexts.length);
+        console.log("similar contexts: " + JSON.stringify(similarContexts));
+        if (similarContexts.length > 0) {
+          userContext = `\nRelevant context from previous conversations:\n${similarContexts.map(context => context.text).join('\n')}`;
+        }
+      }
+
       console.log("searchResults: " + searchResults);
 
       const firstPrompt = `${systemPrompt.current}<|start_header_id|>user<|end_header_id|> 
       ${inputText}
-      ${searchResults ? `\nSearch Results: ${searchResults}` : ''}<|eot_id|><|start_header_id|>assistant<|end_header_id|>`
+      ${searchResults ? `\nSearch Results: ${searchResults}` : ''}
+      ${userContext}<|eot_id|><|start_header_id|>assistant<|end_header_id|>`
 
       const otherPrompts = `<|start_header_id|>user<|end_header_id|> 
       ${inputText}
-      ${searchResults ? `\nSearch Results: ${searchResults}` : ''}<|eot_id|><|start_header_id|>assistant<|end_header_id|>`
+      ${searchResults ? `\nSearch Results: ${searchResults}` : ''}
+      ${userContext}<|eot_id|><|start_header_id|>assistant<|end_header_id|>`
 
       let prompt;
       if (messages.length == 0) {
@@ -364,6 +387,8 @@ want to talk and share about personal feelings.${constantPromptInfo}
         prompt = otherPrompts;
       }
 
+
+      console.log("current prompt: " + prompt);
       chatContext.current = chatContext.current + prompt;
 
       if (!context) {
@@ -404,7 +429,7 @@ want to talk and share about personal feelings.${constantPromptInfo}
         setCurrentResponse('');
       }
     }
-  }, [inputText, addMessage]);
+  }, [inputText, addMessage, contextManager]);
 
   function handleStop(event: GestureResponderEvent): void {
     context?.stopCompletion();

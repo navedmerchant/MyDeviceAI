@@ -10,7 +10,7 @@
     "test": "jest"
   },
   "dependencies": {
-    "@op-engineering/op-sqlite": "^11.4.8",
+    "@op-engineering/op-sqlite": "11.4.7",
     "@react-native-async-storage/async-storage": "^2.0.0",
     "@react-navigation/drawer": "^7.1.1",
     "@react-navigation/native": "^7.0.14",
@@ -49,5 +49,8 @@
   },
   "engines": {
     "node": ">=18"
+  },
+  "op-sqlite": {
+    "sqliteVec": true
   }
 }

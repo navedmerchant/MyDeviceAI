@@ -10,7 +10,7 @@ import {
   Platform,
   Linking,
 } from 'react-native';
-import { ChevronLeft } from 'lucide-react-native';
+import { ChevronLeft, ChevronRight } from 'lucide-react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { DrawerNavigationProp } from '@react-navigation/drawer';
 import { DrawerParamList } from '../App';
@@ -144,6 +144,22 @@ const SettingsScreen: React.FC<Props> = ({ navigation }) => {
             placeholder="Number of days to keep chat history"
             placeholderTextColor="#666"
           />
+        </View>
+
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Context Memory</Text>
+          <TouchableOpacity 
+            style={styles.navigationButton}
+            onPress={() => navigation.navigate('ContextSettings')}
+          >
+            <View style={styles.navigationButtonContent}>
+              <Text style={styles.navigationButtonText}>Configure Context Memory</Text>
+              <ChevronRight color="#fff" size={20} />
+            </View>
+          </TouchableOpacity>
+          <Text style={styles.description}>
+            Configure how the AI remembers and uses context from your conversations.
+          </Text>
         </View>
 
         <View style={styles.section}>
@@ -356,6 +372,21 @@ const styles = StyleSheet.create({
   copyrightText: {
     color: '#999',
     fontSize: 14,
+  },
+  navigationButton: {
+    backgroundColor: '#1a1a1a',
+    borderRadius: 8,
+    padding: 12,
+    marginBottom: 8,
+  },
+  navigationButtonContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  navigationButtonText: {
+    color: '#fff',
+    fontSize: 16,
   },
 });
 
