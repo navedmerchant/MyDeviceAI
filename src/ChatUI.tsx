@@ -168,6 +168,11 @@ want to talk and share about personal feelings.${constantPromptInfo}
       rebuildChatContext(messages);
       currentHistoryIdRef.current = historyId;
       setGlobalHistoryId(historyId);
+      // Reset scroll button state and scroll to bottom when changing chats
+      setShowScrollButton(false);
+      setTimeout(() => {
+        scrollToBottom();
+      }, 100); // Small delay to ensure messages are rendered
     } catch (error) {
       console.error('Error loading chat history:', error);
     }
@@ -187,8 +192,6 @@ want to talk and share about personal feelings.${constantPromptInfo}
     if (modelParams == null) {
       setUnsupportedDevice(true)
     }
-    let keyboardDidShowListener: EmitterSubscription;
-    let keyboardDidHideListener: EmitterSubscription;
 
     const subscription = AppState.addEventListener('change', nextAppState => {
       if (
@@ -430,6 +433,12 @@ want to talk and share about personal feelings.${constantPromptInfo}
     setCurrentHistoryId(null);
     currentHistoryIdRef.current = null;
     setGlobalHistoryId(null);
+    // Reset scroll button state when starting a new chat
+    setShowScrollButton(false);
+    // Focus the input
+    setTimeout(() => {
+      textInputRef.current?.focus();
+    }, 100);
   }, []);
 
   function handleInfoPress(event: GestureResponderEvent): void {
@@ -489,6 +498,14 @@ want to talk and share about personal feelings.${constantPromptInfo}
     // Join all messages with newlines, limited to last 5 messages to keep context relevant
     return userMessages.slice(-5).join('\n');
   };
+
+  // Add initial focus effect after the existing useEffect hooks
+  useEffect(() => {
+    // Focus the input when component mounts
+    setTimeout(() => {
+      textInputRef.current?.focus();
+    }, 100); // Small delay to ensure component is fully mounted
+  }, []); // Empty dependency array means this runs once on mount
 
   if (unsppportedDevice) {
     return (
