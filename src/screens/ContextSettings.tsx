@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -13,7 +13,7 @@ import {
 import { ChevronLeft, Trash2 } from 'lucide-react-native';
 import { DrawerNavigationProp } from '@react-navigation/drawer';
 import { DrawerParamList } from '../../App';
-import useContextManager from '../hooks/useContextManager';
+import ContextManager from '../utils/ContextManager';
 
 type ContextSettingsScreenNavigationProp = DrawerNavigationProp<DrawerParamList, 'ContextSettings'>;
 
@@ -22,24 +22,34 @@ type Props = {
 };
 
 const ContextSettings: React.FC<Props> = ({ navigation }) => {
-  const { contextManager, error } = useContextManager();
-  const [settings, setSettings] = useState(contextManager?.getSettings());
+  const contextManager = useRef(ContextManager.getInstance());
+  const [settings, setSettings] = useState(contextManager.current.getSettings());
   const [newMemory, setNewMemory] = useState('');
   const [savedContexts, setSavedContexts] = useState<Array<{id: string; text: string}>>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (contextManager) {
-      setSettings(contextManager.getSettings());
-      loadSavedContexts();
-    }
-  }, [contextManager]);
+    const initializeContextManager = async () => {
+      try {
+        if (!contextManager.current.isModelInitialized()) {
+          await contextManager.current.initialize();
+        }
+        setSettings(contextManager.current.getSettings());
+        await loadSavedContexts();
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Failed to initialize context manager');
+      }
+    };
+
+    initializeContextManager();
+  }, []);
 
   const loadSavedContexts = async () => {
-    if (!contextManager) return;
+    if (!contextManager.current) return;
     setIsLoading(true);
     try {
-      const contexts = await contextManager.getAllContexts();
+      const contexts = await contextManager.current.getAllContexts();
       setSavedContexts(contexts);
     } catch (err) {
       console.error('Error loading contexts:', err);
@@ -48,7 +58,7 @@ const ContextSettings: React.FC<Props> = ({ navigation }) => {
     }
   };
 
-  if (!contextManager) {
+  if (!contextManager.current) {
     return (
       <View style={styles.loadingContainer}>
         <ActivityIndicator size="large" color="#007AFF" />
@@ -63,7 +73,7 @@ const ContextSettings: React.FC<Props> = ({ navigation }) => {
       ...settings,
       enabled: !settings.enabled,
     };
-    contextManager.updateSettings(newSettings);
+    contextManager.current.updateSettings(newSettings);
     setSettings(newSettings);
   };
 
@@ -71,7 +81,7 @@ const ContextSettings: React.FC<Props> = ({ navigation }) => {
     if (!newMemory.trim()) return;
     
     try {
-      await contextManager.addContext(newMemory.trim(), true);
+      await contextManager.current.addContext(newMemory.trim(), true);
       setNewMemory('');
       loadSavedContexts(); // Refresh the list
     } catch (err) {
@@ -82,7 +92,7 @@ const ContextSettings: React.FC<Props> = ({ navigation }) => {
 
   const handleRemoveContext = async (id: string) => {
     try {
-      await contextManager.removeContext(id);
+      await contextManager.current.removeContext(id);
       loadSavedContexts(); // Refresh the list
     } catch (err) {
       console.error('Error removing context:', err);
@@ -181,7 +191,7 @@ const ContextSettings: React.FC<Props> = ({ navigation }) => {
                   text: 'Clear All',
                   style: 'destructive',
                   onPress: async () => {
-                    await contextManager.clearAllContext();
+                    await contextManager.current.clearAllContext();
                     loadSavedContexts();
                   },
                 },

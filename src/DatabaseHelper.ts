@@ -11,6 +11,8 @@ export interface ChatHistory {
   timestamp: number;
 }
 
+const EMBEDDING_DIMENSIONS = 384; // BGE small model dimension
+
 export const initDatabase = async () => {
   try {
     db = open({
@@ -37,10 +39,55 @@ export const initDatabase = async () => {
         FOREIGN KEY (history_id) REFERENCES chat_histories (id)
       );`
     );
+
+    // Create context embeddings virtual table using vec0
+    await db.execute(`
+      CREATE VIRTUAL TABLE IF NOT EXISTS context_embeddings USING vec0(
+        id TEXT PRIMARY KEY,
+        text TEXT,
+        embedding FLOAT[${EMBEDDING_DIMENSIONS}]
+      );
+    `);
+
+    // Create reference embeddings virtual table
+    await db.execute(`
+      CREATE VIRTUAL TABLE IF NOT EXISTS reference_embeddings USING vec0(
+        id TEXT PRIMARY KEY,
+        text TEXT,
+        embedding FLOAT[${EMBEDDING_DIMENSIONS}]
+      );
+    `);
     
     console.log('Database initialized');
   } catch (error) {
     console.error('Database initialization error', error);
+  }
+};
+
+export const hasReferenceStatements = async (): Promise<boolean> => {
+  if (!db) await initDatabase();
+  
+  try {
+    const count = await db!.execute('SELECT COUNT(*) as count FROM reference_embeddings');
+    return Number(count.rows[0].count) > 0;
+  } catch (error) {
+    console.error('Error checking reference statements:', error);
+    return false;
+  }
+};
+
+export const addReferenceStatement = async (id: string, text: string, embedding: Float32Array) => {
+  if (!db) await initDatabase();
+  
+  try {
+    await db!.execute(
+      'INSERT INTO reference_embeddings (id, text, embedding) VALUES (?, ?, ?)',
+      [id, text, JSON.stringify(Array.from(embedding))]
+    );
+    return true;
+  } catch (error) {
+    console.error('Error adding reference statement:', error);
+    return false;
   }
 };
 
@@ -174,5 +221,135 @@ export const deleteAllHistories = async (): Promise<void> => {
   } catch (error) {
     console.error('Error deleting all chat histories:', error);
     throw error;
+  }
+};
+
+// New context-related functions
+export const addContextEmbedding = async (id: string, text: string, embedding: Float32Array) => {
+  if (!db) await initDatabase();
+  
+  try {
+    await db!.execute(
+      'INSERT INTO context_embeddings (id, text, embedding) VALUES (?, ?, ?)',
+      [id, text, JSON.stringify(Array.from(embedding))]
+    );
+    return true;
+  } catch (error) {
+    console.error('Error adding context embedding:', error);
+    return false;
+  }
+};
+
+export const findSimilarContexts = async (embedding: Float32Array, limit: number = 3) => {
+  if (!db) await initDatabase();
+  
+  try {
+    const results = await db!.execute(
+      `SELECT id, text, distance
+       FROM context_embeddings
+       WHERE embedding MATCH ?
+       AND k = ?`,
+      [JSON.stringify(Array.from(embedding)), limit]
+    );
+
+    return results.rows.map((row: Record<string, any>) => ({
+      id: row.id,
+      text: row.text,
+      distance: row.distance
+    }));
+  } catch (error) {
+    console.error('Error finding similar contexts:', error);
+    return [];
+  }
+};
+
+export const getAllContexts = async () => {
+  if (!db) await initDatabase();
+  
+  try {
+    const results = await db!.execute(
+      `SELECT id, text 
+       FROM context_embeddings 
+       ORDER BY id DESC`
+    );
+
+    return results.rows.map((row: Record<string, any>) => ({
+      id: row.id,
+      text: row.text
+    }));
+  } catch (error) {
+    console.error('Error getting all contexts:', error);
+    return [];
+  }
+};
+
+export const removeContext = async (id: string) => {
+  if (!db) await initDatabase();
+  
+  try {
+    await db!.execute('DELETE FROM context_embeddings WHERE id = ?', [id]);
+  } catch (error) {
+    console.error('Error removing context:', error);
+    throw error;
+  }
+};
+
+export const clearAllContext = async () => {
+  if (!db) await initDatabase();
+  
+  try {
+    await db!.execute('DELETE FROM context_embeddings;');
+  } catch (error) {
+    console.error('Error clearing all context:', error);
+    throw error;
+  }
+};
+
+export const updateReferenceEmbedding = async (id: string, embedding: Float32Array) => {
+  if (!db) await initDatabase();
+  
+  try {
+    await db!.execute(
+      'UPDATE reference_embeddings SET embedding = ? WHERE id = ?',
+      [JSON.stringify(Array.from(embedding)), id]
+    );
+  } catch (error) {
+    console.error('Error updating reference embedding:', error);
+    throw error;
+  }
+};
+
+export const getReferenceStatements = async () => {
+  if (!db) await initDatabase();
+  
+  try {
+    const results = await db!.execute('SELECT id, text FROM reference_embeddings');
+    return results.rows;
+  } catch (error) {
+    console.error('Error getting reference statements:', error);
+    return [];
+  }
+};
+
+export const findSimilarReferenceEmbeddings = async (embedding: Float32Array, limit: number = 1) => {
+  if (!db) await initDatabase();
+  
+  try {
+    const results = await db!.execute(
+      `SELECT id, text, distance
+       FROM reference_embeddings
+       WHERE embedding MATCH ?
+       AND k = ?`,
+      [JSON.stringify(Array.from(embedding)), limit]
+    );
+
+    return results.rows.map((row: Record<string, any>) => ({
+      id: row.id,
+      text: row.text,
+      distance: row.distance
+    }));
+  } catch (error) {
+    console.error('Error finding similar reference embeddings:', error);
+    return [];
   }
 };

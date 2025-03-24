@@ -43,7 +43,7 @@ import { DrawerParamList } from '../App';
 import { useDatabase } from './DatabaseContext';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { performBraveSearch } from './BraveSearch';
-import useContextManager from './hooks/useContextManager';
+import ContextManager from './utils/ContextManager';
 
 type ChatScreenNavigationProp = DrawerNavigationProp<DrawerParamList, 'Chat'>;
 
@@ -102,11 +102,24 @@ const ChatUI: React.FC<ChatUIProps> = ({ historyId, onMenuPress, MenuIcon, navig
 
   const systemPrompt = useRef('');
   const appState = useRef(AppState.currentState);
-  const { contextManager, error: contextError } = useContextManager();
+  const contextManager = useRef(ContextManager.getInstance());
 
   useEffect(() => {
     initDatabase();
     loadSystemPrompt();
+
+    // Initialize context manager when component mounts
+    const initContextManager = async () => {
+      try {
+        await contextManager.current.initialize();
+      } catch (error) {
+        console.error('Error initializing context manager:', error);
+      }
+    };
+
+    if (appState.current === 'active') {
+      initContextManager();
+    }
   }, []);
 
   const loadSystemPrompt = async () => {
@@ -201,6 +214,10 @@ want to talk and share about personal feelings.${constantPromptInfo}
       ) {
         console.log('App has come to the foreground!');
         loadModel();
+        // Initialize context manager
+        contextManager.current.initialize().catch(error => {
+          console.error('Error initializing context manager:', error);
+        });
       } else if (
         appState.current === 'active' &&
         nextAppState.match(/inactive|background/)
@@ -210,11 +227,23 @@ want to talk and share about personal feelings.${constantPromptInfo}
           context?.stopCompletion();
         }
         setShowInfo(false);
-        unloadModel()
+        unloadModel();
+        // Unload context manager
+        contextManager.current.unloadModel().catch(error => {
+          console.error('Error unloading context manager:', error);
+        });
       }
 
       appState.current = nextAppState;
     });
+
+    return () => {
+      subscription.remove();
+      unloadModel();
+      contextManager.current.unloadModel().catch(error => {
+        console.error('Error unloading context manager:', error);
+      });
+    };
   }, []);
 
   useEffect(() => {
@@ -349,8 +378,8 @@ want to talk and share about personal feelings.${constantPromptInfo}
       }
 
       // Add user message to context if it contains personal information
-      if (contextManager) {
-        const wasContextSaved = await contextManager.addContext(inputText);
+      if (contextManager.current) {
+        const wasContextSaved = await contextManager.current.addContext(inputText);
         if (wasContextSaved) {
           Toast.show("Personal context saved for future reference", Toast.SHORT);
         }
@@ -358,13 +387,13 @@ want to talk and share about personal feelings.${constantPromptInfo}
 
       // Get relevant context from previous conversations
       let userContext = '';
-      if (contextManager) {
-        const similarContexts = await contextManager.findSimilarContext(inputText);
+      if (contextManager.current) {
+        const similarContexts = await contextManager.current.findSimilarContext(inputText);
         // print list of similar contexts
         console.log("similar contexts: " + similarContexts.length);
-        console.log("similar contexts: " + JSON.stringify(similarContexts));
         if (similarContexts.length > 0) {
-          userContext = `\nRelevant context from previous conversations:\n${similarContexts.map(context => context.text).join('\n')}`;
+          userContext = "Here's some relevant context from previous conversations:\n" +
+            similarContexts.map(context => context.text).join("\n") + "\n\n";
         }
       }
 

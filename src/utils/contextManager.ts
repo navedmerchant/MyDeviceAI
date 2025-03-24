@@ -1,5 +1,5 @@
-import { open } from '@op-engineering/op-sqlite';
-import { LlamaContext } from 'llama.rn';
+import { LlamaContext, initLlama, releaseAllLlama } from 'llama.rn';
+import * as DatabaseHelper from '../DatabaseHelper';
 
 const EMBEDDING_DIMENSIONS = 384; // BGE small model dimension
 
@@ -13,111 +13,138 @@ interface ContextRow {
   distance?: number;
 }
 
+interface ReferenceRow {
+  id: string;
+  text: string;
+}
+
 class ContextManager {
-  private db: ReturnType<typeof open>;
-  private model: LlamaContext;
+  private static instance: ContextManager | null = null;
+  private model: LlamaContext | null = null;
   private settings: ContextSettings = {
     enabled: true
   };
+  private isInitialized: boolean = false;
 
-  constructor(db: ReturnType<typeof open>, model: LlamaContext) {
-    this.db = db;
-    this.model = model;
-    this.initializeDatabase();
+  private constructor() {}
+
+  public static getInstance(): ContextManager {
+    if (!ContextManager.instance) {
+      ContextManager.instance = new ContextManager();
+    }
+    return ContextManager.instance;
   }
 
-  private async initializeDatabase() {
-    console.log('Initializing context database...');
+  public async initialize(): Promise<void> {
+    if (this.isInitialized) {
+      return;
+    }
+
     try {
-      // Create context embeddings virtual table using vec0
-      await this.db.execute(`
-        CREATE VIRTUAL TABLE IF NOT EXISTS context_embeddings USING vec0(
-          id TEXT PRIMARY KEY,
-          text TEXT,
-          embedding FLOAT[${EMBEDDING_DIMENSIONS}]
-        );
-      `);
-
-      // Create reference embeddings virtual table
-      await this.db.execute(`
-        CREATE VIRTUAL TABLE IF NOT EXISTS reference_embeddings USING vec0(
-          id TEXT PRIMARY KEY,
-          text TEXT,
-          embedding FLOAT[${EMBEDDING_DIMENSIONS}]
-        );
-      `);
-
-      // Add reference statements if table is empty
-      const count = await this.db.execute('SELECT COUNT(*) as count FROM reference_embeddings');
-      if (count.rows[0].count === 0) {
-        const referenceStatements = [
-          "I am feeling",
-          "I have been",
-          "I want to share",
-          "In my opinion",
-          "I think that",
-          "I believe",
-          "I feel like",
-          "I would like to"
-        ];
-
-        for (const stmt of referenceStatements) {
-          const embedding = await this.getEmbedding(stmt);
-          const id = Math.random().toString(36).substring(7);
-          await this.db.execute(
-            'INSERT INTO reference_embeddings (id, text, embedding) VALUES (?, ?, ?)',
-            [id, stmt, JSON.stringify(Array.from(embedding))]
-          );
-        }
-      }
-      console.log('Context database initialized successfully');
+      await DatabaseHelper.initDatabase();
+      await this.loadModel();
+      await this.initializeReferenceEmbeddings();
+      this.isInitialized = true;
     } catch (error) {
-      console.error('Error initializing context database:', error);
+      console.error('Error initializing context manager:', error);
       throw error;
     }
   }
 
+  private async loadModel(): Promise<void> {
+    try {
+      // Initialize Llama model
+      this.model = await initLlama({
+        model: 'file://bge-small-en-v1.5-q4_k_m.gguf', // embedding-specific model
+        is_model_asset: true,
+        n_ctx: 512,  // smaller context for embeddings
+        n_gpu_layers: 0, // CPU only for embeddings
+        embedding: true // enable embedding mode
+      });
+    } catch (error) {
+      console.error('Error loading model:', error);
+      throw error;
+    }
+  }
+
+  public async unloadModel(): Promise<void> {
+    this.model = null;
+    this.isInitialized = false;
+    await releaseAllLlama();
+  }
+
+  public isModelInitialized(): boolean {
+    return this.isInitialized;
+  }
+
+  private async initializeReferenceEmbeddings(): Promise<void> {
+    if (!this.model) throw new Error('Model not initialized');
+
+    const hasExistingStatements = await DatabaseHelper.hasReferenceStatements();
+    if (!hasExistingStatements) {
+      // Initialize with default reference statements
+      const referenceStatements = [
+        "I am feeling",
+        "I have been",
+        "I want to share",
+        "In my opinion",
+        "I think that",
+        "I believe",
+        "I feel like",
+        "I would like to"
+      ];
+
+      for (const text of referenceStatements) {
+        const id = Math.random().toString(36).substring(7);
+        const embedding = await this.getEmbedding(text);
+        await DatabaseHelper.addReferenceStatement(id, text, embedding);
+      }
+    } else {
+      // Update embeddings for existing statements
+      const results = await DatabaseHelper.getReferenceStatements();
+      const referenceStatements = results.map(row => ({
+        id: String(row.id),
+        text: String(row.text)
+      }));
+      
+      for (const stmt of referenceStatements) {
+        if (stmt.id && stmt.text) {
+          const embedding = await this.getEmbedding(stmt.text);
+          await DatabaseHelper.updateReferenceEmbedding(stmt.id, embedding);
+        }
+      }
+    }
+  }
+
   private async getEmbedding(text: string): Promise<Float32Array> {
+    if (!this.model) throw new Error('Model not initialized');
     const result = await this.model.embedding(text);
     return new Float32Array(result.embedding);
   }
 
   private async isSelfReferential(text: string): Promise<boolean> {
+    if (!this.model) throw new Error('Model not initialized');
+    console.log('Checking if text is self-referential:', text);
     const inputEmbedding = await this.getEmbedding(text);
-    
-    // Use vec0's built-in similarity search
-    const results = await this.db.execute(
-      `SELECT text, distance
-       FROM reference_embeddings
-       WHERE embedding MATCH ?
-       AND k = 1`,
-      [JSON.stringify(Array.from(inputEmbedding))]
-    );
-
-    // print results
-    console.log("results: " + JSON.stringify(results.rows));
-
+    const results = await DatabaseHelper.findSimilarReferenceEmbeddings(inputEmbedding, 1);
+    // print results as string
+    console.log('Results:', JSON.stringify(results));
     const DISTANCE_THRESHOLD = 0.9; // Lower distance means higher similarity
-    return results.rows.length > 0 && 
-           typeof results.rows[0].distance === 'number' && 
-           results.rows[0].distance > DISTANCE_THRESHOLD;
+    return results.length > 0 && 
+           typeof results[0].distance === 'number' && 
+           results[0].distance > DISTANCE_THRESHOLD;
   }
 
   public async addContext(text: string, skipSelfReferentialCheck: boolean = false): Promise<boolean> {
     if (!this.settings.enabled) return false;
+    if (!this.model) throw new Error('Model not initialized');
 
     if (!skipSelfReferentialCheck && !(await this.isSelfReferential(text))) return false;
 
     try {
       const embedding = await this.getEmbedding(text);
       const id = Math.random().toString(36).substring(7);
-      
-      await this.db.execute(
-        'INSERT INTO context_embeddings (id, text, embedding) VALUES (?, ?, ?)',
-        [id, text, JSON.stringify(Array.from(embedding))]
-      );
-
-      return true;
+      return await DatabaseHelper.addContextEmbedding(id, text, embedding);
     } catch (error) {
       console.error('Error adding context:', error);
       return false;
@@ -126,23 +153,11 @@ class ContextManager {
 
   public async findSimilarContext(query: string, limit: number = 3): Promise<ContextRow[]> {
     if (!this.settings.enabled) return [];
+    if (!this.model) throw new Error('Model not initialized');
 
     try {
       const queryEmbedding = await this.getEmbedding(query);
-      
-      const results = await this.db.execute(
-        `SELECT id, text, distance
-         FROM context_embeddings
-         WHERE embedding MATCH ?
-         AND k = ?`,
-        [JSON.stringify(Array.from(queryEmbedding)), limit]
-      );
-
-      return results.rows.map((row: Record<string, any>) => ({
-        id: row.id,
-        text: row.text,
-        distance: row.distance
-      }));
+      return await DatabaseHelper.findSimilarContexts(queryEmbedding, limit);
     } catch (error) {
       console.error('Error finding similar context:', error);
       return [];
@@ -150,30 +165,11 @@ class ContextManager {
   }
 
   public async getAllContexts(): Promise<ContextRow[]> {
-    try {
-      const results = await this.db.execute(
-        `SELECT id, text 
-         FROM context_embeddings 
-         ORDER BY id DESC`
-      );
-
-      return results.rows.map((row: Record<string, any>) => ({
-        id: row.id,
-        text: row.text
-      }));
-    } catch (error) {
-      console.error('Error getting all contexts:', error);
-      return [];
-    }
+    return DatabaseHelper.getAllContexts();
   }
 
   public async removeContext(id: string) {
-    try {
-      await this.db.execute('DELETE FROM context_embeddings WHERE id = ?', [id]);
-    } catch (error) {
-      console.error('Error removing context:', error);
-      throw error;
-    }
+    return DatabaseHelper.removeContext(id);
   }
 
   public updateSettings(newSettings: Partial<ContextSettings>) {
@@ -185,12 +181,7 @@ class ContextManager {
   }
 
   public async clearAllContext() {
-    try {
-      await this.db.execute('DELETE FROM context_embeddings;');
-    } catch (error) {
-      console.error('Error clearing all context:', error);
-      throw error;
-    }
+    return DatabaseHelper.clearAllContext();
   }
 }
 
