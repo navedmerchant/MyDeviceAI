@@ -94,6 +94,7 @@ const ChatUI: React.FC<ChatUIProps> = ({ historyId, onMenuPress, MenuIcon, navig
   const [selectedMessage, setSelectedMessage] = useState<Message | null>(null);
   const [menuVisible, setMenuVisible] = useState(false);
   const [showScrollButton, setShowScrollButton] = useState(false);
+  const [keyboardOffset, setKeyboardOffset] = useState(0);
 
   const chatContext = useRef('');
   const scrollViewRef = useRef<ScrollView>(null);
@@ -108,6 +109,21 @@ const ChatUI: React.FC<ChatUIProps> = ({ historyId, onMenuPress, MenuIcon, navig
     initDatabase();
     loadSystemPrompt();
 
+    // Add keyboard listeners
+    const keyboardWillShow = Keyboard.addListener(
+      Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow',
+      (e) => {
+        setKeyboardOffset(e.endCoordinates.height);
+      }
+    );
+
+    const keyboardWillHide = Keyboard.addListener(
+      Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide',
+      () => {
+        setKeyboardOffset(0);
+      }
+    );
+
     // Initialize context manager when component mounts
     const initContextManager = async () => {
       try {
@@ -120,6 +136,11 @@ const ChatUI: React.FC<ChatUIProps> = ({ historyId, onMenuPress, MenuIcon, navig
     if (appState.current === 'active') {
       initContextManager();
     }
+
+    return () => {
+      keyboardWillShow.remove();
+      keyboardWillHide.remove();
+    };
   }, []);
 
   const loadSystemPrompt = async () => {
@@ -654,7 +675,10 @@ want to talk and share about personal feelings.${constantPromptInfo}
 
       {showScrollButton && (
         <TouchableOpacity 
-          style={styles.scrollToBottomButton}
+          style={[
+            styles.scrollToBottomButton,
+            { bottom: 90 + keyboardOffset }
+          ]}
           onPress={scrollToBottom}
         >
           <ArrowDown color="#fff" size={24} />
