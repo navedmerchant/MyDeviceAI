@@ -421,14 +421,19 @@ want to talk and share about personal feelings.${constantPromptInfo}
 
       console.log("searchResults: " + searchResults);
 
+      const searchResultsPrompt = searchResults ? `\nHere are some
+       search results for your query: ${searchResults} \n\n Use these to
+        enhance your response if needed. Provide all the links at the end of your response.
+        Markdown format the links to be clickable.` : '';
+
       const firstPrompt = `${systemPrompt.current}<|start_header_id|>user<|end_header_id|> 
       ${inputText}
-      ${searchResults ? `\nSearch Results: ${searchResults}` : ''}
+      ${searchResultsPrompt}
       ${userContext}<|eot_id|><|start_header_id|>assistant<|end_header_id|>`
 
       const otherPrompts = `<|start_header_id|>user<|end_header_id|> 
       ${inputText}
-      ${searchResults ? `\nSearch Results: ${searchResults}` : ''}
+      ${searchResultsPrompt}
       ${userContext}<|eot_id|><|start_header_id|>assistant<|end_header_id|>`
 
       let prompt;
