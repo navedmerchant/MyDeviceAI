@@ -10,7 +10,7 @@ import {
   Platform,
   Linking,
 } from 'react-native';
-import { ChevronLeft, ChevronRight } from 'lucide-react-native';
+import { ChevronLeft, ChevronRight, Cog, Settings } from 'lucide-react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { DrawerNavigationProp } from '@react-navigation/drawer';
 import { DrawerParamList } from '../App';
@@ -22,8 +22,11 @@ type Props = {
 };
 
 const DEFAULT_SYSTEM_PROMPT = `<|begin_of_text|><|start_header_id|>system<|end_header_id|>
-You are a helpful AI assistant.
-<|eot_id|>`;
+You are a helpful personal AI assistant. Your name is Chloe, and you will be 
+a professional AI assistant trying to answer all your users questions. You are locally
+running on the device so you will never share any information outside of the chat.
+Be as helpful as possible without being overly friendly. Be empathetic only when users
+want to talk and share about personal feelings.<|eot_id|>`;
 
 const CONSTANT_PROMPT_INFO = `
 You have access to the internet and can use it to search for information, if it is enabled by the user.
@@ -106,7 +109,10 @@ const SettingsScreen: React.FC<Props> = ({ navigation }) => {
           <ChevronLeft color="#fff" size={24} />
           <Text style={styles.backButtonText}>Back</Text>
         </TouchableOpacity>
-        <Text style={styles.title}>Settings</Text>
+        <View style={styles.titleContainer}>
+          <Settings color="#fff" size={24} />
+        </View>
+        <View style={styles.placeholder} />
       </View>
 
       <ScrollView style={styles.content}>
@@ -245,6 +251,7 @@ const styles = StyleSheet.create({
   header: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'space-between',
     padding: 16,
     marginTop: 50,
     borderBottomWidth: 1,
@@ -253,6 +260,14 @@ const styles = StyleSheet.create({
   backButton: {
     flexDirection: 'row',
     alignItems: 'center',
+    width: 80, // Fixed width to balance the layout
+  },
+  titleContainer: {
+    flex: 1,
+    alignItems: 'center',
+  },
+  placeholder: {
+    width: 80, // Same width as backButton to maintain balance
   },
   backButtonText: {
     color: '#fff',
@@ -263,7 +278,8 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 20,
     fontWeight: 'bold',
-    marginLeft: 85,
+    textAlign: 'center',
+    flex: 1,
   },
   content: {
     flex: 1,

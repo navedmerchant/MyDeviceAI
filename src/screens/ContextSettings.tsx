@@ -110,7 +110,6 @@ const ContextSettings: React.FC<Props> = ({ navigation }) => {
           <ChevronLeft color="#fff" size={24} />
           <Text style={styles.backButtonText}>Back</Text>
         </TouchableOpacity>
-        <Text style={styles.title}>Memory Settings</Text>
       </View>
 
       <ScrollView style={styles.content}>
@@ -129,15 +128,15 @@ const ContextSettings: React.FC<Props> = ({ navigation }) => {
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Add New Memory</Text>
           <Text style={styles.description}>
-            Add text that you want the AI to remember for future conversations.
-          </Text>
+          Add things about you that you want the AI to remember.
+               AI will recall these memories when you talk to it, 
+               and when it is relevant to the conversation.          </Text>
 
           <View style={styles.row}>
             <TextInput
               style={[styles.input, styles.memoryInput]}
               value={newMemory}
               onChangeText={setNewMemory}
-              placeholder="Enter text to remember..."
               placeholderTextColor="#666"
               multiline
             />
@@ -239,12 +238,6 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 16,
     marginLeft: 5,
-  },
-  title: {
-    color: '#fff',
-    fontSize: 20,
-    fontWeight: 'bold',
-    marginLeft: 85,
   },
   content: {
     flex: 1,

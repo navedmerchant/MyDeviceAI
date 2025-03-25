@@ -125,6 +125,7 @@ const ChatUI: React.FC<ChatUIProps> = ({ historyId, onMenuPress, MenuIcon, navig
   const loadSystemPrompt = async () => {
     try {
       const savedPrompt = await AsyncStorage.getItem('systemPrompt');
+      console.log('savedPrompt:', savedPrompt);
       const constantPromptInfo = `
 You have access to the internet and can use it to search for information, if it is enabled by the user.
 When provided with search results, use them to enhance your responses with current and accurate information.
@@ -377,13 +378,13 @@ want to talk and share about personal feelings.${constantPromptInfo}
         }
       }
 
-      // Add user message to context if it contains personal information
-      if (contextManager.current) {
-        const wasContextSaved = await contextManager.current.addContext(inputText);
-        if (wasContextSaved) {
-          Toast.show("Personal context saved for future reference", Toast.SHORT);
-        }
-      }
+      // // Add user message to context if it contains personal information
+      // if (contextManager.current) {
+      //   const wasContextSaved = await contextManager.current.addContext(inputText);
+      //   if (wasContextSaved) {
+      //     Toast.show("Personal context saved for future reference", Toast.SHORT);
+      //   }
+      // }
 
       // Get relevant context from previous conversations
       let userContext = '';

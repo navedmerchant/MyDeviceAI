@@ -157,7 +157,15 @@ class ContextManager {
 
     try {
       const queryEmbedding = await this.getEmbedding(query);
-      return await DatabaseHelper.findSimilarContexts(queryEmbedding, limit);
+      const results = await DatabaseHelper.findSimilarContexts(queryEmbedding, limit);
+      
+      // Filter out contexts that are not relevant enough
+      // Lower distance means higher similarity in cosine distance
+      const RELEVANCE_THRESHOLD = 0.85;
+      return results.filter(context => 
+        typeof context.distance === 'number' && 
+        context.distance <= RELEVANCE_THRESHOLD
+      );
     } catch (error) {
       console.error('Error finding similar context:', error);
       return [];
