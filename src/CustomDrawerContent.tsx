@@ -136,7 +136,7 @@ const getItemStyles = (isActive: boolean) => [
 ];
 
 const CustomDrawerContent = (props: DrawerContentComponentProps) => {
-  const { histories, loadHistories, deleteHistory, deleteAllHistories, globalHistoryId } = useDatabase();
+  const { histories, loadHistories, deleteHistory, deleteAllHistories, globalHistoryId, setGlobalHistoryId } = useDatabase();
   const navigation = useNavigation<DrawerNavigation>();
 
   // Memoize formatDate function
@@ -158,11 +158,13 @@ const CustomDrawerContent = (props: DrawerContentComponentProps) => {
 
   // Memoize handleDeleteHistory
   const handleDeleteHistory = useCallback((historyId: number) => {
-    deleteHistory(historyId);
     if (historyId === globalHistoryId) {
-      navigation.navigate('Chat');
+      setGlobalHistoryId(null);
+      navigation.navigate('Chat', { historyId: undefined });
+      props.navigation.closeDrawer();
     }
-  }, [deleteHistory, globalHistoryId, navigation]);
+    deleteHistory(historyId);
+  }, [deleteHistory, globalHistoryId, navigation, props.navigation, setGlobalHistoryId]);
 
   const handleDeleteAllHistories = useCallback(() => {
     Alert.alert(
@@ -177,14 +179,15 @@ const CustomDrawerContent = (props: DrawerContentComponentProps) => {
           text: 'Delete All',
           style: 'destructive',
           onPress: async () => {
-            await deleteAllHistories();
-            navigation.navigate('Chat');
+            setGlobalHistoryId(null);
+            navigation.navigate('Chat', { historyId: undefined });
             props.navigation.closeDrawer();
+            await deleteAllHistories();
           }
         }
       ]
     );
-  }, [deleteAllHistories, navigation, props.navigation]);
+  }, [deleteAllHistories, navigation, props.navigation, setGlobalHistoryId]);
 
   useFocusEffect(
     useCallback(() => {

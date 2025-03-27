@@ -183,12 +183,13 @@ want to talk and share about personal feelings.${constantPromptInfo}
   useEffect(() => {
     if (historyId) {
       handleSelectHistory(historyId);
-    } else if (currentHistoryId) {
-      // History was deleted from drawer, clear the chat
+    } else {
+      // History was deleted or we're starting fresh
       setMessages([]);
       setCurrentHistoryId(null);
       currentHistoryIdRef.current = null;
       chatContext.current = '';
+      setCurrentResponse('');
     }
   }, [historyId]);  
 
