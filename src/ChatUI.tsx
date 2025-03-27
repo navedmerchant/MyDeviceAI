@@ -82,11 +82,7 @@ const ChatUI: React.FC<ChatUIProps> = ({ historyId, onMenuPress, MenuIcon, navig
   const [inputText, setInputText] = useState('');
   const [isTyping, setIsTyping] = useState(false);
   const [currentResponse, setCurrentResponse] = useState('');
-  const [modelLoading, setModelLoading] = useState<boolean>(true);
-  const [context, setContext] = useState<LlamaContext>();
-  const [isAutoScrolling, setIsAutoScrolling] = useState(true);
-  const [contentHeight, setContentHeight] = useState(0);
-  const [showInfo, setShowInfo] = useState(false);
+  const contextRef = useRef<LlamaContext | undefined>();
   const [unsppportedDevice, setUnsupportedDevice] = useState(false);
   const [currentHistoryId, setCurrentHistoryId] = useState<number | null>(null);
   const [searchModeEnabled, setSearchModeEnabled] = useState(false);
@@ -246,9 +242,8 @@ want to talk and share about personal feelings.${constantPromptInfo}
       ) {
         console.log('App has gone to the background!');
         if (isTyping) {
-          context?.stopCompletion();
+          contextRef.current?.stopCompletion();
         }
-        setShowInfo(false);
         unloadModel();
         // Unload context manager
         contextManager.current.unloadModel().catch(error => {
@@ -283,8 +278,7 @@ want to talk and share about personal feelings.${constantPromptInfo}
       }
       console.log("model params:", modelParams)
       const newContext = await initLlama(modelParams);
-      setContext(newContext);
-      setModelLoading(false);
+      contextRef.current = newContext;
       console.log("model loaded successfully");
     } catch (error) {
       console.log("Error loading model" + error);
@@ -294,7 +288,6 @@ want to talk and share about personal feelings.${constantPromptInfo}
 
   const unloadModel = async () => {
     console.log("Unloading model");
-    setModelLoading(true);
     await releaseAllLlama();
     console.log("releaseed all LLama");
   }
@@ -355,30 +348,35 @@ want to talk and share about personal feelings.${constantPromptInfo}
     scrollToBottom();
 
     // Check if model needs to be loaded
-    if (!context) {
-      setModelLoading(true);
+    if (!contextRef.current) {
       // Add loading message
       const loadingMessageId = Date.now();
-      const loadingMessage = { id: loadingMessageId, text: "Loading AI model... This may take a few moments.", isUser: false };
+      const loadingMessage = { id: loadingMessageId, text: "Waiting for AI model to be ready... This may take a few moments.", isUser: false };
       setMessages(prevMessages => [...prevMessages, loadingMessage]);
       
-      try {
-        await loadModel();
-        // Remove loading message after successful load
-        setMessages(prevMessages => prevMessages.filter(msg => msg.id !== loadingMessageId));
-      } catch (error) {
-        console.error('Error loading model:', error);
-        // Update loading message to error message
+      // Wait for the model to be loaded (max 30 seconds)
+      let attempts = 0;
+      const maxAttempts = 30;
+      while (!contextRef.current && attempts < maxAttempts) {
+        console.log("Waiting for model to be loaded...");
+        await new Promise(resolve => setTimeout(resolve, 1000)); // Wait 1 second
+        attempts++;
+      }
+
+      if (!contextRef.current) {
+        // Update loading message to error message if model still not loaded
         setMessages(prevMessages => 
           prevMessages.map(msg => 
             msg.id === loadingMessageId 
-              ? { ...msg, text: "Failed to load model. Please try sending your message again." }
+              ? { ...msg, text: "Model is taking too long to load. Please try again later." }
               : msg
           )
         );
-        setModelLoading(false);
         return;
       }
+
+      // Remove loading message after model is ready
+      setMessages(prevMessages => prevMessages.filter(msg => msg.id !== loadingMessageId));
     }
 
     if (inputText.trim()) {
@@ -447,20 +445,20 @@ want to talk and share about personal feelings.${constantPromptInfo}
       console.log("current prompt: " + prompt);
       chatContext.current = chatContext.current + prompt;
 
-      if (!context) {
+      if (!contextRef.current) {
         console.log("context is undefined!")
         return;
       }
 
       try {
         // Do completion
-        const { text, timings } = await context.completion(
+        const { text, timings } = await contextRef.current.completion(
           {
             prompt: chatContext.current,
             n_predict: 1024,
             temperature: 0.7,
           },
-          (data) => {
+          (data: { token: string }) => {
             if (data.token == "<|eot_id|>") {
                 return;
             }
@@ -488,7 +486,7 @@ want to talk and share about personal feelings.${constantPromptInfo}
   }, [inputText, addMessage, contextManager]);
 
   function handleStop(event: GestureResponderEvent): void {
-    context?.stopCompletion();
+    contextRef.current?.stopCompletion();
     setIsTyping(false);
   }
 
@@ -500,12 +498,7 @@ want to talk and share about personal feelings.${constantPromptInfo}
 
   function handleScrollEvent(event: NativeSyntheticEvent<NativeScrollEvent>): void {
     const bottom = isCloseToBottom(event.nativeEvent);
-    setIsAutoScrolling(bottom);
     setShowScrollButton(!bottom);
-  }
-
-  function handleContentSizeChange(w: number, h: number): void {
-    setContentHeight(h);
   }
 
   const handleNewChat = useCallback(async () => {
@@ -521,11 +514,6 @@ want to talk and share about personal feelings.${constantPromptInfo}
       textInputRef.current?.focus();
     }, 100);
   }, []);
-
-  function handleInfoPress(event: GestureResponderEvent): void {
-    // do nothing for now, will be implemented later
-    setShowInfo(true);
-  }
 
   const handleMessageLongPress = (message: Message) => {
     setSelectedMessage(message);
