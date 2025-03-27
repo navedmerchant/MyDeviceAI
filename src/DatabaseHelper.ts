@@ -165,23 +165,28 @@ export const getAllChatHistories = async (): Promise<ChatHistory[]> => {
   }
   
   try {
+    // Add LIMIT to prevent loading too many histories at once
+    // and only select necessary columns
     const result = await db!.execute(
-      'SELECT * FROM chat_histories ORDER BY timestamp DESC'
+      'SELECT id, title, last_message, timestamp FROM chat_histories ORDER BY timestamp DESC LIMIT 50'
     );
     
-    const histories: ChatHistory[] = [];
+    // Pre-allocate array for better performance
+    const histories: ChatHistory[] = new Array(result.rows.length);
+    let i = 0;
+    
     for (const row of result.rows) {
-      histories.push({
+      histories[i++] = {
         id: Number(row.id),
         title: String(row.title),
         lastMessage: String(row.last_message),
         timestamp: Number(row.timestamp)
-      });
+      };
     }
     
     return histories;
   } catch (error) {
-    console.error('Error getting chat histories', error);
+    console.error('Error getting chat histories:', error);
     throw error;
   }
 };

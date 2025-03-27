@@ -26,105 +26,6 @@ type DrawerNavigation = CompositeNavigationProp<
   DrawerNavigationProp<DrawerParamList>
 >;
 
-const CustomDrawerContent = (props: DrawerContentComponentProps) => {
-  const { histories, loadHistories, deleteHistory, deleteAllHistories, globalHistoryId } = useDatabase();
-  const navigation = useNavigation<DrawerNavigation>();
-
-  // Memoize formatDate function
-  const formatDate = useCallback((timestamp: number) => {
-    return new Date(timestamp).toLocaleDateString();
-  }, []);
-
-  // Memoize getShortLastMessage function
-  const getShortLastMessage = useCallback((text: string) => {
-    const message = text.slice(0, 50) + (text.length > 50 ? '...' : '');
-    return message.trim();
-  }, []);
-
-  // Memoize handleSelectHistory
-  const handleSelectHistory = useCallback((historyId: number) => {
-    navigation.navigate('Chat', { historyId });
-    props.navigation.closeDrawer();
-  }, [navigation, props.navigation]);
-
-  // Memoize handleDeleteHistory to prevent recreating function for each item
-  const handleDeleteHistory = useCallback((historyId: number) => {
-    deleteHistory(historyId);
-    if (historyId === globalHistoryId) {
-      navigation.navigate('Chat');
-    }
-  }, [deleteHistory, globalHistoryId, navigation]);
-
-  const handleDeleteAllHistories = useCallback(() => {
-    Alert.alert(
-      'Delete All Chats',
-      'Are you sure you want to delete all chats? This action cannot be undone.',
-      [
-        {
-          text: 'Cancel',
-          style: 'cancel'
-        },
-        {
-          text: 'Delete All',
-          style: 'destructive',
-          onPress: async () => {
-            await deleteAllHistories();
-            navigation.navigate('Chat');
-            props.navigation.closeDrawer();
-          }
-        }
-      ]
-    );
-  }, [deleteAllHistories, navigation, props.navigation]);
-
-  useFocusEffect(
-    useCallback(() => {
-      // This will run every time the drawer is focused
-      loadHistories();
-    }, [])
-  );
-  
-  // Memoize the history item render function
-  const renderHistoryItem = useCallback(({ id, lastMessage, timestamp }: typeof histories[0]) => (
-    <TouchableOpacity
-      key={id}
-      style={[
-        styles.historyItem,
-        globalHistoryId === id && styles.activeHistoryItem
-      ]}
-      onPress={() => handleSelectHistory(id)}
-    >
-      <View style={styles.historyContent}>
-        <Markdown style={markdownStyles}>
-          {getShortLastMessage(lastMessage)}
-        </Markdown>
-        <View style={styles.historyFooter}>
-          <Text style={styles.historyDate}>
-            {formatDate(timestamp)}
-          </Text>
-        </View>
-      </View>
-      <TouchableOpacity
-        style={styles.deleteButton}
-        onPress={() => handleDeleteHistory(id)}
-      >
-        <Trash2 size={16} color="#fff" />
-      </TouchableOpacity>
-    </TouchableOpacity>
-  ), [formatDate, getShortLastMessage, globalHistoryId, handleDeleteHistory, handleSelectHistory]);
-
-  return (
-    <DrawerContentScrollView {...props} style={styles.container}>
-      <View style={styles.header}>
-        <Text style={styles.title}>Chats</Text>
-      </View>
-      <ScrollView style={styles.historiesList}>
-        {histories.map(renderHistoryItem)}
-      </ScrollView>
-    </DrawerContentScrollView>
-  );
-};
-
 const markdownStyles = {
   body: {
     color: '#fff',
@@ -175,6 +76,9 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: '#333',
     backgroundColor: '#000000',
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
   },
   title: {
     fontSize: 20,
@@ -219,6 +123,121 @@ const styles = StyleSheet.create({
   deleteButton: {
     padding: 8,
   },
+  deleteAllButton: {
+    padding: 8,
+    borderRadius: 4,
+  },
 });
 
-export default CustomDrawerContent;
+// Memoize item styles to prevent recreation on each render
+const getItemStyles = (isActive: boolean) => [
+  styles.historyItem,
+  isActive && styles.activeHistoryItem
+];
+
+const CustomDrawerContent = (props: DrawerContentComponentProps) => {
+  const { histories, loadHistories, deleteHistory, deleteAllHistories, globalHistoryId } = useDatabase();
+  const navigation = useNavigation<DrawerNavigation>();
+
+  // Memoize formatDate function
+  const formatDate = useCallback((timestamp: number) => {
+    return new Date(timestamp).toLocaleDateString();
+  }, []);
+
+  // Memoize getShortLastMessage function
+  const getShortLastMessage = useCallback((text: string) => {
+    const message = text.slice(0, 50) + (text.length > 50 ? '...' : '');
+    return message.trim();
+  }, []);
+
+  // Memoize handleSelectHistory
+  const handleSelectHistory = useCallback((historyId: number) => {
+    navigation.navigate('Chat', { historyId });
+    props.navigation.closeDrawer();
+  }, [navigation, props.navigation]);
+
+  // Memoize handleDeleteHistory
+  const handleDeleteHistory = useCallback((historyId: number) => {
+    deleteHistory(historyId);
+    if (historyId === globalHistoryId) {
+      navigation.navigate('Chat');
+    }
+  }, [deleteHistory, globalHistoryId, navigation]);
+
+  const handleDeleteAllHistories = useCallback(() => {
+    Alert.alert(
+      'Delete All Chats',
+      'Are you sure you want to delete all chats? This action cannot be undone.',
+      [
+        {
+          text: 'Cancel',
+          style: 'cancel'
+        },
+        {
+          text: 'Delete All',
+          style: 'destructive',
+          onPress: async () => {
+            await deleteAllHistories();
+            navigation.navigate('Chat');
+            props.navigation.closeDrawer();
+          }
+        }
+      ]
+    );
+  }, [deleteAllHistories, navigation, props.navigation]);
+
+  useFocusEffect(
+    useCallback(() => {
+      loadHistories();
+    }, [loadHistories]) // Add loadHistories as dependency
+  );
+  
+  // Memoize the history item render function with proper dependencies
+  const renderHistoryItem = useCallback(({ id, lastMessage, timestamp }: typeof histories[0]) => {
+    const itemStyles = getItemStyles(globalHistoryId === id);
+    
+    return (
+      <TouchableOpacity
+        key={id}
+        style={itemStyles}
+        onPress={() => handleSelectHistory(id)}
+      >
+        <View style={styles.historyContent}>
+          <Markdown style={markdownStyles}>
+            {getShortLastMessage(lastMessage)}
+          </Markdown>
+          <View style={styles.historyFooter}>
+            <Text style={styles.historyDate}>
+              {formatDate(timestamp)}
+            </Text>
+          </View>
+        </View>
+        <TouchableOpacity
+          style={styles.deleteButton}
+          onPress={() => handleDeleteHistory(id)}
+        >
+          <Trash2 size={16} color="#fff" />
+        </TouchableOpacity>
+      </TouchableOpacity>
+    );
+  }, [formatDate, getShortLastMessage, globalHistoryId, handleDeleteHistory, handleSelectHistory]);
+
+  return (
+    <DrawerContentScrollView {...props} style={styles.container}>
+      <View style={styles.header}>
+        <Text style={styles.title}>Chats</Text>
+        <TouchableOpacity
+          style={styles.deleteAllButton}
+          onPress={handleDeleteAllHistories}
+        >
+          <Trash2 size={20} color="#666" />
+        </TouchableOpacity>
+      </View>
+      <ScrollView style={styles.historiesList}>
+        {histories.map(renderHistoryItem)}
+      </ScrollView>
+    </DrawerContentScrollView>
+  );
+};
+
+export default React.memo(CustomDrawerContent);
