@@ -143,18 +143,13 @@ const ChatUI: React.FC<ChatUIProps> = ({ historyId, onMenuPress, MenuIcon, navig
     try {
       const savedPrompt = await AsyncStorage.getItem('systemPrompt');
       console.log('savedPrompt:', savedPrompt);
-      const constantPromptInfo = `
-You have access to the internet and can use it to search for information, if it is enabled by the user.
-When provided with search results, use them to enhance your responses with current and accurate information.
-Use these results to provide up-to-date information while maintaining your helpful and professional demeanor.`;
 
       if (savedPrompt) {
-        // For custom prompts, ensure they have the begin/header tags and append constant info
+        // For custom prompts, ensure they have the begin/header tags
         if (!savedPrompt.includes('<|begin_of_text|>')) {
-          systemPrompt.current = `<|begin_of_text|><|start_header_id|>system<|end_header_id|>\n${savedPrompt}\n${constantPromptInfo}\n<|eot_id|>`;
+          systemPrompt.current = `<|begin_of_text|><|start_header_id|>system<|end_header_id|>\n${savedPrompt}\n<|eot_id|>`;
         } else {
-          // If the prompt already has the tags, insert constant info before the end tag
-          systemPrompt.current = savedPrompt.replace('<|eot_id|>', `${constantPromptInfo}\n<|eot_id|>`);
+          systemPrompt.current = savedPrompt;
         }
       } else {
         // Set default prompt only if no saved prompt exists
@@ -163,7 +158,7 @@ You are a helpful personal AI assistant. Your name is Chloe, and you will be
 a professional AI assistant trying to answer all your users questions. You are locally
 running on the device so you will never share any information outside of the chat.
 Be as helpful as possible without being overly friendly. Be empathetic only when users
-want to talk and share about personal feelings.${constantPromptInfo}
+want to talk and share about personal feelings.
 <|eot_id|>`;
       }
     } catch (error) {
@@ -423,10 +418,13 @@ want to talk and share about personal feelings.${constantPromptInfo}
       const searchResultsPrompt = searchResults ? `\nHere are some
        search results for your query: ${searchResults} \n\n Use these to
         enhance your response if needed. Provide all the links at the end of your response.
-        Markdown format the links to be clickable.` : '';
+        Format the links with the following format: [Link Name](Link URL).` : '';
 
       const firstPrompt = `${systemPrompt.current}<|start_header_id|>user<|end_header_id|> 
       ${inputText}
+      ${searchModeEnabled ? `\nYou have access to the internet and can use it to search for information.
+      When provided with search results, use them to enhance your responses with current and accurate information.
+      Use these results to provide up-to-date information while maintaining your helpful and professional demeanor.\n` : ''}
       ${searchResultsPrompt}
       ${userContext}<|eot_id|><|start_header_id|>assistant<|end_header_id|>`
 
@@ -486,8 +484,8 @@ want to talk and share about personal feelings.${constantPromptInfo}
     }
   }, [inputText, addMessage, contextManager]);
 
-  function handleStop(event: GestureResponderEvent): void {
-    contextRef.current?.stopCompletion();
+  async function handleStop(event: GestureResponderEvent): Promise<void> {
+    await contextRef.current?.stopCompletion();
     setIsTyping(false);
   }
 

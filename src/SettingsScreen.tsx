@@ -38,14 +38,13 @@ Use these results to provide up-to-date information while maintaining your helpf
 const stripMetaTags = (prompt: string): string => {
   return prompt
     .replace('<|begin_of_text|><|start_header_id|>system<|end_header_id|>', '')
-    .replace(CONSTANT_PROMPT_INFO, '') // Also remove the constant info when displaying
     .replace('<|eot_id|>', '')
     .trim();
 };
 
 // Helper function to add meta tags to the prompt
 const addMetaTags = (prompt: string): string => {
-  return `<|begin_of_text|><|start_header_id|>system<|end_header_id|>\n${prompt.trim()}\n${CONSTANT_PROMPT_INFO}\n<|eot_id|>`;
+  return `<|begin_of_text|><|start_header_id|>system<|end_header_id|>\n${prompt.trim()}\n<|eot_id|>`;
 };
 
 const SettingsScreen: React.FC<Props> = ({ navigation }) => {
