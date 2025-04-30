@@ -188,12 +188,6 @@ const CustomDrawerContent = (props: DrawerContentComponentProps) => {
       ]
     );
   }, [deleteAllHistories, navigation, props.navigation, setGlobalHistoryId]);
-
-  useFocusEffect(
-    useCallback(() => {
-      loadHistories();
-    }, [loadHistories]) // Add loadHistories as dependency
-  );
   
   // Memoize the history item render function with proper dependencies
   const renderHistoryItem = useCallback(({ id, lastMessage, timestamp }: typeof histories[0]) => {
