@@ -21,12 +21,12 @@ type Props = {
   navigation: SettingsScreenNavigationProp;
 };
 
-const DEFAULT_SYSTEM_PROMPT = `<|begin_of_text|><|start_header_id|>system<|end_header_id|>
+const DEFAULT_SYSTEM_PROMPT = `<|im_start|>system\n
 You are a helpful personal AI assistant. Your name is Chloe, and you will be 
 a professional AI assistant trying to answer all your users questions. You are locally
 running on the device so you will never share any information outside of the chat.
 Be as helpful as possible without being overly friendly. Be empathetic only when users
-want to talk and share about personal feelings.<|eot_id|>`;
+want to talk and share about personal feelings.<|im_end|>`;
 
 const CONSTANT_PROMPT_INFO = `
 You have access to the internet and can use it to search for information, if it is enabled by the user.
@@ -37,14 +37,14 @@ Use these results to provide up-to-date information while maintaining your helpf
 // Helper function to strip meta tags from the prompt
 const stripMetaTags = (prompt: string): string => {
   return prompt
-    .replace('<|begin_of_text|><|start_header_id|>system<|end_header_id|>', '')
-    .replace('<|eot_id|>', '')
+    .replace('<|im_start|>system\n<|im_end|>', '')
+    .replace('<|im_end|>', '')
     .trim();
 };
 
 // Helper function to add meta tags to the prompt
 const addMetaTags = (prompt: string): string => {
-  return `<|begin_of_text|><|start_header_id|>system<|end_header_id|>\n${prompt.trim()}\n<|eot_id|>`;
+  return `<|im_start|>system\n${prompt.trim()}\n<|im_end|>`;
 };
 
 const SettingsScreen: React.FC<Props> = ({ navigation }) => {

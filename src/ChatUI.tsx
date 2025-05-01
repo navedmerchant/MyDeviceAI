@@ -146,20 +146,20 @@ const ChatUI: React.FC<ChatUIProps> = ({ historyId, onMenuPress, MenuIcon, navig
 
       if (savedPrompt) {
         // For custom prompts, ensure they have the begin/header tags
-        if (!savedPrompt.includes('<|begin_of_text|>')) {
-          systemPrompt.current = `<|begin_of_text|><|start_header_id|>system<|end_header_id|>\n${savedPrompt}\n<|eot_id|>`;
+        if (!savedPrompt.includes('<|im_start|>')) {
+          systemPrompt.current = `<|im_start|>system\n${savedPrompt}\n<|im_end|>`;
         } else {
           systemPrompt.current = savedPrompt;
         }
       } else {
         // Set default prompt only if no saved prompt exists
-        systemPrompt.current = `<|begin_of_text|><|start_header_id|>system<|end_header_id|>
+        systemPrompt.current = `<|im_start|>system\n
 You are a helpful personal AI assistant. Your name is Chloe, and you will be 
 a professional AI assistant trying to answer all your users questions. You are locally
 running on the device so you will never share any information outside of the chat.
 Be as helpful as possible without being overly friendly. Be empathetic only when users
 want to talk and share about personal feelings.
-<|eot_id|>`;
+<|im_end|>`;
       }
     } catch (error) {
       console.error('Error loading system prompt:', error);
@@ -293,10 +293,10 @@ want to talk and share about personal feelings.
   };
 
   const rebuildChatContext = (messages: Message[]) => {
-    const userHeader = `<|start_header_id|>user<|end_header_id|>`;
-    const assistantHeader = `<|start_header_id|>assistant<|end_header_id|>`;
+    const userHeader = `<|im_start|>user\n<|im_end|>`;
+    const assistantHeader = `<|im_start|>assistant\n`;
 
-    const endToken = `<|eot_id|>`;
+    const endToken = `<|im_end|>`;
 
     for (const idx in messages) {
       const message = messages[idx];
@@ -420,18 +420,18 @@ want to talk and share about personal feelings.
         enhance your response if needed. Provide all the links at the end of your response.
         Format the links with the following format: [Link Name](Link URL).` : '';
 
-      const firstPrompt = `${systemPrompt.current}<|start_header_id|>user<|end_header_id|> 
-      ${inputText}
+      const firstPrompt = `${systemPrompt.current}<|im_start|>user\n 
+      ./no_think${inputText}
       ${searchModeEnabled ? `\nYou have access to the internet and can use it to search for information.
       When provided with search results, use them to enhance your responses with current and accurate information.
       Use these results to provide up-to-date information while maintaining your helpful and professional demeanor.\n` : ''}
       ${searchResultsPrompt}
-      ${userContext}<|eot_id|><|start_header_id|>assistant<|end_header_id|>`
+      ${userContext}<|im_end|><|im_start|>assistant`
 
-      const otherPrompts = `<|start_header_id|>user<|end_header_id|> 
+      const otherPrompts = `<|im_start|>user 
       ${inputText}
       ${searchResultsPrompt}
-      ${userContext}<|eot_id|><|start_header_id|>assistant<|end_header_id|>`
+      ${userContext}<|im_end|><|im_start|>assistant`
 
       let prompt;
       if (messages.length == 0) {
@@ -458,7 +458,7 @@ want to talk and share about personal feelings.
             temperature: 0.7,
           },
           (data: { token: string }) => {
-            if (data.token == "<|eot_id|>") {
+            if (data.token == "<|im_end|>") {
                 return;
             }
             
@@ -472,7 +472,7 @@ want to talk and share about personal feelings.
           },
         )
         chatContext.current = chatContext.current + text;
-        const displayText = text.replace("<|eot_id|>", "")
+        const displayText = text.replace("<|im_end|>", "")
         addMessage(displayText, false);
       } catch (error) {
         console.error('Error generating AI response:', error);
