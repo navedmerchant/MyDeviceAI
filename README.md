@@ -1,79 +1,126 @@
-This is a new [**React Native**](https://reactnative.dev) project, bootstrapped using [`@react-native-community/cli`](https://github.com/react-native-community/cli).
+# MyDeviceAI
 
-# Getting Started
+<p align="center">
+  Your Personal AI Assistant - Private, Powerful, and Always Ready
+</p>
 
->**Note**: Make sure you have completed the [React Native - Environment Setup](https://reactnative.dev/docs/environment-setup) instructions till "Creating a new application" step, before proceeding.
+## 🌟 Overview
 
-## Step 1: Start the Metro Server
+MyDeviceAI brings the power of artificial intelligence directly to your iPhone, with a focus on privacy, performance, and personalization. By running AI models directly on your device and integrating with privacy-focused web services, MyDeviceAI offers a unique blend of local processing power and cloud-based knowledge, all while keeping your data private and secure.
 
-First, you will need to start **Metro**, the JavaScript _bundler_ that ships _with_ React Native.
+## ✨ Key Features
 
-To start Metro, run the following command from the _root_ of your React Native project:
+- **Seamless Experience**: The app comes with bundled AI models that load asynchronously in the background, ensuring zero waiting time and a smooth user experience from the moment you launch.
 
-```bash
-# using npm
-npm start
+- **Brave Web Search Integration**: Bridge the knowledge gap between local AI and cloud capabilities with our Brave Web Search integration. Add your API key to access comprehensive web searches while maintaining privacy.
 
-# OR using Yarn
-yarn start
-```
+- **Thinking Mode**: Powered by Qwen 3, our Thinking Mode helps you tackle complex problems and brainstorming sessions with advanced reasoning capabilities.
 
-## Step 2: Start your Application
+- **Personalization (Beta)**: Create a truly personalized AI experience by loading saved user contexts. Tailor conversations to your preferences and needs (Currently in Beta).
 
-Let Metro Bundler run in its _own_ terminal. Open a _new_ terminal from the _root_ of your React Native project. Run the following command to start your _Android_ or _iOS_ app:
+- **Chat History**: Access up to 30 days of conversation history, making it easy to reference past discussions and maintain context over time.
 
-### For Android
+- **Broad Device Support**: Compatible with all modern iPhones, bringing private AI capabilities to more users than ever before.
 
-```bash
-# using npm
-npm run android
+## 🚀 Getting Started
 
-# OR using Yarn
-yarn android
-```
+### Prerequisites
 
-### For iOS
+- macOS
+- Xcode 13.0+
+- CocoaPods
+- Node.js 14.0 or later
+- React Native development environment set up ([React Native - Environment Setup](https://reactnative.dev/docs/environment-setup))
 
-```bash
-# using npm
-npm run ios
+### Installation
 
-# OR using Yarn
-yarn ios
-```
+1. Clone the repository:
+   ```bash
+   git clone https://github.com/navedmerchant/MyDeviceAI.git
+   cd MyDeviceAI
+   ```
 
-If everything is set up _correctly_, you should see your new app running in your _Android Emulator_ or _iOS Simulator_ shortly provided you have set up your emulator/simulator correctly.
+2. Download required AI models:
+   - Download [Qwen3 1.7B Q4](https://huggingface.co/bartowski/Qwen_Qwen3-1.7B-GGUF) and place it in the `ios/` directory
+   - Download [BGE Small](https://huggingface.co/CompendiumLabs/bge-small-en-v1.5-gguf) and place it in the `ios/` directory
 
-This is one way to run your app — you can also run it directly from within Android Studio and Xcode respectively.
+3. Install dependencies:
+   ```bash
+   npm install
+   # or
+   yarn install
+   ```
 
-## Step 3: Modifying your App
+4. Install pods:
+   ```bash
+   cd ios && pod install && cd ..
+   ```
 
-Now that you have successfully run the app, let's modify it.
+5. Start the application:
+   ```bash
+   npm run ios
+   # or
+   yarn ios
+   ```
 
-1. Open `App.tsx` in your text editor of choice and edit some lines.
-2. For **Android**: Press the <kbd>R</kbd> key twice or select **"Reload"** from the **Developer Menu** (<kbd>Ctrl</kbd> + <kbd>M</kbd> (on Window and Linux) or <kbd>Cmd ⌘</kbd> + <kbd>M</kbd> (on macOS)) to see your changes!
+## 🛠️ Technical Stack
 
-   For **iOS**: Hit <kbd>Cmd ⌘</kbd> + <kbd>R</kbd> in your iOS Simulator to reload the app and see your changes!
+- **Framework**: React Native
+- **AI Models**: 
+  - Qwen 3 (1.7B Q4) for chat and reasoning
+  - BGE Small for embeddings
+- **Web Search**: Brave API Integration
+- **State Management**: Redux + Redux Toolkit
+- **Storage**: AsyncStorage for chat history and user contexts
+- **UI Components**: Lucide
+- **Code Quality**: ESLint, Prettier
+- **Build Tools**: Metro Bundler
 
-## Congratulations! :tada:
+## 🤝 Contributing
 
-You've successfully run and modified your React Native App. :partying_face:
+We welcome contributions to MyDeviceAI! Here's how you can help:
 
-### Now what?
+1. Fork the repository
+2. Create your feature branch (`git checkout -b feature/AmazingFeature`)
+3. Commit your changes (`git commit -m 'Add some AmazingFeature'`)
+4. Push to the branch (`git push origin feature/AmazingFeature`)
+5. Open a Pull Request
 
-- If you want to add this new React Native code to an existing application, check out the [Integration guide](https://reactnative.dev/docs/integration-with-existing-apps).
-- If you're curious to learn more about React Native, check out the [Introduction to React Native](https://reactnative.dev/docs/getting-started).
+### Development Guidelines
 
-# Troubleshooting
+- Follow the React Native community best practices
+- Write meaningful commit messages
+- Update documentation for any new features
+- Add appropriate tests for new functionality
+- Ensure privacy-first approach in feature implementation
 
-If you can't get this to work, see the [Troubleshooting](https://reactnative.dev/docs/troubleshooting) page.
+## 🔐 Privacy
 
-# Learn More
+MyDeviceAI is built with privacy at its core:
+- All AI processing happens locally on your device
+- No data is sent to external servers without explicit consent
+- Brave Web Search integration respects user privacy
+- Chat history is stored locally and never uploaded
 
-To learn more about React Native, take a look at the following resources:
+## 📄 License
 
-- [React Native Website](https://reactnative.dev) - learn more about React Native.
-- [Getting Started](https://reactnative.dev/docs/environment-setup) - an **overview** of React Native and how setup your environment.
-- [Learn the Basics](https://reactnative.dev/docs/getting-started) - a **guided tour** of the React Native **basics**.
-- [Blog](https://reactnative.dev/blog) - read the latest official React Native **Blog** posts.
-- [`@facebook/react-native`](https://github.com/facebook/react-native) - the Open Source; GitHub **repository** for React Native.
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+## 🐛 Bug Reports
+
+If you discover any bugs, please create an issue in the GitHub repository including:
+
+- iOS version
+- iPhone model
+- Steps to reproduce the bug
+- Expected and actual behavior
+
+## 📞 Contact
+
+If you have any questions or suggestions, feel free to open an issue or reach out to the maintainers.
+
+---
+
+<p align="center">
+  Made with ❤️ by Naved Merchant
+</p>

@@ -703,8 +703,6 @@ want to talk and share about personal feelings.
         )
         chatContext.current = chatContext.current + text;
         const displayText = text.replace("<|im_end|>", "")
-          .replace(/<think>/g, "") // Remove opening think tags
-          .replace(/<\/think>/g, "") // Remove closing think tags
           .trim();
         addMessage(displayText, false);
       } catch (error) {
