@@ -180,12 +180,14 @@ const SettingsScreen: React.FC<Props> = ({ navigation }) => {
             placeholderTextColor="#666"
             secureTextEntry={true}
           />
-          <TouchableOpacity 
-            style={styles.linkContainer}
-            onPress={() => Linking.openURL('https://navedmerchant.github.io/brave_search.html')}
-          >
-            <Text style={styles.linkText}>Need an API key? Click here for setup instructions</Text>
-          </TouchableOpacity>
+          {!braveApiKey && (
+            <TouchableOpacity 
+              style={styles.linkContainer}
+              onPress={() => Linking.openURL('https://navedmerchant.github.io/brave_search.html')}
+            >
+              <Text style={styles.linkText}>Need an API key? Click here for setup instructions</Text>
+            </TouchableOpacity>
+          )}
           <Text style={styles.description}>
             Monthly queries used: {monthlyQueries}/2000
           </Text>

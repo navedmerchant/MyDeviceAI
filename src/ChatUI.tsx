@@ -131,11 +131,14 @@ const shuffleArray = <T,>(array: T[]): T[] => {
   return shuffled;
 };
 
+// Pre-shuffle the prompts once when the file loads
+const SHUFFLED_PROMPTS = shuffleArray([...SUGGESTED_PROMPTS]);
+
 // EmptyState component to show when there are no messages
 const EmptyState = ({ onPromptPress }: { onPromptPress: (prompt: string) => void }) => {
   const flatListRef = useRef<FlatList>(null);
-  // For better performance, we'll use a window of prompts instead of duplicating all
-  const visiblePrompts = useRef([...shuffleArray(SUGGESTED_PROMPTS)]);
+  // Use the pre-shuffled prompts
+  const visiblePrompts = useRef([...SHUFFLED_PROMPTS]);
   const [isPaused, setIsPaused] = useState(false);
   const [userScrollPos, setUserScrollPos] = useState(0);
   
@@ -159,10 +162,10 @@ const EmptyState = ({ onPromptPress }: { onPromptPress: (prompt: string) => void
           // This creates an illusion of infinite scrolling with better performance
           if (Math.floor(actualPosition / itemWidth) > SUGGESTED_PROMPTS.length - 10) {
             // Approaching the end, append prompts from beginning to create seamless loop
-            visiblePrompts.current = [...shuffleArray(SUGGESTED_PROMPTS), ...shuffleArray(SUGGESTED_PROMPTS.slice(0, 15))];
+            visiblePrompts.current = [...SHUFFLED_PROMPTS, ...SHUFFLED_PROMPTS.slice(0, 15)];
           } else if (actualPosition < 10 * itemWidth) {
             // Near the beginning, reset to original list
-            visiblePrompts.current = [...shuffleArray(SUGGESTED_PROMPTS)];
+            visiblePrompts.current = [...SHUFFLED_PROMPTS];
           }
           
           // Smooth scrolling
@@ -569,7 +572,7 @@ want to talk and share about personal feelings.
     const length = inputText.split(/\s+/).length;
     console.log(`current input length ${length}`);
     if (length > 2000) {
-      Toast.show("Text too long, please try something shorter", Toast.SHORT);
+      Toast.showWithGravity("Text too long, please try something shorter", Toast.SHORT, Toast.TOP);
       return;
     }
 
@@ -620,7 +623,7 @@ want to talk and share about personal feelings.
         } catch (error) {
           console.log('Search error:', error);
           if (error instanceof Error) {
-            Toast.show(error.message, Toast.LONG);
+            Toast.showWithGravity(error.message, Toast.LONG, Toast.TOP);
           }
         }
       }
@@ -751,7 +754,7 @@ want to talk and share about personal feelings.
 
   const handleCopyText = (text: string) => {
     Clipboard.setString(text);
-    Toast.show("Text copied to Clipboard", Toast.SHORT);
+    Toast.showWithGravity("Text copied to Clipboard", Toast.SHORT, Toast.TOP);
     setMenuVisible(false);
   };
 
@@ -837,7 +840,7 @@ want to talk and share about personal feelings.
       // Check for API key before enabling search
       const apiKey = await AsyncStorage.getItem('braveApiKey');
       if (!apiKey) {
-        Toast.show('Please enter your Brave Search API key in settings to enable web search.', Toast.LONG);
+        Toast.showWithGravity('Please enter your Brave Search API key in settings to enable web search.', Toast.LONG, Toast.TOP);
         return;
       }
     }
@@ -845,7 +848,9 @@ want to talk and share about personal feelings.
   };
 
   const handleThinkingToggle = () => {
-    setThinkingModeEnabled(!thinkingModeEnabled);
+    const newState = !thinkingModeEnabled;
+    setThinkingModeEnabled(newState);
+    Toast.showWithGravity(newState ? "Thinking mode enabled" : "Thinking mode disabled", Toast.SHORT, Toast.TOP);
   };
 
   const getUserMessages = (currentInput: string, messages: Message[]): string => {
