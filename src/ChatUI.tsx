@@ -29,7 +29,7 @@ import {
   Dimensions,
   Image,
 } from 'react-native';
-import { Send, Square, CirclePlus, Search, Settings, ArrowDown } from 'lucide-react-native';
+import { Send, Square, CirclePlus, Search, Settings, ArrowDown, Brain } from 'lucide-react-native';
 import { getModelParamsForDevice } from './Utils';
 import { styles, markdownStyles, popoverStyles, menuOptionStyles } from './Syles';
 import { Message } from './Message';
@@ -86,6 +86,7 @@ const ChatUI: React.FC<ChatUIProps> = ({ historyId, onMenuPress, MenuIcon, navig
   const [unsppportedDevice, setUnsupportedDevice] = useState(false);
   const [currentHistoryId, setCurrentHistoryId] = useState<number | null>(null);
   const [searchModeEnabled, setSearchModeEnabled] = useState(false);
+  const [thinkingModeEnabled, setThinkingModeEnabled] = useState(false);
   const { setGlobalHistoryId, loadHistories } = useDatabase();
   const [selectedMessage, setSelectedMessage] = useState<Message | null>(null);
   const [menuVisible, setMenuVisible] = useState(false);
@@ -421,7 +422,7 @@ want to talk and share about personal feelings.
         Format the links with the following format: [Link Name](Link URL).` : '';
 
       const firstPrompt = `${systemPrompt.current}<|im_start|>user\n 
-      ./no_think${inputText}
+      ${thinkingModeEnabled ? './think' : './no_think'} ${inputText}
       ${searchModeEnabled ? `\nYou have access to the internet and can use it to search for information.
       When provided with search results, use them to enhance your responses with current and accurate information.
       Use these results to provide up-to-date information while maintaining your helpful and professional demeanor.\n` : ''}
@@ -429,7 +430,7 @@ want to talk and share about personal feelings.
       ${userContext}<|im_end|><|im_start|>assistant`
 
       const otherPrompts = `<|im_start|>user 
-      ${inputText}
+      ${thinkingModeEnabled ? './think' : './no_think'} ${inputText}
       ${searchResultsPrompt}
       ${userContext}<|im_end|><|im_start|>assistant`
 
@@ -554,6 +555,10 @@ want to talk and share about personal feelings.
     setSearchModeEnabled(!searchModeEnabled);
   };
 
+  const handleThinkingToggle = () => {
+    setThinkingModeEnabled(!thinkingModeEnabled);
+  };
+
   const getUserMessages = (currentInput: string, messages: Message[]): string => {
     // Get all user messages from history
     const userMessages = messages
@@ -634,11 +639,17 @@ want to talk and share about personal feelings.
         />
         <View style={styles.headerRightButtons}>
           <TouchableOpacity 
+            style={[styles.headerButton, thinkingModeEnabled && styles.headerButtonActive]} 
+            onPress={handleThinkingToggle}
+            disabled={isTyping}
+          >
+            <Brain color={thinkingModeEnabled ? "#28a745" : "#fff"} size={24} />
+          </TouchableOpacity>
+          <TouchableOpacity 
             style={[styles.headerButton, searchModeEnabled && styles.headerButtonActive]} 
             onPress={handleSearchToggle}
             disabled={isTyping}
           >
-            <Search color={searchModeEnabled ? "#28a745" : "#fff"} size={24} />
           </TouchableOpacity>
           <TouchableOpacity style={styles.headerButton} onPress={handleNewChat} disabled={isTyping}>
             <CirclePlus color="#fff" size={24} />
@@ -678,17 +689,26 @@ want to talk and share about personal feelings.
       )}
 
       <View style={styles.inputContainer}>
-        <TextInput
-          style={styles.input}
-          value={inputText}
-          onChangeText={setInputText}
-          placeholder={searchModeEnabled ? "Ask me anything (with web search)" : "Ask me anything, or just chat!"}
-          placeholderTextColor="#999"
-          ref={textInputRef}
-          multiline={true}
-          editable={true}
-          numberOfLines={2}
-        />
+        <View style={styles.searchInputContainer}>
+          <TouchableOpacity 
+            style={styles.searchIconContainer} 
+            onPress={handleSearchToggle}
+            disabled={isTyping}
+          >
+            <Search color={searchModeEnabled ? "#28a745" : "#666"} size={20} />
+          </TouchableOpacity>
+          <TextInput
+            style={styles.input}
+            value={inputText}
+            onChangeText={setInputText}
+            placeholder={searchModeEnabled ? "Ask me anything (with web search)" : "Ask me anything, or just chat!"}
+            placeholderTextColor="#999"
+            ref={textInputRef}
+            multiline={true}
+            editable={true}
+            numberOfLines={2}
+          />
+        </View>
         {isTyping ? 
           (<TouchableOpacity style={styles.stopButton} onPress={handleStop}>
             <Square color="#fff"></Square>

@@ -37,7 +37,7 @@ Use these results to provide up-to-date information while maintaining your helpf
 // Helper function to strip meta tags from the prompt
 const stripMetaTags = (prompt: string): string => {
   return prompt
-    .replace('<|im_start|>system\n<|im_end|>', '')
+    .replace('<|im_start|>system\n', '')
     .replace('<|im_end|>', '')
     .trim();
 };

@@ -45,8 +45,7 @@ const styles = StyleSheet.create({
     },
     headerRightButtons: {
       flexDirection: 'row',
-      alignItems: 'center',
-      gap: 5,
+      alignItems: "center",
     },
     messagesContainer: {
       flex: 1,
@@ -82,15 +81,30 @@ const styles = StyleSheet.create({
       backgroundColor: '#000',
       maxHeight: 80
     },
-    input: {
+    searchInputContainer: {
       flex: 1,
+      flexDirection: 'row',
+      alignItems: 'center',
+      marginRight: 10,
       borderWidth: 1,
       borderColor: '#ccc',
       borderRadius: 20,
+      backgroundColor: 'transparent',
+    },
+    searchIconContainer: {
+      paddingLeft: 12,
+      paddingRight: 0,
+      justifyContent: 'center',
+      alignItems: 'center',
+    },
+    input: {
+      flex: 1,
       paddingHorizontal: 15,
       paddingVertical: 10,
-      marginRight: 10,
       color: '#fff',
+    },
+    inputWithIcon: {
+      paddingLeft: 5,
     },
     sendButton: {
       justifyContent: 'center',
