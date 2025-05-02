@@ -272,6 +272,34 @@ const styles = StyleSheet.create({
       shadowRadius: 3.84,
       elevation: 5,
     },
+    thinkingContainer: {
+      marginVertical: 5,
+      borderRadius: 10,
+      backgroundColor: 'rgba(0, 0, 0, 0.1)',
+      overflow: 'hidden',
+    },
+    thinkingHeader: {
+      padding: 10,
+      flexDirection: 'row',
+      alignItems: 'center',
+      backgroundColor: 'rgba(125, 23, 176, 0.3)',
+    },
+    thinkingHeaderText: {
+      color: '#fff',
+      fontSize: 14,
+      fontWeight: '600',
+    },
+    thinkingContent: {
+      padding: 10,
+      backgroundColor: 'rgba(0, 0, 0, 0.05)',
+    },
+    streamingThinkingIndicator: {
+      marginTop: 5,
+      alignSelf: 'flex-start',
+    },
+    streamingThinkingText: {
+      fontSize: 20,
+    },
   });
   
   const markdownStyles = {

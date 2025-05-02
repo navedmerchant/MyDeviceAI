@@ -77,6 +77,36 @@ const TypingIndicator = () => {
   );
 };
 
+// Add this component for collapsible thinking content
+const ThinkingContent = ({ content }: { content: string }) => {
+  const [isExpanded, setIsExpanded] = useState(false);
+  
+  return (
+    <View style={styles.thinkingContainer}>
+      <TouchableOpacity 
+        style={styles.thinkingHeader} 
+        onPress={() => setIsExpanded(!isExpanded)}
+      >
+        <Text style={styles.thinkingHeaderText}>
+          {isExpanded ? '🤔 Hide Thinking Process' : '🤔 Show Thinking Process'}
+        </Text>
+      </TouchableOpacity>
+      {isExpanded && (
+        <View style={styles.thinkingContent}>
+          <Markdown style={markdownStyles}>{content}</Markdown>
+        </View>
+      )}
+    </View>
+  );
+};
+
+// Add this component for the thinking indicator during streaming
+const StreamingThinkingIndicator = () => (
+  <View style={styles.streamingThinkingIndicator}>
+    <Text style={styles.streamingThinkingText}></Text>
+  </View>
+);
+
 const ChatUI: React.FC<ChatUIProps> = ({ historyId, onMenuPress, MenuIcon, navigation, setParentIsTyping }) => {
   const [messages, setMessages] = useState<Message[]>([]);
   const [inputText, setInputText] = useState('');
@@ -460,16 +490,11 @@ want to talk and share about personal feelings.
           },
           (data: { token: string }) => {
             if (data.token == "<|im_end|>") {
-                return;
+              return;
             }
             
             // Add token to current response
-            setCurrentResponse(prev => {
-              // Handle special cases for better Markdown formatting
-              let token = data.token;
-              return prev + token;
-            });
-            
+            setCurrentResponse(prev => prev + data.token);
           },
         )
         chatContext.current = chatContext.current + text;
@@ -526,22 +551,68 @@ want to talk and share about personal feelings.
     setMenuVisible(false);
   };
 
-  const renderMessage = (message: Message) => (
-    <TouchableOpacity
-      key={message.id}
-      onLongPress={() => handleMessageLongPress(message)}
-      delayLongPress={200}
-    >
-      <View
-        style={[
-          styles.messageBubble,
-          message.isUser ? styles.userMessage : styles.aiMessage
-        ]}
+  // Move processThinkingContent outside of renderMessage
+  const processThinkingContent = (text: string) => {
+    // Find the first <think> tag
+    const startIndex = text.indexOf("<think>");
+    if (startIndex === -1) {
+      // No thinking content
+      return <Markdown style={markdownStyles}>{text}</Markdown>;
+    }
+
+    // Find the last </think> tag
+    const endIndex = text.lastIndexOf("</think>");
+    
+    const parts = [];
+    
+    // Add text before thinking section
+    if (startIndex > 0) {
+      parts.push(
+        <Markdown key="pre-think" style={markdownStyles}>
+          {text.slice(0, startIndex)}
+        </Markdown>
+      );
+    }
+    
+    // Add thinking content
+    const thinkingContent = endIndex !== -1 
+      ? text.slice(startIndex + 7, endIndex) // +7 to skip "<think>"
+      : text.slice(startIndex + 7); // if no closing tag, take until the end
+    
+    parts.push(
+      <ThinkingContent key="thinking" content={thinkingContent.trim()} />
+    );
+    
+    // Add text after thinking section (if there was a closing tag)
+    if (endIndex !== -1 && endIndex + 8 < text.length) { // +8 for "</think>"
+      parts.push(
+        <Markdown key="post-think" style={markdownStyles}>
+          {text.slice(endIndex + 8)}
+        </Markdown>
+      );
+    }
+    
+    return parts;
+  };
+
+  const renderMessage = (message: Message) => {
+    return (
+      <TouchableOpacity
+        key={message.id}
+        onLongPress={() => handleMessageLongPress(message)}
+        delayLongPress={200}
       >
-        <Markdown style={markdownStyles}>{message.text}</Markdown>
-      </View>
-    </TouchableOpacity>
-  );
+        <View
+          style={[
+            styles.messageBubble,
+            message.isUser ? styles.userMessage : styles.aiMessage
+          ]}
+        >
+          {processThinkingContent(message.text)}
+        </View>
+      </TouchableOpacity>
+    );
+  };
 
   const handleSearchToggle = async () => {
     if (!searchModeEnabled) {
@@ -668,7 +739,13 @@ want to talk and share about personal feelings.
         {isTyping && (
           <View style={[styles.messageBubble, styles.aiMessage]}>
             {currentResponse ? (
-              <Markdown style={markdownStyles}>{currentResponse}</Markdown>
+              <>
+                {processThinkingContent(currentResponse)}
+                {(currentResponse.match(/<think>/g) || []).length > 
+                 (currentResponse.match(/<\/think>/g) || []).length && (
+                  <StreamingThinkingIndicator />
+                )}
+              </>
             ) : (
               <TypingIndicator />
             )}
