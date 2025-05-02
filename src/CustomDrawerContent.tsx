@@ -146,7 +146,9 @@ const CustomDrawerContent = (props: DrawerContentComponentProps) => {
 
   // Memoize getShortLastMessage function
   const getShortLastMessage = useCallback((text: string) => {
-    const message = text.slice(0, 50) + (text.length > 50 ? '...' : '');
+    // Remove think tags
+    const cleanText = text.replace(/<think>/g, '').replace(/<\/think>/g, '');
+    const message = cleanText.slice(0, 50) + (cleanText.length > 50 ? '...' : '');
     return message.trim();
   }, []);
 

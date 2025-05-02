@@ -81,6 +81,11 @@ const TypingIndicator = () => {
 const ThinkingContent = ({ content }: { content: string }) => {
   const [isExpanded, setIsExpanded] = useState(false);
   
+  // Don't render anything if content is empty or only whitespace
+  if (!content || !content.trim()) {
+    return null;
+  }
+  
   return (
     <View style={styles.thinkingContainer}>
       <TouchableOpacity 
@@ -485,7 +490,7 @@ want to talk and share about personal feelings.
         const { text, timings } = await contextRef.current.completion(
           {
             prompt: chatContext.current,
-            n_predict: 1024,
+            n_predict: 2048,
             temperature: 0.7,
           },
           (data: { token: string }) => {
@@ -574,25 +579,39 @@ want to talk and share about personal feelings.
       );
     }
     
-    // Add thinking content
+    // Get thinking content
     const thinkingContent = endIndex !== -1 
       ? text.slice(startIndex + 7, endIndex) // +7 to skip "<think>"
       : text.slice(startIndex + 7); // if no closing tag, take until the end
     
-    parts.push(
-      <ThinkingContent key="thinking" content={thinkingContent.trim()} />
-    );
-    
-    // Add text after thinking section (if there was a closing tag)
-    if (endIndex !== -1 && endIndex + 8 < text.length) { // +8 for "</think>"
+    // Only add thinking content if it's not empty
+    const trimmedThinkingContent = thinkingContent.trim();
+    if (trimmedThinkingContent) {
       parts.push(
-        <Markdown key="post-think" style={markdownStyles}>
-          {text.slice(endIndex + 8)}
-        </Markdown>
+        <ThinkingContent key="thinking" content={trimmedThinkingContent} />
       );
     }
     
-    return parts;
+    // Add text after thinking section (if there was a closing tag)
+    if (endIndex !== -1 && endIndex + 8 < text.length) { // +8 for "</think>"
+      // If there was no thinking content, join the before and after text
+      const afterText = text.slice(endIndex + 8);
+      if (!trimmedThinkingContent) {
+        parts.push(
+          <Markdown key="combined" style={markdownStyles}>
+            {afterText}
+          </Markdown>
+        );
+      } else {
+        parts.push(
+          <Markdown key="post-think" style={markdownStyles}>
+            {afterText}
+          </Markdown>
+        );
+      }
+    }
+    
+    return parts.length > 0 ? parts : <Markdown style={markdownStyles}>{text}</Markdown>;
   };
 
   const renderMessage = (message: Message) => {
@@ -715,12 +734,6 @@ want to talk and share about personal feelings.
             disabled={isTyping}
           >
             <Brain color={thinkingModeEnabled ? "#28a745" : "#fff"} size={24} />
-          </TouchableOpacity>
-          <TouchableOpacity 
-            style={[styles.headerButton, searchModeEnabled && styles.headerButtonActive]} 
-            onPress={handleSearchToggle}
-            disabled={isTyping}
-          >
           </TouchableOpacity>
           <TouchableOpacity style={styles.headerButton} onPress={handleNewChat} disabled={isTyping}>
             <CirclePlus color="#fff" size={24} />

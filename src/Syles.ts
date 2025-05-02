@@ -46,6 +46,7 @@ const styles = StyleSheet.create({
     headerRightButtons: {
       flexDirection: 'row',
       alignItems: "center",
+      gap: 5,
     },
     messagesContainer: {
       flex: 1,

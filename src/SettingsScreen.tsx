@@ -189,28 +189,14 @@ const SettingsScreen: React.FC<Props> = ({ navigation }) => {
           <Text style={styles.sectionTitle}>About</Text>
           <View style={styles.aboutContent}>
             <Text style={styles.aboutTitle}>MyDeviceAI</Text>
-            <Text style={styles.versionText}>Version 1.0.0</Text>
+            <Text style={styles.versionText}>Version 1.1.0</Text>
             <Text style={styles.aboutDescription}>
               Built with Llama 3.2
             </Text>
 
             <View style={styles.licenseSection}>
-              <Text style={styles.licenseSectionTitle}>Open Source Licenses</Text>
-              
               <View style={styles.licenseItem}>
-                <Text style={styles.licenseTitle}>Llama 3.2 Model</Text>
-                <Text style={styles.licenseText}>
-                  Llama 3.2 is licensed under the Llama 3.2 Community License, Copyright © Meta Platforms, Inc. All Rights Reserved.
-                </Text>
-                <TouchableOpacity 
-                  onPress={() => Linking.openURL('https://raw.githubusercontent.com/meta-llama/llama-models/refs/heads/main/models/llama3_2/LICENSE')}
-                >
-                  <Text style={styles.linkText}>View License</Text>
-                </TouchableOpacity>
-              </View>
-
-              <View style={styles.licenseItem}>
-                <Text style={styles.licenseTitle}>Additional Libraries</Text>
+                <Text style={styles.licenseTitle}>Third Party Libraries</Text>
                 <Text style={styles.licenseText}>
                   This application uses various open-source libraries, each with their respective licenses.
                   For a complete list of licenses, please visit the link below.
