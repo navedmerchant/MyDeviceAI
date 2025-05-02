@@ -301,6 +301,58 @@ const styles = StyleSheet.create({
     streamingThinkingText: {
       fontSize: 20,
     },
+    // Empty state styles
+    emptyStateContainer: {
+      flex: 1,
+      justifyContent: 'center',
+      alignItems: 'center',
+      padding: 20,
+    },
+    emptyStateLogo: {
+      width: 100,
+      height: 100,
+      resizeMode: 'contain',
+      marginBottom: 20,
+    },
+    emptyStateTitle: {
+      color: '#fff',
+      fontSize: 24,
+      fontWeight: 'bold',
+      marginBottom: 8,
+      textAlign: 'center',
+    },
+    emptyStateSubtitle: {
+      color: '#ddd',
+      fontSize: 16,
+      marginBottom: 20,
+      textAlign: 'center',
+    },
+    promptsContainer: {
+      paddingHorizontal: 10,
+      paddingVertical: 15,
+      alignItems: 'center',
+    },
+    promptItem: {
+      backgroundColor: '#333',
+      padding: 15,
+      borderRadius: 10,
+      marginHorizontal: 10,
+      borderWidth: 1,
+      borderColor: '#444',
+      width: 260,
+      minHeight: 90,
+      justifyContent: 'center',
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.3,
+      shadowRadius: 4,
+      elevation: 5,
+    },
+    promptText: {
+      color: '#fff',
+      fontSize: 16,
+      textAlign: 'center',
+    },
   });
   
   const markdownStyles = {

@@ -28,10 +28,11 @@ import {
   Alert,
   Dimensions,
   Image,
+  FlatList,
 } from 'react-native';
 import { Send, Square, CirclePlus, Search, Settings, ArrowDown, Brain } from 'lucide-react-native';
 import { getModelParamsForDevice } from './Utils';
-import { styles, markdownStyles, popoverStyles, menuOptionStyles } from './Syles';
+import { styles, markdownStyles, popoverStyles, menuOptionStyles } from './Styles';
 import { Message } from './Message';
 import {
   initDatabase,
@@ -54,6 +55,104 @@ interface ChatUIProps {
   navigation: ChatScreenNavigationProp;
   setParentIsTyping: (isTyping: boolean) => void;
 }
+
+// List of suggested prompts
+const SUGGESTED_PROMPTS = [
+  "Tell me about yourself. What can you do?",
+  "Write a short story about a robot learning to paint",
+  "Explain quantum computing to a 10-year-old",
+  "What are some creative ways to stay productive?",
+  "Help me plan a weekend trip",
+  "Create a meal plan for someone trying to eat healthier",
+  "What's the difference between machine learning and AI?",
+  "Give me 5 book recommendations based on popular science",
+];
+
+// EmptyState component to show when there are no messages
+const EmptyState = ({ onPromptPress }: { onPromptPress: (prompt: string) => void }) => {
+  const flatListRef = useRef<FlatList>(null);
+  // Create a larger dataset by duplicating prompts for "infinite" scrolling effect
+  const extendedPrompts = [...SUGGESTED_PROMPTS, ...SUGGESTED_PROMPTS, ...SUGGESTED_PROMPTS];
+  const [isPaused, setIsPaused] = useState(false);
+  
+  // Auto-scrolling logic
+  useEffect(() => {
+    let scrollInterval: NodeJS.Timeout;
+    let currentScrollPosition = 0;
+    const itemWidth = 280; // Width of each item + horizontal margins
+    const maxOffset = SUGGESTED_PROMPTS.length * itemWidth;
+    
+    // Start auto-scrolling after a short delay
+    const timer = setTimeout(() => {
+      scrollInterval = setInterval(() => {
+        if (!isPaused) {
+          currentScrollPosition += 1; // Slower, smoother scrolling
+          
+          // Reset position when we've scrolled through the original set
+          if (currentScrollPosition >= maxOffset) {
+            currentScrollPosition = 0;
+            // Scroll back to the beginning without animation
+            flatListRef.current?.scrollToOffset({ offset: 0, animated: false });
+          } else {
+            // Smooth scrolling
+            flatListRef.current?.scrollToOffset({ 
+              offset: currentScrollPosition,
+              animated: false 
+            });
+          }
+        }
+      }, 20); // Update more frequently for smoother scrolling
+    }, 1500); // Start after 1.5 seconds
+    
+    return () => {
+      clearTimeout(timer);
+      clearInterval(scrollInterval);
+    };
+  }, [isPaused]);
+  
+  // Handle touch events to pause/resume scrolling
+  const handleTouchStart = () => setIsPaused(true);
+  const handleTouchEnd = () => setIsPaused(false);
+  
+  return (
+    <View 
+      style={styles.emptyStateContainer}
+      onTouchStart={handleTouchStart}
+      onTouchEnd={handleTouchEnd}
+    >
+      <Image
+        source={require('./images/MyDeviceAI-NoBG.png')}
+        style={styles.emptyStateLogo}
+      />
+      <Text style={styles.emptyStateTitle}>Welcome to MyDeviceAI</Text>
+      <Text style={styles.emptyStateSubtitle}>Turn on thinking mode and search mode to get more out of your queries!</Text>
+      
+      <FlatList
+        ref={flatListRef}
+        data={extendedPrompts}
+        keyExtractor={(item, index) => `prompt-${index}`}
+        renderItem={({ item }) => (
+          <TouchableOpacity 
+            style={styles.promptItem} 
+            onPress={() => onPromptPress(item)}
+          >
+            <Text style={styles.promptText}>{item}</Text>
+          </TouchableOpacity>
+        )}
+        horizontal={true}
+        showsHorizontalScrollIndicator={false}
+        decelerationRate="fast"
+        snapToAlignment="center"
+        snapToInterval={280} // Match the itemWidth for snap effect
+        contentContainerStyle={styles.promptsContainer}
+        bounces={false}
+        scrollEventThrottle={16}
+        onScrollBeginDrag={() => setIsPaused(true)}
+        onScrollEndDrag={() => setIsPaused(false)}
+      />
+    </View>
+  );
+};
 
 // Add this component for the typing indicator
 const TypingIndicator = () => {
@@ -136,6 +235,15 @@ const ChatUI: React.FC<ChatUIProps> = ({ historyId, onMenuPress, MenuIcon, navig
   const systemPrompt = useRef('');
   const appState = useRef(AppState.currentState);
   const contextManager = useRef(ContextManager.getInstance());
+
+  // Handle when a suggested prompt is selected
+  const handlePromptSelect = useCallback((prompt: string) => {
+    setInputText(prompt);
+    // Focus the input field
+    setTimeout(() => {
+      textInputRef.current?.focus();
+    }, 100);
+  }, []);
 
   useEffect(() => {
     initDatabase();
@@ -741,32 +849,36 @@ want to talk and share about personal feelings.
         </View>
       </View>
 
-      <ScrollView 
-        ref={scrollViewRef}
-        style={styles.messagesContainer}
-        contentContainerStyle={styles.scrollViewContent}
-        onScroll={handleScrollEvent}
-        scrollEventThrottle={16}
-      >
-        {messages.map(renderMessage)}
-        {isTyping && (
-          <View style={[styles.messageBubble, styles.aiMessage]}>
-            {currentResponse ? (
-              <>
-                {processThinkingContent(currentResponse)}
-                {(currentResponse.match(/<think>/g) || []).length > 
-                 (currentResponse.match(/<\/think>/g) || []).length && (
-                  <StreamingThinkingIndicator />
-                )}
-              </>
-            ) : (
-              <TypingIndicator />
-            )}
-          </View>
-        )}
-      </ScrollView>
+      {messages.length === 0 ? (
+        <EmptyState onPromptPress={handlePromptSelect} />
+      ) : (
+        <ScrollView 
+          ref={scrollViewRef}
+          style={styles.messagesContainer}
+          contentContainerStyle={styles.scrollViewContent}
+          onScroll={handleScrollEvent}
+          scrollEventThrottle={16}
+        >
+          {messages.map(renderMessage)}
+          {isTyping && (
+            <View style={[styles.messageBubble, styles.aiMessage]}>
+              {currentResponse ? (
+                <>
+                  {processThinkingContent(currentResponse)}
+                  {(currentResponse.match(/<think>/g) || []).length > 
+                   (currentResponse.match(/<\/think>/g) || []).length && (
+                    <StreamingThinkingIndicator />
+                  )}
+                </>
+              ) : (
+                <TypingIndicator />
+              )}
+            </View>
+          )}
+        </ScrollView>
+      )}
 
-      {showScrollButton && (
+      {showScrollButton && messages.length > 0 && (
         <TouchableOpacity 
           style={[
             styles.scrollToBottomButton,

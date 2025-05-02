@@ -4,7 +4,7 @@ import { RouteProp } from '@react-navigation/native';
 import { DrawerParamList } from '../App';
 import ChatUI from './ChatUI';
 import { Menu } from 'lucide-react-native';
-import { styles } from './Syles';
+import { styles } from './Styles';
 import { View } from 'react-native';
 
 type ChatScreenNavigationProp = DrawerNavigationProp<DrawerParamList, 'Chat'>;
