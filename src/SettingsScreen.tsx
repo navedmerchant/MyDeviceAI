@@ -190,9 +190,6 @@ const SettingsScreen: React.FC<Props> = ({ navigation }) => {
           <View style={styles.aboutContent}>
             <Text style={styles.aboutTitle}>MyDeviceAI</Text>
             <Text style={styles.versionText}>Version 1.1.0</Text>
-            <Text style={styles.aboutDescription}>
-              Built with Llama 3.2
-            </Text>
 
             <View style={styles.licenseSection}>
               <View style={styles.licenseItem}>
@@ -211,7 +208,7 @@ const SettingsScreen: React.FC<Props> = ({ navigation }) => {
 
             <View style={styles.copyrightSection}>
               <Text style={styles.copyrightText}>
-                © 2025 Naved Merchant. All rights reserved.
+                Built by Naved Merchant
               </Text>
             </View>
           </View>

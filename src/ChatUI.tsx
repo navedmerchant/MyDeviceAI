@@ -66,21 +66,75 @@ const SUGGESTED_PROMPTS = [
   "Create a meal plan for someone trying to eat healthier",
   "What's the difference between machine learning and AI?",
   "Give me 5 book recommendations based on popular science",
+  "Write a poem about the beauty of nature",
+  "How can I improve my public speaking skills?",
+  "Explain the basics of investing for beginners",
+  "What are the most promising renewable energy technologies?",
+  "Tell me about the history of artificial intelligence",
+  "What are some interesting philosophical paradoxes?",
+  "Help me draft a professional email requesting feedback",
+  "What would happen if humans could photosynthesize like plants?",
+  "Recommend some easy home workouts that don't require equipment",
+  "What are the key differences between various programming languages?",
+  "Explain how blockchain technology works",
+  "Write a creative story about time travel",
+  "What scientific discoveries might we make in the next 50 years?",
+  "How can I start a small vegetable garden at home?",
+  "Give me tips for improving my sleep quality",
+  "What are some effective techniques for memorization?",
+  "Explain the concept of mindfulness and how to practice it",
+  "How do I start learning a new language efficiently?",
+  "What advances in medicine are most exciting right now?",
+  "Write a dialogue between a human and an advanced AI from the year 2100",
+  "How can I improve my critical thinking skills?",
+  "Explain how the internet actually works",
+  "What are some interesting psychological experiments?",
+  "Create a fictional world with unique natural laws",
+  "What are the best strategies for negotiation?",
+  "How can I be more creative in my daily life?",
+  "What are the most fascinating space discoveries of the last decade?",
+  "Give me a crash course on music theory",
+  "Explain the concept of emotional intelligence",
+  "How do different cultures approach the concept of happiness?",
+  "What are the implications of advanced AI for society?",
+  "Help me understand the basics of quantum physics",
+  "What makes a good story? Tell me about narrative structure",
+  "How can I reduce my environmental impact?",
+  "Explain the psychology behind habit formation",
+  "What are some fascinating animal adaptations?",
+  "How can I improve my financial literacy?",
+  "Recommend some thought-provoking documentaries",
+  "Write a short screenplay about first contact with aliens",
+  "What are the ethical considerations of genetic engineering?",
+  "How can I become a better listener?",
+  "Explain the process of scientific discovery",
+  "What are the most beautiful mathematical concepts?",
+  "How can I overcome creative blocks?",
+  "Tell me about the history and cultural significance of tea",
+  "What would a human settlement on Mars look like?",
+  "How do our senses actually work?",
+  "What makes certain pieces of art valuable?",
+  "Help me understand the basics of nutrition science",
+  "What are some lesser-known historical events that changed the world?",
+  "How does machine translation work?",
+  "What life lessons can we learn from nature?",
+  "Explain the importance of biodiversity",
 ];
 
 // EmptyState component to show when there are no messages
 const EmptyState = ({ onPromptPress }: { onPromptPress: (prompt: string) => void }) => {
   const flatListRef = useRef<FlatList>(null);
-  // Create a larger dataset by duplicating prompts for "infinite" scrolling effect
-  const extendedPrompts = [...SUGGESTED_PROMPTS, ...SUGGESTED_PROMPTS, ...SUGGESTED_PROMPTS];
+  // For better performance, we'll use a window of prompts instead of duplicating all
+  const visiblePrompts = useRef([...SUGGESTED_PROMPTS]);
   const [isPaused, setIsPaused] = useState(false);
+  const [userScrollPos, setUserScrollPos] = useState(0);
   
   // Auto-scrolling logic
   useEffect(() => {
     let scrollInterval: NodeJS.Timeout;
-    let currentScrollPosition = 0;
+    let currentScrollPosition = userScrollPos;
     const itemWidth = 280; // Width of each item + horizontal margins
-    const maxOffset = SUGGESTED_PROMPTS.length * itemWidth;
+    const totalWidth = SUGGESTED_PROMPTS.length * itemWidth; // Total width of all items
     
     // Start auto-scrolling after a short delay
     const timer = setTimeout(() => {
@@ -88,18 +142,24 @@ const EmptyState = ({ onPromptPress }: { onPromptPress: (prompt: string) => void
         if (!isPaused) {
           currentScrollPosition += 1; // Slower, smoother scrolling
           
-          // Reset position when we've scrolled through the original set
-          if (currentScrollPosition >= maxOffset) {
-            currentScrollPosition = 0;
-            // Scroll back to the beginning without animation
-            flatListRef.current?.scrollToOffset({ offset: 0, animated: false });
-          } else {
-            // Smooth scrolling
-            flatListRef.current?.scrollToOffset({ 
-              offset: currentScrollPosition,
-              animated: false 
-            });
+          // Create circular scrolling effect
+          const actualPosition = currentScrollPosition % totalWidth;
+          
+          // Check if we need to update the visible window of prompts
+          // This creates an illusion of infinite scrolling with better performance
+          if (Math.floor(actualPosition / itemWidth) > SUGGESTED_PROMPTS.length - 10) {
+            // Approaching the end, append prompts from beginning to create seamless loop
+            visiblePrompts.current = [...SUGGESTED_PROMPTS, ...SUGGESTED_PROMPTS.slice(0, 15)];
+          } else if (actualPosition < 10 * itemWidth) {
+            // Near the beginning, reset to original list
+            visiblePrompts.current = [...SUGGESTED_PROMPTS];
           }
+          
+          // Smooth scrolling
+          flatListRef.current?.scrollToOffset({ 
+            offset: actualPosition,
+            animated: false 
+          });
         }
       }, 20); // Update more frequently for smoother scrolling
     }, 1500); // Start after 1.5 seconds
@@ -108,11 +168,18 @@ const EmptyState = ({ onPromptPress }: { onPromptPress: (prompt: string) => void
       clearTimeout(timer);
       clearInterval(scrollInterval);
     };
-  }, [isPaused]);
+  }, [isPaused, userScrollPos]);
   
   // Handle touch events to pause/resume scrolling
   const handleTouchStart = () => setIsPaused(true);
   const handleTouchEnd = () => setIsPaused(false);
+  
+  // Track scroll position
+  const handleScroll = (event: NativeSyntheticEvent<NativeScrollEvent>) => {
+    if (isPaused) {
+      setUserScrollPos(event.nativeEvent.contentOffset.x);
+    }
+  };
   
   return (
     <View 
@@ -129,7 +196,7 @@ const EmptyState = ({ onPromptPress }: { onPromptPress: (prompt: string) => void
       
       <FlatList
         ref={flatListRef}
-        data={extendedPrompts}
+        data={visiblePrompts.current}
         keyExtractor={(item, index) => `prompt-${index}`}
         renderItem={({ item }) => (
           <TouchableOpacity 
@@ -147,8 +214,19 @@ const EmptyState = ({ onPromptPress }: { onPromptPress: (prompt: string) => void
         contentContainerStyle={styles.promptsContainer}
         bounces={false}
         scrollEventThrottle={16}
+        onScroll={handleScroll}
         onScrollBeginDrag={() => setIsPaused(true)}
-        onScrollEndDrag={() => setIsPaused(false)}
+        onScrollEndDrag={() => {
+          // Small delay before resuming auto-scroll to allow momentum scrolling to settle
+          setTimeout(() => setIsPaused(false), 500);
+        }}
+        onMomentumScrollEnd={(event) => {
+          setUserScrollPos(event.nativeEvent.contentOffset.x);
+        }}
+        windowSize={10} // Optimize rendering for better performance
+        removeClippedSubviews={true} // Improve memory usage
+        maxToRenderPerBatch={8} // Limit batch rendering for smoother scrolling
+        initialNumToRender={6} // Start with fewer rendered items
       />
     </View>
   );
