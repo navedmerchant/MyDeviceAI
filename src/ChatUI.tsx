@@ -724,7 +724,7 @@ want to talk and share about personal feelings.
           </TouchableOpacity>
         </View>
         <Image 
-          source={require('./images/MyDeviceAI.png')}
+          source={require('./images/MyDeviceAI-NoBG.png')}
           style={styles.headerLogo}
         />
         <View style={styles.headerRightButtons}>

@@ -24,8 +24,8 @@ const styles = StyleSheet.create({
       gap: 5,
     },
     headerLogo: {
-      width: 40,
-      height: 40,
+      width: 32,
+      height: 32,
       resizeMode: 'contain',
     },
     headerTitle: {
