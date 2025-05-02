@@ -191,7 +191,7 @@ const EmptyState = ({ onPromptPress }: { onPromptPress: (prompt: string) => void
         source={require('./images/MyDeviceAI-NoBG.png')}
         style={styles.emptyStateLogo}
       />
-      <Text style={styles.emptyStateTitle}>Welcome to MyDeviceAI</Text>
+      <Text style={styles.emptyStateTitle}>MyDeviceAI</Text>
       <Text style={styles.emptyStateSubtitle}>Turn on thinking mode and search mode to get more out of your queries!</Text>
       
       <FlatList

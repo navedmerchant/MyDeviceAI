@@ -340,7 +340,7 @@ const styles = StyleSheet.create({
       borderWidth: 1,
       borderColor: '#444',
       width: 260,
-      minHeight: 90,
+      minHeight: 80,
       justifyContent: 'center',
       shadowColor: '#000',
       shadowOffset: { width: 0, height: 2 },
