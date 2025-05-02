@@ -121,11 +121,21 @@ const SUGGESTED_PROMPTS = [
   "Explain the importance of biodiversity",
 ];
 
+// Fisher-Yates shuffle algorithm
+const shuffleArray = <T,>(array: T[]): T[] => {
+  const shuffled = [...array];
+  for (let i = shuffled.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+  }
+  return shuffled;
+};
+
 // EmptyState component to show when there are no messages
 const EmptyState = ({ onPromptPress }: { onPromptPress: (prompt: string) => void }) => {
   const flatListRef = useRef<FlatList>(null);
   // For better performance, we'll use a window of prompts instead of duplicating all
-  const visiblePrompts = useRef([...SUGGESTED_PROMPTS]);
+  const visiblePrompts = useRef([...shuffleArray(SUGGESTED_PROMPTS)]);
   const [isPaused, setIsPaused] = useState(false);
   const [userScrollPos, setUserScrollPos] = useState(0);
   
@@ -149,10 +159,10 @@ const EmptyState = ({ onPromptPress }: { onPromptPress: (prompt: string) => void
           // This creates an illusion of infinite scrolling with better performance
           if (Math.floor(actualPosition / itemWidth) > SUGGESTED_PROMPTS.length - 10) {
             // Approaching the end, append prompts from beginning to create seamless loop
-            visiblePrompts.current = [...SUGGESTED_PROMPTS, ...SUGGESTED_PROMPTS.slice(0, 15)];
+            visiblePrompts.current = [...shuffleArray(SUGGESTED_PROMPTS), ...shuffleArray(SUGGESTED_PROMPTS.slice(0, 15))];
           } else if (actualPosition < 10 * itemWidth) {
             // Near the beginning, reset to original list
-            visiblePrompts.current = [...SUGGESTED_PROMPTS];
+            visiblePrompts.current = [...shuffleArray(SUGGESTED_PROMPTS)];
           }
           
           // Smooth scrolling
@@ -690,6 +700,9 @@ want to talk and share about personal feelings.
         )
         chatContext.current = chatContext.current + text;
         const displayText = text.replace("<|im_end|>", "")
+          .replace(/<think>/g, "") // Remove opening think tags
+          .replace(/<\/think>/g, "") // Remove closing think tags
+          .trim();
         addMessage(displayText, false);
       } catch (error) {
         console.error('Error generating AI response:', error);

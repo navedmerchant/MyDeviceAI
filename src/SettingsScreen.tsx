@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -54,7 +54,7 @@ const SettingsScreen: React.FC<Props> = ({ navigation }) => {
   const [monthlyQueries, setMonthlyQueries] = useState('0');
 
   // Load settings when component mounts
-  React.useEffect(() => {
+  useEffect(() => {
     loadSettings();
   }, []);
 
@@ -180,6 +180,12 @@ const SettingsScreen: React.FC<Props> = ({ navigation }) => {
             placeholderTextColor="#666"
             secureTextEntry={true}
           />
+          <TouchableOpacity 
+            style={styles.linkContainer}
+            onPress={() => Linking.openURL('https://navedmerchant.github.io/brave_search.html')}
+          >
+            <Text style={styles.linkText}>Need an API key? Click here for setup instructions</Text>
+          </TouchableOpacity>
           <Text style={styles.description}>
             Monthly queries used: {monthlyQueries}/2000
           </Text>
@@ -385,6 +391,10 @@ const styles = StyleSheet.create({
   navigationButtonText: {
     color: '#fff',
     fontSize: 16,
+  },
+  linkContainer: {
+    marginTop: 8,
+    marginBottom: 16,
   },
 });
 
