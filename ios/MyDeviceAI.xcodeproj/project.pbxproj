@@ -16,7 +16,7 @@
 		7699B88040F8A987B510C191 /* libPods-MyDeviceAI-MyDeviceAITests.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 19F6CBCC0A4E27FBF8BF4A61 /* libPods-MyDeviceAI-MyDeviceAITests.a */; };
 		81AB9BB82411601600AC10FF /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 81AB9BB72411601600AC10FF /* LaunchScreen.storyboard */; };
 		AF470C8A2D90783B002C274D /* bge-small-en-v1.5-q4_k_m.gguf in Resources */ = {isa = PBXBuildFile; fileRef = AF470C892D90783B002C274D /* bge-small-en-v1.5-q4_k_m.gguf */; };
-		AF8AC7472DC32586005F2ABE /* Qwen_Qwen3-1.7B-Q4_K_M.gguf in Resources */ = {isa = PBXBuildFile; fileRef = AF8AC7462DC32586005F2ABE /* Qwen_Qwen3-1.7B-Q4_K_M.gguf */; };
+		AFBC2ED02DC73033002C317F /* Qwen3-1.7B-Q4_K_M.gguf in Resources */ = {isa = PBXBuildFile; fileRef = AFBC2ECF2DC73033002C317F /* Qwen3-1.7B-Q4_K_M.gguf */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -49,7 +49,7 @@
 		81AB9BB72411601600AC10FF /* LaunchScreen.storyboard */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = file.storyboard; name = LaunchScreen.storyboard; path = MyDeviceAI/LaunchScreen.storyboard; sourceTree = "<group>"; };
 		89C6BE57DB24E9ADA2F236DE /* Pods-MyDeviceAI-MyDeviceAITests.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-MyDeviceAI-MyDeviceAITests.release.xcconfig"; path = "Target Support Files/Pods-MyDeviceAI-MyDeviceAITests/Pods-MyDeviceAI-MyDeviceAITests.release.xcconfig"; sourceTree = "<group>"; };
 		AF470C892D90783B002C274D /* bge-small-en-v1.5-q4_k_m.gguf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "bge-small-en-v1.5-q4_k_m.gguf"; sourceTree = "<group>"; };
-		AF8AC7462DC32586005F2ABE /* Qwen_Qwen3-1.7B-Q4_K_M.gguf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "Qwen_Qwen3-1.7B-Q4_K_M.gguf"; sourceTree = "<group>"; };
+		AFBC2ECF2DC73033002C317F /* Qwen3-1.7B-Q4_K_M.gguf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "Qwen3-1.7B-Q4_K_M.gguf"; sourceTree = "<group>"; };
 		ED297162215061F000B7C4FE /* JavaScriptCore.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = JavaScriptCore.framework; path = System/Library/Frameworks/JavaScriptCore.framework; sourceTree = SDKROOT; };
 /* End PBXFileReference section */
 
@@ -100,7 +100,7 @@
 				81AB9BB72411601600AC10FF /* LaunchScreen.storyboard */,
 				13B07FB71A68108700A75B9A /* main.m */,
 				AF470C892D90783B002C274D /* bge-small-en-v1.5-q4_k_m.gguf */,
-				AF8AC7462DC32586005F2ABE /* Qwen_Qwen3-1.7B-Q4_K_M.gguf */,
+				AFBC2ECF2DC73033002C317F /* Qwen3-1.7B-Q4_K_M.gguf */,
 				13B07FB81A68108700A75B9A /* PrivacyInfo.xcprivacy */,
 				197B32EDAFFB1874ECEB57EB /* PrivacyInfo.xcprivacy */,
 			);
@@ -254,9 +254,9 @@
 			files = (
 				81AB9BB82411601600AC10FF /* LaunchScreen.storyboard in Resources */,
 				13B07FBF1A68108700A75B9A /* Images.xcassets in Resources */,
+				AFBC2ED02DC73033002C317F /* Qwen3-1.7B-Q4_K_M.gguf in Resources */,
 				AF470C8A2D90783B002C274D /* bge-small-en-v1.5-q4_k_m.gguf in Resources */,
 				101F9BCBF74A0ED21E9B7A3A /* PrivacyInfo.xcprivacy in Resources */,
-				AF8AC7472DC32586005F2ABE /* Qwen_Qwen3-1.7B-Q4_K_M.gguf in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

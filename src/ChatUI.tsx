@@ -528,19 +528,21 @@ want to talk and share about personal feelings.
   };
 
   const rebuildChatContext = (messages: Message[]) => {
-    const userHeader = `<|im_start|>user\n<|im_end|>`;
+    const userHeader = `<|im_start|>user\n`;
     const assistantHeader = `<|im_start|>assistant\n`;
 
     const endToken = `<|im_end|>`;
 
     for (const idx in messages) {
       const message = messages[idx];
+      // Strip out thinking sections from the message text
+      const textWithoutThinking = message.text.replace(/<think>.*?<\/think>/gs, '').trim();
       if (idx == '0') {
-        chatContext.current += systemPrompt.current + userHeader + message.text + endToken;
+        chatContext.current += systemPrompt.current + userHeader + textWithoutThinking + endToken;
       } else if (message.isUser) {
-        chatContext.current += userHeader + message.text + endToken;
+        chatContext.current += userHeader + textWithoutThinking + endToken;
       } else {
-        chatContext.current += assistantHeader + message.text + endToken;
+        chatContext.current += assistantHeader + textWithoutThinking + endToken;
       }
     }
   }
@@ -689,8 +691,11 @@ want to talk and share about personal feelings.
         const { text, timings } = await contextRef.current.completion(
           {
             prompt: chatContext.current,
-            n_predict: 2048,
-            temperature: 0.7,
+            n_predict: 4096,
+            temperature: thinkingModeEnabled ? 0.6 : 0.7,
+            top_p: thinkingModeEnabled ? 0.95 : 0.8,
+            top_k: 20,
+            min_p: 0,
           },
           (data: { token: string }) => {
             if (data.token == "<|im_end|>") {
@@ -701,7 +706,9 @@ want to talk and share about personal feelings.
             setCurrentResponse(prev => prev + data.token);
           },
         )
-        chatContext.current = chatContext.current + text;
+        // Strip out thinking sections before adding to context
+        const textWithoutThinking = text.replace(/<think>.*?<\/think>/gs, '').trim();
+        chatContext.current = chatContext.current + textWithoutThinking;
         const displayText = text.replace("<|im_end|>", "")
           .trim();
         addMessage(displayText, false);
