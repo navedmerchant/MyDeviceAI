@@ -1,4 +1,4 @@
-import { LlamaContext, initLlama, releaseAllLlama } from 'llama.rn';
+import { LlamaContext, initLlama, releaseAllLlama } from 'cui-llama.rn';
 import React, { useState, useCallback, useRef, useEffect } from 'react';
 import Markdown from 'react-native-markdown-display';
 import { showToast } from './utils/ToastUtils';
@@ -24,7 +24,7 @@ import {
   Image,
   FlatList,
 } from 'react-native';
-import { Send, Square, CirclePlus, Search, Settings, ArrowDown, Brain, Copy, Share as ShareIcon } from 'lucide-react-native';
+import { Send, Square, CirclePlus, Search, Settings, ArrowDown, Brain, Download } from 'lucide-react-native';
 import { getModelParamsForDevice } from './utils/Utils';
 import { styles, markdownStyles, popoverStyles, menuOptionStyles } from './Styles';
 import { Message } from './model/Message';
@@ -47,6 +47,9 @@ import TypingIndicator from './components/TypingIndicator';
 import ThinkingContent from './components/ThinkingContent';
 import StreamingThinkingIndicator from './components/StreamingThinkingIndicator';
 import ThumbnailGallery from './components/ThumbnailGallery';
+import RNFS from 'react-native-fs';
+import * as Progress from 'react-native-progress';
+import { MODEL_NAMES, MODEL_URLS } from './constants/Models';
 
 type ChatScreenNavigationProp = DrawerNavigationProp<DrawerParamList, 'Chat'>;
 
@@ -57,6 +60,263 @@ interface ChatUIProps {
   navigation: ChatScreenNavigationProp;
   setParentIsTyping: (isTyping: boolean) => void;
 }
+
+interface DownloadProgressData {
+  bytesWritten: number;
+  contentLength: number;
+  jobId: number;
+}
+
+// List of suggested prompts
+const SUGGESTED_PROMPTS = [
+  "Tell me about yourself. What can you do?",
+  "Write a short story about a robot learning to paint",
+  "Explain quantum computing to a 10-year-old",
+  "What are some creative ways to stay productive?",
+  "Help me plan a weekend trip",
+  "Create a meal plan for someone trying to eat healthier",
+  "What's the difference between machine learning and AI?",
+  "Give me 5 book recommendations based on popular science",
+  "Write a poem about the beauty of nature",
+  "How can I improve my public speaking skills?",
+  "Explain the basics of investing for beginners",
+  "What are the most promising renewable energy technologies?",
+  "Tell me about the history of artificial intelligence",
+  "What are some interesting philosophical paradoxes?",
+  "Help me draft a professional email requesting feedback",
+  "What would happen if humans could photosynthesize like plants?",
+  "Recommend some easy home workouts that don't require equipment",
+  "What are the key differences between various programming languages?",
+  "Explain how blockchain technology works",
+  "Write a creative story about time travel",
+  "What scientific discoveries might we make in the next 50 years?",
+  "How can I start a small vegetable garden at home?",
+  "Give me tips for improving my sleep quality",
+  "What are some effective techniques for memorization?",
+  "Explain the concept of mindfulness and how to practice it",
+  "How do I start learning a new language efficiently?",
+  "What advances in medicine are most exciting right now?",
+  "Write a dialogue between a human and an advanced AI from the year 2100",
+  "How can I improve my critical thinking skills?",
+  "Explain how the internet actually works",
+  "What are some interesting psychological experiments?",
+  "Create a fictional world with unique natural laws",
+  "What are the best strategies for negotiation?",
+  "How can I be more creative in my daily life?",
+  "What are the most fascinating space discoveries of the last decade?",
+  "Give me a crash course on music theory",
+  "Explain the concept of emotional intelligence",
+  "How do different cultures approach the concept of happiness?",
+  "What are the implications of advanced AI for society?",
+  "Help me understand the basics of quantum physics",
+  "What makes a good story? Tell me about narrative structure",
+  "How can I reduce my environmental impact?",
+  "Explain the psychology behind habit formation",
+  "What are some fascinating animal adaptations?",
+  "How can I improve my financial literacy?",
+  "Recommend some thought-provoking documentaries",
+  "Write a short screenplay about first contact with aliens",
+  "What are the ethical considerations of genetic engineering?",
+  "How can I become a better listener?",
+  "Explain the process of scientific discovery",
+  "What are the most beautiful mathematical concepts?",
+  "How can I overcome creative blocks?",
+  "Tell me about the history and cultural significance of tea",
+  "What would a human settlement on Mars look like?",
+  "How do our senses actually work?",
+  "What makes certain pieces of art valuable?",
+  "Help me understand the basics of nutrition science",
+  "What are some lesser-known historical events that changed the world?",
+  "How does machine translation work?",
+  "What life lessons can we learn from nature?",
+  "Explain the importance of biodiversity",
+];
+
+// Fisher-Yates shuffle algorithm
+const shuffleArray = <T,>(array: T[]): T[] => {
+  const shuffled = [...array];
+  for (let i = shuffled.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+  }
+  return shuffled;
+};
+
+// Pre-shuffle the prompts once when the file loads
+const SHUFFLED_PROMPTS = shuffleArray([...SUGGESTED_PROMPTS]);
+
+// EmptyState component to show when there are no messages
+const EmptyState = ({ onPromptPress }: { onPromptPress: (prompt: string) => void }) => {
+  const flatListRef = useRef<FlatList>(null);
+  // Use the pre-shuffled prompts
+  const visiblePrompts = useRef([...SHUFFLED_PROMPTS]);
+  const [isPaused, setIsPaused] = useState(false);
+  const [userScrollPos, setUserScrollPos] = useState(0);
+  
+  // Auto-scrolling logic
+  useEffect(() => {
+    let scrollInterval: NodeJS.Timeout;
+    let currentScrollPosition = userScrollPos;
+    const itemWidth = 280; // Width of each item + horizontal margins
+    const totalWidth = SUGGESTED_PROMPTS.length * itemWidth; // Total width of all items
+    
+    // Start auto-scrolling after a short delay
+    const timer = setTimeout(() => {
+      scrollInterval = setInterval(() => {
+        if (!isPaused) {
+          currentScrollPosition += 1; // Slower, smoother scrolling
+          
+          // Create circular scrolling effect
+          const actualPosition = currentScrollPosition % totalWidth;
+          
+          // Check if we need to update the visible window of prompts
+          // This creates an illusion of infinite scrolling with better performance
+          if (Math.floor(actualPosition / itemWidth) > SUGGESTED_PROMPTS.length - 10) {
+            // Approaching the end, append prompts from beginning to create seamless loop
+            visiblePrompts.current = [...SHUFFLED_PROMPTS, ...SHUFFLED_PROMPTS.slice(0, 15)];
+          } else if (actualPosition < 10 * itemWidth) {
+            // Near the beginning, reset to original list
+            visiblePrompts.current = [...SHUFFLED_PROMPTS];
+          }
+          
+          // Smooth scrolling
+          flatListRef.current?.scrollToOffset({ 
+            offset: actualPosition,
+            animated: false 
+          });
+        }
+      }, 20); // Update more frequently for smoother scrolling
+    }, 1500); // Start after 1.5 seconds
+    
+    return () => {
+      clearTimeout(timer);
+      clearInterval(scrollInterval);
+    };
+  }, [isPaused, userScrollPos]);
+  
+  // Handle touch events to pause/resume scrolling
+  const handleTouchStart = () => setIsPaused(true);
+  const handleTouchEnd = () => setIsPaused(false);
+  
+  // Track scroll position
+  const handleScroll = (event: NativeSyntheticEvent<NativeScrollEvent>) => {
+    if (isPaused) {
+      setUserScrollPos(event.nativeEvent.contentOffset.x);
+    }
+  };
+  
+  return (
+    <View 
+      style={styles.emptyStateContainer}
+      onTouchStart={handleTouchStart}
+      onTouchEnd={handleTouchEnd}
+    >
+      <Image
+        source={require('./images/MyDeviceAI-NoBG.png')}
+        style={styles.emptyStateLogo}
+      />
+      <Text style={styles.emptyStateTitle}>MyDeviceAI</Text>
+      <Text style={styles.emptyStateSubtitle}>Turn on thinking mode and search mode to get more out of your queries!</Text>
+      
+      <FlatList
+        ref={flatListRef}
+        data={visiblePrompts.current}
+        keyExtractor={(item, index) => `prompt-${index}`}
+        renderItem={({ item }) => (
+          <TouchableOpacity 
+            style={styles.promptItem} 
+            onPress={() => onPromptPress(item)}
+          >
+            <Text style={styles.promptText}>{item}</Text>
+          </TouchableOpacity>
+        )}
+        horizontal={true}
+        showsHorizontalScrollIndicator={false}
+        decelerationRate="fast"
+        snapToAlignment="center"
+        snapToInterval={280} // Match the itemWidth for snap effect
+        contentContainerStyle={styles.promptsContainer}
+        bounces={false}
+        scrollEventThrottle={16}
+        onScroll={handleScroll}
+        onScrollBeginDrag={() => setIsPaused(true)}
+        onScrollEndDrag={() => {
+          // Small delay before resuming auto-scroll to allow momentum scrolling to settle
+          setTimeout(() => setIsPaused(false), 500);
+        }}
+        onMomentumScrollEnd={(event) => {
+          setUserScrollPos(event.nativeEvent.contentOffset.x);
+        }}
+        windowSize={10} // Optimize rendering for better performance
+        removeClippedSubviews={true} // Improve memory usage
+        maxToRenderPerBatch={8} // Limit batch rendering for smoother scrolling
+        initialNumToRender={6} // Start with fewer rendered items
+      />
+    </View>
+  );
+};
+
+// Add this component for the typing indicator
+const TypingIndicator = () => {
+  const [dots, setDots] = useState('');
+  
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setDots(prev => {
+        if (prev.length >= 3) return '';
+        return prev + '.';
+      });
+    }, 500);
+    
+    return () => clearInterval(interval);
+  }, []);
+  
+  return (
+    <Text style={{ color: '#fff', opacity: 0.7 }}>
+      Thinking{dots}
+    </Text>
+  );
+};
+
+// Add this component for collapsible thinking content
+const ThinkingContent = ({ content }: { content: string }) => {
+  const [isExpanded, setIsExpanded] = useState(false);
+  
+  // Don't render anything if content is empty or only whitespace
+  if (!content || !content.trim()) {
+    return null;
+  }
+  
+  return (
+    <View style={styles.thinkingContainer}>
+      <TouchableOpacity 
+        style={styles.thinkingHeader} 
+        onPress={() => setIsExpanded(!isExpanded)}
+      >
+        <Text style={styles.thinkingHeaderText}>
+          {isExpanded ? '🤔 Hide Thinking Process' : '🤔 Show Thinking Process'}
+        </Text>
+      </TouchableOpacity>
+      {isExpanded && (
+        <View style={styles.thinkingContent}>
+          <Markdown style={markdownStyles}>{content}</Markdown>
+        </View>
+      )}
+    </View>
+  );
+};
+
+// Add this component for the thinking indicator during streaming
+const StreamingThinkingIndicator = () => (
+  <View style={styles.streamingThinkingIndicator}>
+    <Text style={styles.streamingThinkingText}></Text>
+  </View>
+);
+
+const MODEL_DIR = Platform.select({
+  ios: `${RNFS.DocumentDirectoryPath}/model`,
+  android: `${RNFS.DocumentDirectoryPath}/model`,
+}) as string;
 
 const ChatUI: React.FC<ChatUIProps> = ({ historyId, onMenuPress, MenuIcon, navigation, setParentIsTyping }) => {
   const [messages, setMessages] = useState<Message[]>([]);
@@ -73,6 +333,15 @@ const ChatUI: React.FC<ChatUIProps> = ({ historyId, onMenuPress, MenuIcon, navig
   const [showScrollButton, setShowScrollButton] = useState(false);
   const [keyboardOffset, setKeyboardOffset] = useState(0);
   const [expandedImage, setExpandedImage] = useState<string | null>(null);
+  const [showModelRequirementScreen, setShowModelRequirementScreen] = useState(false);
+  
+  // Add new state variables for model download
+  const [modelStatus, setModelStatus] = useState<'default' | 'downloaded' | 'not_downloaded'>('not_downloaded');
+  const [embeddingStatus, setEmbeddingStatus] = useState<'default' | 'downloaded' | 'not_downloaded'>('not_downloaded');
+  const [isDownloading, setIsDownloading] = useState(false);
+  const [isEmbeddingDownloading, setIsEmbeddingDownloading] = useState(false);
+  const [modelDownloadProgress, setModelDownloadProgress] = useState(0);
+  const [embeddingDownloadProgress, setEmbeddingDownloadProgress] = useState(0);
 
   const chatContext = useRef('');
   const scrollViewRef = useRef<ScrollView>(null);
@@ -82,6 +351,193 @@ const ChatUI: React.FC<ChatUIProps> = ({ historyId, onMenuPress, MenuIcon, navig
   const systemPrompt = useRef('');
   const appState = useRef(AppState.currentState);
   const contextManager = useRef(ContextManager.getInstance());
+
+  // Update useEffect to check model status
+  useEffect(() => {
+    const modelParams = getModelParamsForDevice();
+    if (modelParams == null) {
+      setUnsupportedDevice(true);
+      return;
+    }
+
+    // Check model status on mount for Android
+    if (Platform.OS === 'android') {
+      checkAndroidModelStatus();
+    }
+  }, []);
+
+  // Add function to check Android model status
+  const checkAndroidModelStatus = async () => {
+    try {
+      const modelPath = `${MODEL_DIR}/${MODEL_NAMES.QWEN_MODEL}`;
+      const embeddingPath = `${MODEL_DIR}/${MODEL_NAMES.BGE_EMBEDDING_MODEL}`;
+      
+      const modelExists = await RNFS.exists(modelPath);
+      const embeddingExists = await RNFS.exists(embeddingPath);
+      
+      setShowModelRequirementScreen(!modelExists || !embeddingExists);
+    } catch (error) {
+      console.error('Error checking model status:', error);
+      setShowModelRequirementScreen(true);
+    }
+  };
+
+  // Add ModelRequirementScreen component
+  const ModelRequirementScreen = () => (
+    <View style={styles.modelRequirementContainer}>
+      <Text style={styles.modelRequirementTitle}>Models Required</Text>
+      <Text style={styles.modelRequirementText}>
+        To use MyDeviceAI on Android, you need to download the required AI models first.
+      </Text>
+      
+      <View style={styles.modelSection}>
+        <Text style={styles.modelTypeTitle}>Main Language Model</Text>
+        {modelStatus === 'not_downloaded' && !isDownloading && (
+          <TouchableOpacity 
+            style={styles.downloadButton}
+            onPress={downloadModel}
+          >
+            <Download color="#fff" size={20} />
+            <Text style={styles.downloadButtonText}>Download Model (1GB)</Text>
+          </TouchableOpacity>
+        )}
+
+        {isDownloading && (
+          <View style={styles.downloadProgress}>
+            <Progress.Bar 
+              progress={modelDownloadProgress} 
+              width={200} 
+              color="#007AFF"
+            />
+            <Text style={styles.downloadProgressText}>
+              {Math.round(modelDownloadProgress * 100)}% Downloaded
+            </Text>
+          </View>
+        )}
+
+        {modelStatus === 'downloaded' && !isDownloading && (
+          <View style={styles.modelInfo}>
+            <Text style={styles.modelInfoText}>Main model installed and ready to use</Text>
+          </View>
+        )}
+
+        <View style={styles.modelDivider} />
+
+        <Text style={styles.modelTypeTitle}>Embedding Model</Text>
+        {embeddingStatus === 'not_downloaded' && !isEmbeddingDownloading && (
+          <TouchableOpacity 
+            style={styles.downloadButton}
+            onPress={downloadEmbedding}
+          >
+            <Download color="#fff" size={20} />
+            <Text style={styles.downloadButtonText}>Download Embedding Model (85MB)</Text>
+          </TouchableOpacity>
+        )}
+
+        {isEmbeddingDownloading && (
+          <View style={styles.downloadProgress}>
+            <Progress.Bar 
+              progress={embeddingDownloadProgress} 
+              width={200} 
+              color="#007AFF"
+            />
+            <Text style={styles.downloadProgressText}>
+              {Math.round(embeddingDownloadProgress * 100)}% Downloaded
+            </Text>
+          </View>
+        )}
+
+        {embeddingStatus === 'downloaded' && !isEmbeddingDownloading && (
+          <View style={styles.modelInfo}>
+            <Text style={styles.modelInfoText}>Embedding model installed and ready to use</Text>
+          </View>
+        )}
+      </View>
+    </View>
+  );
+
+  // Update the model download completion handlers
+  const downloadModel = async () => {
+    if (Platform.OS === 'ios') return;
+
+    const modelUrl = MODEL_URLS.QWEN_MODEL;
+    const modelPath = `${MODEL_DIR}/${MODEL_NAMES.QWEN_MODEL}`;
+    
+    try {
+      setIsDownloading(true);
+      setModelDownloadProgress(0);
+
+      await RNFS.mkdir(MODEL_DIR);
+
+      const { promise, jobId } = RNFS.downloadFile({
+        fromUrl: modelUrl,
+        toFile: modelPath,
+        progress: (data: DownloadProgressData) => {
+          const progress = data.bytesWritten / data.contentLength;
+          setModelDownloadProgress(progress);
+        },
+        background: true,
+        progressDivider: 1
+      });
+
+      await promise;
+      setModelStatus('downloaded');
+      checkAndroidModelStatus();
+      
+      // Check if both models are downloaded
+      const embeddingExists = await RNFS.exists(`${MODEL_DIR}/${MODEL_NAMES.BGE_EMBEDDING_MODEL}`);
+      if (embeddingExists) {
+        console.log('Both models downloaded, initializing...');
+        loadModel();
+        await contextManager.current.initialize();
+      }
+    } catch (error) {
+      console.error('Error downloading model:', error);
+    } finally {
+      setIsDownloading(false);
+    }
+  };
+
+  const downloadEmbedding = async () => {
+    if (Platform.OS === 'ios') return;
+
+    const embeddingUrl = MODEL_URLS.BGE_EMBEDDING_MODEL;
+    const embeddingPath = `${MODEL_DIR}/${MODEL_NAMES.BGE_EMBEDDING_MODEL}`;
+    
+    try {
+      setIsEmbeddingDownloading(true);
+      setEmbeddingDownloadProgress(0);
+
+      await RNFS.mkdir(MODEL_DIR);
+
+      const { promise, jobId } = RNFS.downloadFile({
+        fromUrl: embeddingUrl,
+        toFile: embeddingPath,
+        progress: (data: DownloadProgressData) => {
+          const progress = data.bytesWritten / data.contentLength;
+          setEmbeddingDownloadProgress(progress);
+        },
+        background: true,
+        progressDivider: 1
+      });
+
+      await promise;
+      setEmbeddingStatus('downloaded');
+      checkAndroidModelStatus();
+      
+      // Check if both models are downloaded
+      const modelExists = await RNFS.exists(`${MODEL_DIR}/${MODEL_NAMES.QWEN_MODEL}`);
+      if (modelExists) {
+        console.log('Both models downloaded, initializing...');
+        loadModel();
+        await contextManager.current.initialize();
+      }
+    } catch (error) {
+      console.error('Error downloading embedding model:', error);
+    } finally {
+      setIsEmbeddingDownloading(false);
+    }
+  };
 
   // Handle when a suggested prompt is selected
   const handlePromptSelect = useCallback((prompt: string) => {
@@ -114,6 +570,18 @@ const ChatUI: React.FC<ChatUIProps> = ({ historyId, onMenuPress, MenuIcon, navig
     // Initialize context manager when component mounts
     const initContextManager = async () => {
       try {
+        // Check if model exists on Android
+        if (Platform.OS === 'android') {
+          const modelPath = `${MODEL_DIR}/${MODEL_NAMES.QWEN_MODEL}`;
+          const embeddingPath = `${MODEL_DIR}/${MODEL_NAMES.BGE_EMBEDDING_MODEL}`;
+          const modelExists = await RNFS.exists(modelPath);
+          const embeddingExists = await RNFS.exists(embeddingPath);
+          
+          if (!modelExists || !embeddingExists) {
+            console.log('Models not downloaded yet, skipping initialization');
+            return;
+          }
+        }
         await contextManager.current.initialize();
       } catch (error) {
         console.error('Error initializing context manager:', error);
@@ -234,15 +702,33 @@ want to talk and share about personal feelings.
     }
 
     const subscription = AppState.addEventListener('change', nextAppState => {
+      console.log('nextAppState:', nextAppState);
       if (
-        appState.current.match(/inactive|background/) &&
         nextAppState === 'active'
       ) {
-        loadModel();
-        // Initialize context manager
-        contextManager.current.initialize().catch(error => {
-          console.error('Error initializing context manager:', error);
-        });
+        console.log('App has come to the foreground!');
+        // Check if model exists on Android before loading
+        if (Platform.OS === 'android') {
+          RNFS.exists(`${MODEL_DIR}/${MODEL_NAMES.QWEN_MODEL}`).then(modelExists => {
+            RNFS.exists(`${MODEL_DIR}/${MODEL_NAMES.BGE_EMBEDDING_MODEL}`).then(embeddingExists => {
+              if (modelExists && embeddingExists) {
+                loadModel();
+                // Initialize context manager
+                contextManager.current.initialize().catch(error => {
+                  console.error('Error initializing context manager:', error);
+                });
+              } else {
+                console.log('Models not downloaded yet, skipping initialization');
+              }
+            });
+          });
+        } else {
+          loadModel();
+          // Initialize context manager
+          contextManager.current.initialize().catch(error => {
+            console.error('Error initializing context manager:', error);
+          });
+        }
       } else if (
         appState.current === 'active' &&
         nextAppState.match(/inactive|background/)
@@ -262,10 +748,23 @@ want to talk and share about personal feelings.
 
     return () => {
       subscription.remove();
-      unloadModel();
-      contextManager.current.unloadModel().catch(error => {
-        console.error('Error unloading context manager:', error);
-      });
+      if (Platform.OS === 'android') {
+        RNFS.exists(`${MODEL_DIR}/${MODEL_NAMES.QWEN_MODEL}`).then(modelExists => {
+          RNFS.exists(`${MODEL_DIR}/${MODEL_NAMES.BGE_EMBEDDING_MODEL}`).then(embeddingExists => {
+            if (modelExists && embeddingExists) {
+              unloadModel();
+              contextManager.current.unloadModel().catch(error => {
+                console.error('Error unloading context manager:', error);
+              });
+            }
+          });
+        });
+      } else {
+        unloadModel();
+        contextManager.current.unloadModel().catch(error => {
+          console.error('Error unloading context manager:', error);
+        });
+      }
     };
   }, []);
 
@@ -700,10 +1199,17 @@ want to talk and share about personal feelings.
     )
   }
 
+  // Add model requirement screen check
+  if (Platform.OS === 'android' && showModelRequirementScreen) {
+    return <ModelRequirementScreen />;
+  }
+
   return (
     <KeyboardAvoidingView 
-      style={styles.container} 
-      behavior={Platform.OS === "ios" ? "padding" : "height"}
+      style={[
+        styles.container
+      ]} 
+      behavior={Platform.OS === "ios" ? "padding" : undefined}
     >
       <StatusBar barStyle="light-content" />
       

@@ -1,5 +1,9 @@
-import { LlamaContext, initLlama, releaseAllLlama } from 'llama.rn';
+import { LlamaContext, initLlama, releaseAllLlama } from 'cui-llama.rn';
 import * as DatabaseHelper from '../db/DatabaseHelper';
+import { Platform } from "react-native";
+import DeviceInfo from "react-native-device-info";
+import RNFS from 'react-native-fs';
+import { MODEL_NAMES } from '../constants/Models';
 
 const EMBEDDING_DIMENSIONS = 384; // BGE small model dimension
 
@@ -53,10 +57,17 @@ class ContextManager {
 
   private async loadModel(): Promise<void> {
     try {
+      const modelPath = Platform.OS === 'ios' 
+        ? 'file://' + MODEL_NAMES.BGE_EMBEDDING_MODEL
+        : `${RNFS.DocumentDirectoryPath}/model/${MODEL_NAMES.BGE_EMBEDDING_MODEL}`;
+
+      const deviceId = DeviceInfo.getDeviceId();
+      console.log(`deviceId: ${deviceId}`);
+
       // Initialize Llama model
       this.model = await initLlama({
-        model: 'file://bge-small-en-v1.5-q4_k_m.gguf', // embedding-specific model
-        is_model_asset: true,
+        model: modelPath,
+        is_model_asset: Platform.OS === 'ios',
         n_ctx: 512,  // smaller context for embeddings
         n_gpu_layers: 0, // CPU only for embeddings
         embedding: true // enable embedding mode

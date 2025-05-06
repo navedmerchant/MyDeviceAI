@@ -9,11 +9,25 @@ import {
   KeyboardAvoidingView,
   Platform,
   Linking,
+  ActivityIndicator,
 } from 'react-native';
-import { ChevronLeft, ChevronRight, Cog, Settings } from 'lucide-react-native';
+import { ChevronLeft, ChevronRight, Cog, Settings, Download } from 'lucide-react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { DrawerNavigationProp } from '@react-navigation/drawer';
+<<<<<<< HEAD:src/screens/SettingsScreen.tsx
 import { DrawerParamList } from '../../App';
+=======
+import { DrawerParamList } from '../App';
+import RNFS from 'react-native-fs';
+import * as Progress from 'react-native-progress';
+import { MODEL_NAMES, MODEL_URLS } from './constants/Models';
+
+interface DownloadProgressData {
+  bytesWritten: number;
+  contentLength: number;
+  jobId: number;
+}
+>>>>>>> baf273f (Android Support):src/SettingsScreen.tsx
 
 type SettingsScreenNavigationProp = DrawerNavigationProp<DrawerParamList, 'Settings'>;
 
@@ -50,13 +64,131 @@ const addMetaTags = (prompt: string): string => {
 const SettingsScreen: React.FC<Props> = ({ navigation }) => {
   const [systemPrompt, setSystemPrompt] = useState('');
   const [historyDays, setHistoryDays] = useState('30');
+<<<<<<< HEAD:src/screens/SettingsScreen.tsx
   // const [braveApiKey, setBraveApiKey] = useState(''); // Commented out
   // const [monthlyQueries, setMonthlyQueries] = useState('0'); // Commented out
+=======
+  const [braveApiKey, setBraveApiKey] = useState('');
+  const [monthlyQueries, setMonthlyQueries] = useState('0');
+  const [modelDownloadProgress, setModelDownloadProgress] = useState(0);
+  const [embeddingDownloadProgress, setEmbeddingDownloadProgress] = useState(0);
+  const [isDownloading, setIsDownloading] = useState(false);
+  const [isEmbeddingDownloading, setIsEmbeddingDownloading] = useState(false);
+  const [modelStatus, setModelStatus] = useState<'default' | 'downloaded' | 'not_downloaded'>('not_downloaded');
+  const [embeddingStatus, setEmbeddingStatus] = useState<'default' | 'downloaded' | 'not_downloaded'>('not_downloaded');
+
+  const MODEL_DIR = Platform.select({
+    ios: `${RNFS.DocumentDirectoryPath}/model`,
+    android: `${RNFS.DocumentDirectoryPath}/model`,
+  }) as string;
+>>>>>>> baf273f (Android Support):src/SettingsScreen.tsx
 
   // Load settings when component mounts
   useEffect(() => {
     loadSettings();
+    checkModelStatus();
+    checkEmbeddingStatus();
   }, []);
+
+  const checkModelStatus = async () => {
+    if (Platform.OS === 'ios') {
+      setModelStatus('default');
+      return;
+    }
+
+    try {
+      const modelPath = `${MODEL_DIR}/${MODEL_NAMES.QWEN_MODEL}`;
+      const exists = await RNFS.exists(modelPath);
+      setModelStatus(exists ? 'downloaded' : 'not_downloaded');
+    } catch (error) {
+      console.error('Error checking model status:', error);
+      setModelStatus('not_downloaded');
+    }
+  };
+
+  const checkEmbeddingStatus = async () => {
+    if (Platform.OS === 'ios') {
+      setEmbeddingStatus('default');
+      return;
+    }
+
+    try {
+      const embeddingPath = `${MODEL_DIR}/${MODEL_NAMES.BGE_EMBEDDING_MODEL}`;
+      const exists = await RNFS.exists(embeddingPath);
+      setEmbeddingStatus(exists ? 'downloaded' : 'not_downloaded');
+    } catch (error) {
+      console.error('Error checking embedding status:', error);
+      setEmbeddingStatus('not_downloaded');
+    }
+  };
+
+  const downloadModel = async () => {
+    if (Platform.OS === 'ios') return;
+
+    const modelUrl = MODEL_URLS.QWEN_MODEL;
+    const modelPath = `${MODEL_DIR}/${MODEL_NAMES.QWEN_MODEL}`;
+    
+    try {
+      setIsDownloading(true);
+      setModelDownloadProgress(0);
+
+      // Create model directory if it doesn't exist
+      await RNFS.mkdir(MODEL_DIR);
+
+      // Download the model
+      const { promise, jobId } = RNFS.downloadFile({
+        fromUrl: modelUrl,
+        toFile: modelPath,
+        progress: (data: DownloadProgressData) => {
+          const progress = data.bytesWritten / data.contentLength;
+          setModelDownloadProgress(progress);
+        },
+        background: true,
+        progressDivider: 1
+      });
+
+      await promise;
+      setModelStatus('downloaded');
+    } catch (error) {
+      console.error('Error downloading model:', error);
+    } finally {
+      setIsDownloading(false);
+    }
+  };
+
+  const downloadEmbedding = async () => {
+    if (Platform.OS === 'ios') return;
+
+    const embeddingUrl = MODEL_URLS.BGE_EMBEDDING_MODEL;
+    const embeddingPath = `${MODEL_DIR}/${MODEL_NAMES.BGE_EMBEDDING_MODEL}`;
+    
+    try {
+      setIsEmbeddingDownloading(true);
+      setEmbeddingDownloadProgress(0);
+
+      // Create model directory if it doesn't exist
+      await RNFS.mkdir(MODEL_DIR);
+
+      // Download the embedding model
+      const { promise, jobId } = RNFS.downloadFile({
+        fromUrl: embeddingUrl,
+        toFile: embeddingPath,
+        progress: (data: DownloadProgressData) => {
+          const progress = data.bytesWritten / data.contentLength;
+          setEmbeddingDownloadProgress(progress);
+        },
+        background: true,
+        progressDivider: 1
+      });
+
+      await promise;
+      setEmbeddingStatus('downloaded');
+    } catch (error) {
+      console.error('Error downloading embedding model:', error);
+    } finally {
+      setIsEmbeddingDownloading(false);
+    }
+  };
 
   const loadSettings = async () => {
     try {
@@ -115,6 +247,81 @@ const SettingsScreen: React.FC<Props> = ({ navigation }) => {
       </View>
 
       <ScrollView style={styles.content}>
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Model Management</Text>
+          <Text style={styles.description}>
+            {Platform.OS === 'ios' 
+              ? 'Using built-in models optimized for iOS'
+              : 'Download and manage AI models for offline use'}
+          </Text>
+          
+          {Platform.OS === 'android' && (
+            <View style={styles.modelSection}>
+              <Text style={styles.modelTypeTitle}>Main Language Model</Text>
+              {modelStatus === 'not_downloaded' && !isDownloading && (
+                <TouchableOpacity 
+                  style={styles.downloadButton}
+                  onPress={downloadModel}
+                >
+                  <Download color="#fff" size={20} />
+                  <Text style={styles.downloadButtonText}>Download Model (1GB)</Text>
+                </TouchableOpacity>
+              )}
+
+              {isDownloading && (
+                <View style={styles.downloadProgress}>
+                  <Progress.Bar 
+                    progress={modelDownloadProgress} 
+                    width={200} 
+                    color="#007AFF"
+                  />
+                  <Text style={styles.downloadProgressText}>
+                    {Math.round(modelDownloadProgress * 100)}% Downloaded
+                  </Text>
+                </View>
+              )}
+
+              {modelStatus === 'downloaded' && !isDownloading && (
+                <View style={styles.modelInfo}>
+                  <Text style={styles.modelInfoText}>Main model installed and ready to use</Text>
+                </View>
+              )}
+
+              <View style={styles.modelDivider} />
+
+              <Text style={styles.modelTypeTitle}>Embedding Model</Text>
+              {embeddingStatus === 'not_downloaded' && !isEmbeddingDownloading && (
+                <TouchableOpacity 
+                  style={styles.downloadButton}
+                  onPress={downloadEmbedding}
+                >
+                  <Download color="#fff" size={20} />
+                  <Text style={styles.downloadButtonText}>Download Embedding Model (85MB)</Text>
+                </TouchableOpacity>
+              )}
+
+              {isEmbeddingDownloading && (
+                <View style={styles.downloadProgress}>
+                  <Progress.Bar 
+                    progress={embeddingDownloadProgress} 
+                    width={200} 
+                    color="#007AFF"
+                  />
+                  <Text style={styles.downloadProgressText}>
+                    {Math.round(embeddingDownloadProgress * 100)}% Downloaded
+                  </Text>
+                </View>
+              )}
+
+              {embeddingStatus === 'downloaded' && !isEmbeddingDownloading && (
+                <View style={styles.modelInfo}>
+                  <Text style={styles.modelInfoText}>Embedding model installed and ready to use</Text>
+                </View>
+              )}
+            </View>
+          )}
+        </View>
+
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>System Prompt</Text>
           <Text style={styles.description}>
@@ -243,7 +450,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     padding: 16,
-    marginTop: 50,
+    ...Platform.select({
+      ios: {
+        paddingTop: 50,
+      }
+    }),
     borderBottomWidth: 1,
     borderBottomColor: '#333',
   },
@@ -397,6 +608,53 @@ const styles = StyleSheet.create({
   linkContainer: {
     marginTop: 8,
     marginBottom: 16,
+  },
+  modelSection: {
+    marginTop: 12,
+  },
+  modelTypeTitle: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: 'bold',
+    marginBottom: 8,
+  },
+  modelDivider: {
+    height: 1,
+    backgroundColor: '#333',
+    marginVertical: 16,
+  },
+  downloadButton: {
+    backgroundColor: '#007AFF',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 12,
+    borderRadius: 8,
+    gap: 8,
+  },
+  downloadButtonText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '500',
+  },
+  downloadProgress: {
+    alignItems: 'center',
+    gap: 8,
+  },
+  downloadProgressText: {
+    color: '#fff',
+    fontSize: 14,
+  },
+  modelInfo: {
+    backgroundColor: '#1a1a1a',
+    padding: 12,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#333',
+  },
+  modelInfoText: {
+    color: '#fff',
+    fontSize: 14,
   },
 });
 
