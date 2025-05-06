@@ -1,4 +1,4 @@
-import { LlamaContext, initLlama, releaseAllLlama } from 'llama.rn';
+import { LlamaContext, initLlama, releaseAllLlama } from 'cui-llama.rn';
 import React, { useState, useCallback, useRef, useEffect } from 'react';
 import Markdown from 'react-native-markdown-display';
 import Toast from 'react-native-simple-toast';
@@ -30,7 +30,7 @@ import {
   Image,
   FlatList,
 } from 'react-native';
-import { Send, Square, CirclePlus, Search, Settings, ArrowDown, Brain } from 'lucide-react-native';
+import { Send, Square, CirclePlus, Search, Settings, ArrowDown, Brain, Download } from 'lucide-react-native';
 import { getModelParamsForDevice } from './Utils';
 import { styles, markdownStyles, popoverStyles, menuOptionStyles } from './Styles';
 import { Message } from './Message';
@@ -45,6 +45,9 @@ import { useDatabase } from './DatabaseContext';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { performBraveSearch } from './BraveSearch';
 import ContextManager from './utils/ContextManager';
+import RNFS from 'react-native-fs';
+import * as Progress from 'react-native-progress';
+import { MODEL_NAMES, MODEL_URLS } from './constants/Models';
 
 type ChatScreenNavigationProp = DrawerNavigationProp<DrawerParamList, 'Chat'>;
 
@@ -54,6 +57,12 @@ interface ChatUIProps {
   MenuIcon: React.ComponentType<any>;
   navigation: ChatScreenNavigationProp;
   setParentIsTyping: (isTyping: boolean) => void;
+}
+
+interface DownloadProgressData {
+  bytesWritten: number;
+  contentLength: number;
+  jobId: number;
 }
 
 // List of suggested prompts
@@ -302,6 +311,11 @@ const StreamingThinkingIndicator = () => (
   </View>
 );
 
+const MODEL_DIR = Platform.select({
+  ios: `${RNFS.DocumentDirectoryPath}/model`,
+  android: `${RNFS.DocumentDirectoryPath}/model`,
+}) as string;
+
 const ChatUI: React.FC<ChatUIProps> = ({ historyId, onMenuPress, MenuIcon, navigation, setParentIsTyping }) => {
   const [messages, setMessages] = useState<Message[]>([]);
   const [inputText, setInputText] = useState('');
@@ -317,6 +331,15 @@ const ChatUI: React.FC<ChatUIProps> = ({ historyId, onMenuPress, MenuIcon, navig
   const [menuVisible, setMenuVisible] = useState(false);
   const [showScrollButton, setShowScrollButton] = useState(false);
   const [keyboardOffset, setKeyboardOffset] = useState(0);
+  const [showModelRequirementScreen, setShowModelRequirementScreen] = useState(false);
+  
+  // Add new state variables for model download
+  const [modelStatus, setModelStatus] = useState<'default' | 'downloaded' | 'not_downloaded'>('not_downloaded');
+  const [embeddingStatus, setEmbeddingStatus] = useState<'default' | 'downloaded' | 'not_downloaded'>('not_downloaded');
+  const [isDownloading, setIsDownloading] = useState(false);
+  const [isEmbeddingDownloading, setIsEmbeddingDownloading] = useState(false);
+  const [modelDownloadProgress, setModelDownloadProgress] = useState(0);
+  const [embeddingDownloadProgress, setEmbeddingDownloadProgress] = useState(0);
 
   const chatContext = useRef('');
   const scrollViewRef = useRef<ScrollView>(null);
@@ -326,6 +349,193 @@ const ChatUI: React.FC<ChatUIProps> = ({ historyId, onMenuPress, MenuIcon, navig
   const systemPrompt = useRef('');
   const appState = useRef(AppState.currentState);
   const contextManager = useRef(ContextManager.getInstance());
+
+  // Update useEffect to check model status
+  useEffect(() => {
+    const modelParams = getModelParamsForDevice();
+    if (modelParams == null) {
+      setUnsupportedDevice(true);
+      return;
+    }
+
+    // Check model status on mount for Android
+    if (Platform.OS === 'android') {
+      checkAndroidModelStatus();
+    }
+  }, []);
+
+  // Add function to check Android model status
+  const checkAndroidModelStatus = async () => {
+    try {
+      const modelPath = `${MODEL_DIR}/${MODEL_NAMES.QWEN_MODEL}`;
+      const embeddingPath = `${MODEL_DIR}/${MODEL_NAMES.BGE_EMBEDDING_MODEL}`;
+      
+      const modelExists = await RNFS.exists(modelPath);
+      const embeddingExists = await RNFS.exists(embeddingPath);
+      
+      setShowModelRequirementScreen(!modelExists || !embeddingExists);
+    } catch (error) {
+      console.error('Error checking model status:', error);
+      setShowModelRequirementScreen(true);
+    }
+  };
+
+  // Add ModelRequirementScreen component
+  const ModelRequirementScreen = () => (
+    <View style={styles.modelRequirementContainer}>
+      <Text style={styles.modelRequirementTitle}>Models Required</Text>
+      <Text style={styles.modelRequirementText}>
+        To use MyDeviceAI on Android, you need to download the required AI models first.
+      </Text>
+      
+      <View style={styles.modelSection}>
+        <Text style={styles.modelTypeTitle}>Main Language Model</Text>
+        {modelStatus === 'not_downloaded' && !isDownloading && (
+          <TouchableOpacity 
+            style={styles.downloadButton}
+            onPress={downloadModel}
+          >
+            <Download color="#fff" size={20} />
+            <Text style={styles.downloadButtonText}>Download Model (1GB)</Text>
+          </TouchableOpacity>
+        )}
+
+        {isDownloading && (
+          <View style={styles.downloadProgress}>
+            <Progress.Bar 
+              progress={modelDownloadProgress} 
+              width={200} 
+              color="#007AFF"
+            />
+            <Text style={styles.downloadProgressText}>
+              {Math.round(modelDownloadProgress * 100)}% Downloaded
+            </Text>
+          </View>
+        )}
+
+        {modelStatus === 'downloaded' && !isDownloading && (
+          <View style={styles.modelInfo}>
+            <Text style={styles.modelInfoText}>Main model installed and ready to use</Text>
+          </View>
+        )}
+
+        <View style={styles.modelDivider} />
+
+        <Text style={styles.modelTypeTitle}>Embedding Model</Text>
+        {embeddingStatus === 'not_downloaded' && !isEmbeddingDownloading && (
+          <TouchableOpacity 
+            style={styles.downloadButton}
+            onPress={downloadEmbedding}
+          >
+            <Download color="#fff" size={20} />
+            <Text style={styles.downloadButtonText}>Download Embedding Model (85MB)</Text>
+          </TouchableOpacity>
+        )}
+
+        {isEmbeddingDownloading && (
+          <View style={styles.downloadProgress}>
+            <Progress.Bar 
+              progress={embeddingDownloadProgress} 
+              width={200} 
+              color="#007AFF"
+            />
+            <Text style={styles.downloadProgressText}>
+              {Math.round(embeddingDownloadProgress * 100)}% Downloaded
+            </Text>
+          </View>
+        )}
+
+        {embeddingStatus === 'downloaded' && !isEmbeddingDownloading && (
+          <View style={styles.modelInfo}>
+            <Text style={styles.modelInfoText}>Embedding model installed and ready to use</Text>
+          </View>
+        )}
+      </View>
+    </View>
+  );
+
+  // Update the model download completion handlers
+  const downloadModel = async () => {
+    if (Platform.OS === 'ios') return;
+
+    const modelUrl = MODEL_URLS.QWEN_MODEL;
+    const modelPath = `${MODEL_DIR}/${MODEL_NAMES.QWEN_MODEL}`;
+    
+    try {
+      setIsDownloading(true);
+      setModelDownloadProgress(0);
+
+      await RNFS.mkdir(MODEL_DIR);
+
+      const { promise, jobId } = RNFS.downloadFile({
+        fromUrl: modelUrl,
+        toFile: modelPath,
+        progress: (data: DownloadProgressData) => {
+          const progress = data.bytesWritten / data.contentLength;
+          setModelDownloadProgress(progress);
+        },
+        background: true,
+        progressDivider: 1
+      });
+
+      await promise;
+      setModelStatus('downloaded');
+      checkAndroidModelStatus();
+      
+      // Check if both models are downloaded
+      const embeddingExists = await RNFS.exists(`${MODEL_DIR}/${MODEL_NAMES.BGE_EMBEDDING_MODEL}`);
+      if (embeddingExists) {
+        console.log('Both models downloaded, initializing...');
+        loadModel();
+        await contextManager.current.initialize();
+      }
+    } catch (error) {
+      console.error('Error downloading model:', error);
+    } finally {
+      setIsDownloading(false);
+    }
+  };
+
+  const downloadEmbedding = async () => {
+    if (Platform.OS === 'ios') return;
+
+    const embeddingUrl = MODEL_URLS.BGE_EMBEDDING_MODEL;
+    const embeddingPath = `${MODEL_DIR}/${MODEL_NAMES.BGE_EMBEDDING_MODEL}`;
+    
+    try {
+      setIsEmbeddingDownloading(true);
+      setEmbeddingDownloadProgress(0);
+
+      await RNFS.mkdir(MODEL_DIR);
+
+      const { promise, jobId } = RNFS.downloadFile({
+        fromUrl: embeddingUrl,
+        toFile: embeddingPath,
+        progress: (data: DownloadProgressData) => {
+          const progress = data.bytesWritten / data.contentLength;
+          setEmbeddingDownloadProgress(progress);
+        },
+        background: true,
+        progressDivider: 1
+      });
+
+      await promise;
+      setEmbeddingStatus('downloaded');
+      checkAndroidModelStatus();
+      
+      // Check if both models are downloaded
+      const modelExists = await RNFS.exists(`${MODEL_DIR}/${MODEL_NAMES.QWEN_MODEL}`);
+      if (modelExists) {
+        console.log('Both models downloaded, initializing...');
+        loadModel();
+        await contextManager.current.initialize();
+      }
+    } catch (error) {
+      console.error('Error downloading embedding model:', error);
+    } finally {
+      setIsEmbeddingDownloading(false);
+    }
+  };
 
   // Handle when a suggested prompt is selected
   const handlePromptSelect = useCallback((prompt: string) => {
@@ -358,6 +568,18 @@ const ChatUI: React.FC<ChatUIProps> = ({ historyId, onMenuPress, MenuIcon, navig
     // Initialize context manager when component mounts
     const initContextManager = async () => {
       try {
+        // Check if model exists on Android
+        if (Platform.OS === 'android') {
+          const modelPath = `${MODEL_DIR}/${MODEL_NAMES.QWEN_MODEL}`;
+          const embeddingPath = `${MODEL_DIR}/${MODEL_NAMES.BGE_EMBEDDING_MODEL}`;
+          const modelExists = await RNFS.exists(modelPath);
+          const embeddingExists = await RNFS.exists(embeddingPath);
+          
+          if (!modelExists || !embeddingExists) {
+            console.log('Models not downloaded yet, skipping initialization');
+            return;
+          }
+        }
         await contextManager.current.initialize();
       } catch (error) {
         console.error('Error initializing context manager:', error);
@@ -457,16 +679,33 @@ want to talk and share about personal feelings.
     }
 
     const subscription = AppState.addEventListener('change', nextAppState => {
+      console.log('nextAppState:', nextAppState);
       if (
-        appState.current.match(/inactive|background/) &&
         nextAppState === 'active'
       ) {
         console.log('App has come to the foreground!');
-        loadModel();
-        // Initialize context manager
-        contextManager.current.initialize().catch(error => {
-          console.error('Error initializing context manager:', error);
-        });
+        // Check if model exists on Android before loading
+        if (Platform.OS === 'android') {
+          RNFS.exists(`${MODEL_DIR}/${MODEL_NAMES.QWEN_MODEL}`).then(modelExists => {
+            RNFS.exists(`${MODEL_DIR}/${MODEL_NAMES.BGE_EMBEDDING_MODEL}`).then(embeddingExists => {
+              if (modelExists && embeddingExists) {
+                loadModel();
+                // Initialize context manager
+                contextManager.current.initialize().catch(error => {
+                  console.error('Error initializing context manager:', error);
+                });
+              } else {
+                console.log('Models not downloaded yet, skipping initialization');
+              }
+            });
+          });
+        } else {
+          loadModel();
+          // Initialize context manager
+          contextManager.current.initialize().catch(error => {
+            console.error('Error initializing context manager:', error);
+          });
+        }
       } else if (
         appState.current === 'active' &&
         nextAppState.match(/inactive|background/)
@@ -487,10 +726,23 @@ want to talk and share about personal feelings.
 
     return () => {
       subscription.remove();
-      unloadModel();
-      contextManager.current.unloadModel().catch(error => {
-        console.error('Error unloading context manager:', error);
-      });
+      if (Platform.OS === 'android') {
+        RNFS.exists(`${MODEL_DIR}/${MODEL_NAMES.QWEN_MODEL}`).then(modelExists => {
+          RNFS.exists(`${MODEL_DIR}/${MODEL_NAMES.BGE_EMBEDDING_MODEL}`).then(embeddingExists => {
+            if (modelExists && embeddingExists) {
+              unloadModel();
+              contextManager.current.unloadModel().catch(error => {
+                console.error('Error unloading context manager:', error);
+              });
+            }
+          });
+        });
+      } else {
+        unloadModel();
+        contextManager.current.unloadModel().catch(error => {
+          console.error('Error unloading context manager:', error);
+        });
+      }
     };
   }, []);
 
@@ -891,11 +1143,17 @@ want to talk and share about personal feelings.
     )
   }
 
+  // Add model requirement screen check
+  if (Platform.OS === 'android' && showModelRequirementScreen) {
+    return <ModelRequirementScreen />;
+  }
 
   return (
     <KeyboardAvoidingView 
-      style={styles.container} 
-      behavior={Platform.OS === "ios" ? "padding" : "height"}
+      style={[
+        styles.container
+      ]} 
+      behavior={Platform.OS === "ios" ? "padding" : undefined}
     >
       <StatusBar barStyle="light-content" />
       <View style={{
