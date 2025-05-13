@@ -8,7 +8,7 @@ import {
   Alert,
 } from 'react-native';
 import { DrawerContentScrollView, DrawerContentComponentProps } from '@react-navigation/drawer';
-import { Trash2 } from 'lucide-react-native';
+import { Trash2, Settings } from 'lucide-react-native';
 import { useDatabase } from './DatabaseContext';
 import { DrawerNavigationProp } from '@react-navigation/drawer';
 import { CompositeNavigationProp, useFocusEffect, useNavigation } from '@react-navigation/native';
@@ -127,6 +127,21 @@ const styles = StyleSheet.create({
     padding: 8,
     borderRadius: 4,
   },
+  footer: {
+    padding: 10,
+    borderTopWidth: 1,
+    borderTopColor: '#333',
+  },
+  settingsButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 10,
+  },
+  settingsButtonText: {
+    fontSize: 16,
+    color: '#fff',
+    marginLeft: 15,
+  },
 });
 
 // Memoize item styles to prevent recreation on each render
@@ -222,19 +237,40 @@ const CustomDrawerContent = (props: DrawerContentComponentProps) => {
   }, [formatDate, getShortLastMessage, globalHistoryId, handleDeleteHistory, handleSelectHistory]);
 
   return (
-    <DrawerContentScrollView {...props} style={styles.container}>
-      <View style={styles.header}>
-        <Text style={styles.title}>Chats</Text>
-        <TouchableOpacity
-          style={styles.deleteAllButton}
-          onPress={handleDeleteAllHistories}
-        >
-          <Trash2 size={20} color="#666" />
-        </TouchableOpacity>
+    <DrawerContentScrollView 
+      {...props} 
+      style={styles.container}
+      contentContainerStyle={{ flexGrow: 1 }}
+    >
+      <View style={{ flex: 1, justifyContent: 'space-between' }}>
+        <View style={{ flex: 1 }}>
+          <View style={styles.header}>
+            <Text style={styles.title}>Chats</Text>
+            <TouchableOpacity
+              style={styles.deleteAllButton}
+              onPress={handleDeleteAllHistories}
+            >
+              <Trash2 size={20} color="#666" />
+            </TouchableOpacity>
+          </View>
+          <ScrollView style={styles.historiesList}>
+            {histories.map(renderHistoryItem)}
+          </ScrollView>
+        </View>
+
+        <View style={styles.footer}>
+          <TouchableOpacity
+            style={styles.settingsButton}
+            onPress={() => {
+              navigation.navigate('Settings');
+              props.navigation.closeDrawer();
+            }}
+          >
+            <Settings size={20} color="#fff" />
+            <Text style={styles.settingsButtonText}>Settings</Text>
+          </TouchableOpacity>
+        </View>
       </View>
-      <ScrollView style={styles.historiesList}>
-        {histories.map(renderHistoryItem)}
-      </ScrollView>
     </DrawerContentScrollView>
   );
 };

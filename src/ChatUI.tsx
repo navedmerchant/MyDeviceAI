@@ -2,12 +2,6 @@ import { LlamaContext, initLlama, releaseAllLlama } from 'llama.rn';
 import React, { useState, useCallback, useRef, useEffect } from 'react';
 import Markdown from 'react-native-markdown-display';
 import Toast from 'react-native-simple-toast';
-import {
-  Menu,
-  MenuOptions,
-  MenuOption,
-  MenuTrigger,
-} from 'react-native-popup-menu';
 
 import {
   View,
@@ -720,7 +714,7 @@ want to talk and share about personal feelings.
         setCurrentResponse('');
       }
     }
-  }, [inputText, addMessage, contextManager]);
+  }, [inputText, addMessage, contextManager, searchModeEnabled, thinkingModeEnabled]);
 
   async function handleStop(event: GestureResponderEvent): Promise<void> {
     await contextRef.current?.stopCompletion();
@@ -822,21 +816,18 @@ want to talk and share about personal feelings.
   };
 
   const renderMessage = (message: Message) => {
+    const isAIMessage = !message.isUser;
+
     return (
-      <TouchableOpacity
-        key={message.id}
-        onLongPress={() => handleMessageLongPress(message)}
-        delayLongPress={200}
-      >
         <View
           style={[
             styles.messageBubble,
-            message.isUser ? styles.userMessage : styles.aiMessage
+            isAIMessage ? styles.aiMessage : styles.userMessage,
+            isAIMessage && { maxWidth: '100%' } // Override maxWidth for AI messages
           ]}
         >
           {processThinkingContent(message.text)}
         </View>
-      </TouchableOpacity>
     );
   };
 
@@ -898,38 +889,11 @@ want to talk and share about personal feelings.
       behavior={Platform.OS === "ios" ? "padding" : "height"}
     >
       <StatusBar barStyle="light-content" />
-      <View style={{
-        position: 'absolute',
-        width: '100%',
-        height: '100%',
-        justifyContent: 'center',
-        alignItems: 'flex-start',
-        paddingLeft: 200,
-        zIndex: 1000,
-        pointerEvents: menuVisible ? 'auto' : 'none',
-      }}>
-        <Menu
-          opened={menuVisible}
-          onBackdropPress={() => setMenuVisible(false)}
-        >
-          <MenuTrigger />
-          <MenuOptions customStyles={popoverStyles(selectedMessage?.isUser || false)}>
-            <MenuOption 
-              onSelect={() => selectedMessage && handleCopyText(selectedMessage.text)} 
-              text="Copy" 
-              customStyles={menuOptionStyles}
-            />
-          </MenuOptions>
-        </Menu>
-      </View>
       
       <View style={styles.header}>
         <View style={styles.headerLeftButtons}>
           <TouchableOpacity style={styles.headerButton} onPress={handleMenuPress} disabled={isTyping}>
             <MenuIcon color="#fff" size={24} />
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.headerButton} onPress={() => navigation.navigate('Settings')} disabled={isTyping}>
-            <Settings color="#fff" size={24} />
           </TouchableOpacity>
         </View>
         <Image 
@@ -937,13 +901,6 @@ want to talk and share about personal feelings.
           style={styles.headerLogo}
         />
         <View style={styles.headerRightButtons}>
-          <TouchableOpacity 
-            style={[styles.headerButton, thinkingModeEnabled && styles.headerButtonActive]} 
-            onPress={handleThinkingToggle}
-            disabled={isTyping}
-          >
-            <Brain color={thinkingModeEnabled ? "#28a745" : "#fff"} size={24} />
-          </TouchableOpacity>
           <TouchableOpacity style={styles.headerButton} onPress={handleNewChat} disabled={isTyping}>
             <CirclePlus color="#fff" size={24} />
           </TouchableOpacity>
@@ -962,7 +919,11 @@ want to talk and share about personal feelings.
         >
           {messages.map(renderMessage)}
           {isTyping && (
-            <View style={[styles.messageBubble, styles.aiMessage]}>
+            <View style={[
+              styles.messageBubble,
+              styles.aiMessage,
+              { maxWidth: '100%' } // AI typing indicator is always full width
+            ]}>
               {currentResponse ? (
                 <>
                   {processThinkingContent(currentResponse)}
@@ -992,14 +953,25 @@ want to talk and share about personal feelings.
       )}
 
       <View style={styles.inputContainer}>
-        <View style={styles.searchInputContainer}>
+        <View style={styles.modeToggleContainer}>
           <TouchableOpacity 
-            style={styles.searchIconContainer} 
+            style={[styles.modeToggleButton, thinkingModeEnabled && styles.modeToggleButtonActive]} 
+            onPress={handleThinkingToggle}
+            disabled={isTyping}
+          >
+            <Brain color={thinkingModeEnabled ? "#28a745" : "#666"} size={20} />
+            <Text style={[styles.modeToggleText, thinkingModeEnabled && styles.modeToggleTextActive]}>Think</Text>
+          </TouchableOpacity>
+          <TouchableOpacity 
+            style={[styles.modeToggleButton, searchModeEnabled && styles.modeToggleButtonActive]} 
             onPress={handleSearchToggle}
             disabled={isTyping}
           >
             <Search color={searchModeEnabled ? "#28a745" : "#666"} size={20} />
+            <Text style={[styles.modeToggleText, searchModeEnabled && styles.modeToggleTextActive]}>Search</Text>
           </TouchableOpacity>
+        </View>
+        <View style={styles.searchInputContainer}>
           <TextInput
             style={styles.input}
             value={inputText}
@@ -1011,15 +983,15 @@ want to talk and share about personal feelings.
             editable={true}
             numberOfLines={2}
           />
+          {isTyping ? 
+            (<TouchableOpacity style={styles.stopButton} onPress={handleStop}>
+              <Square color="#fff"></Square>
+            </TouchableOpacity>) : 
+            (<TouchableOpacity style={styles.sendButton} onPress={handleSend}>
+              <Send color="#fff"></Send>
+            </TouchableOpacity>)
+          }
         </View>
-        {isTyping ? 
-          (<TouchableOpacity style={styles.stopButton} onPress={handleStop}>
-            <Square color="#fff"></Square>
-          </TouchableOpacity>) : 
-          (<TouchableOpacity style={styles.sendButton} onPress={handleSend}>
-            <Send color="#fff"></Send>
-          </TouchableOpacity>)
-        }
       </View>
     </KeyboardAvoidingView>
   );
