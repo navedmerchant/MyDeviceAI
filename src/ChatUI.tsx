@@ -199,9 +199,7 @@ const EmptyState = ({ onPromptPress }: { onPromptPress: (prompt: string) => void
         source={require('./images/MyDeviceAI-NoBG.png')}
         style={styles.emptyStateLogo}
       />
-      <Text style={styles.emptyStateTitle}>MyDeviceAI</Text>
-      <Text style={styles.emptyStateSubtitle}>Turn on thinking mode and search mode to get more out of your queries!</Text>
-      
+      <Text style={styles.emptyStateTitle}>MyDeviceAI</Text>      
       <FlatList
         ref={flatListRef}
         data={visiblePrompts.current}
@@ -1002,7 +1000,7 @@ want to talk and share about personal feelings.
         </View>
         <View style={styles.searchInputContainer}>
           <TextInput
-            style={styles.input}
+            style={[styles.input, { maxHeight: 60 }]}
             value={inputText}
             onChangeText={setInputText}
             placeholder={"Ask me anything, or just chat!"}

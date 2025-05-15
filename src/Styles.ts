@@ -73,7 +73,7 @@ const styles = StyleSheet.create({
     aiMessageContainer: {
       flexDirection: 'column',
       alignItems: 'flex-start',
-      marginBottom: 0,
+      marginBottom: 10,
     },
     userMessageContainer: {
       flexDirection: 'row',
@@ -103,7 +103,7 @@ const styles = StyleSheet.create({
     inputContainer: {
       flexDirection: 'column',
       paddingHorizontal: 10,
-      paddingTop: 5,
+      paddingTop: 10,
       paddingBottom: 10,
       backgroundColor: '#000',
       maxHeight: 120,
@@ -111,7 +111,6 @@ const styles = StyleSheet.create({
     searchInputContainer: {
       flexDirection: 'row',
       alignItems: 'center',
-      marginTop: 8,
       backgroundColor: 'transparent',
     },
     searchIconContainer: {
