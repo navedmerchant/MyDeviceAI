@@ -1,3 +1,4 @@
+/*
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 // More complete interface based on Brave's API spec
@@ -106,4 +107,5 @@ export const performBraveSearch = async (query: string): Promise<string> => {
   } catch (error) {
     throw error;
   }
-}; 
+};
+*/ 

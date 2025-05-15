@@ -70,6 +70,30 @@ const styles = StyleSheet.create({
       alignSelf: 'flex-start',
       backgroundColor: 'transparent',
     },
+    aiMessageContainer: {
+      flexDirection: 'column',
+      alignItems: 'flex-start',
+      marginBottom: 0,
+    },
+    userMessageContainer: {
+      flexDirection: 'row',
+      alignSelf: 'flex-end',
+      alignItems: 'center',
+      marginBottom: 10,
+    },
+    messageActionsContainer: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      marginTop: 5,
+      marginLeft: 10,
+    },
+    userMessageActionsContainer: {
+      marginRight: 8,
+    },
+    messageActionButton: {
+      padding: 5,
+      marginLeft: 10,
+    },
     userMessageText: {
       color: '#FFFFFF',
     },

@@ -127,20 +127,15 @@ const styles = StyleSheet.create({
     padding: 8,
     borderRadius: 4,
   },
+  settingsHeaderButton: {
+    padding: 8,
+    borderRadius: 4,
+    marginLeft: 8,
+  },
   footer: {
     padding: 10,
     borderTopWidth: 1,
     borderTopColor: '#333',
-  },
-  settingsButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 10,
-  },
-  settingsButtonText: {
-    fontSize: 16,
-    color: '#fff',
-    marginLeft: 15,
   },
 });
 
@@ -246,12 +241,23 @@ const CustomDrawerContent = (props: DrawerContentComponentProps) => {
         <View style={{ flex: 1 }}>
           <View style={styles.header}>
             <Text style={styles.title}>Chats</Text>
-            <TouchableOpacity
-              style={styles.deleteAllButton}
-              onPress={handleDeleteAllHistories}
-            >
-              <Trash2 size={20} color="#666" />
-            </TouchableOpacity>
+            <View style={{flexDirection: 'row', alignItems: 'center'}}>
+              <TouchableOpacity
+                style={styles.deleteAllButton}
+                onPress={handleDeleteAllHistories}
+              >
+                <Trash2 size={20} color="#666" />
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.settingsHeaderButton}
+                onPress={() => {
+                  navigation.navigate('Settings');
+                  props.navigation.closeDrawer();
+                }}
+              >
+                <Settings size={20} color="#666" />
+              </TouchableOpacity>
+            </View>
           </View>
           <ScrollView style={styles.historiesList}>
             {histories.map(renderHistoryItem)}
@@ -259,7 +265,7 @@ const CustomDrawerContent = (props: DrawerContentComponentProps) => {
         </View>
 
         <View style={styles.footer}>
-          <TouchableOpacity
+          {/* <TouchableOpacity
             style={styles.settingsButton}
             onPress={() => {
               navigation.navigate('Settings');
@@ -268,7 +274,7 @@ const CustomDrawerContent = (props: DrawerContentComponentProps) => {
           >
             <Settings size={20} color="#fff" />
             <Text style={styles.settingsButtonText}>Settings</Text>
-          </TouchableOpacity>
+          </TouchableOpacity> */}
         </View>
       </View>
     </DrawerContentScrollView>

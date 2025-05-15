@@ -50,8 +50,8 @@ const addMetaTags = (prompt: string): string => {
 const SettingsScreen: React.FC<Props> = ({ navigation }) => {
   const [systemPrompt, setSystemPrompt] = useState('');
   const [historyDays, setHistoryDays] = useState('30');
-  const [braveApiKey, setBraveApiKey] = useState('');
-  const [monthlyQueries, setMonthlyQueries] = useState('0');
+  // const [braveApiKey, setBraveApiKey] = useState(''); // Commented out
+  // const [monthlyQueries, setMonthlyQueries] = useState('0'); // Commented out
 
   // Load settings when component mounts
   useEffect(() => {
@@ -62,8 +62,8 @@ const SettingsScreen: React.FC<Props> = ({ navigation }) => {
     try {
       const savedPrompt = await AsyncStorage.getItem('systemPrompt');
       const savedDays = await AsyncStorage.getItem('historyDays');
-      const savedApiKey = await AsyncStorage.getItem('braveApiKey');
-      const savedQueries = await AsyncStorage.getItem('monthlyQueries');
+      // const savedApiKey = await AsyncStorage.getItem('braveApiKey'); // Commented out
+      // const savedQueries = await AsyncStorage.getItem('monthlyQueries'); // Commented out
       
       if (savedPrompt) {
         setSystemPrompt(stripMetaTags(savedPrompt));
@@ -71,8 +71,8 @@ const SettingsScreen: React.FC<Props> = ({ navigation }) => {
         setSystemPrompt(stripMetaTags(DEFAULT_SYSTEM_PROMPT));
       }
       if (savedDays) setHistoryDays(savedDays);
-      if (savedApiKey) setBraveApiKey(savedApiKey);
-      if (savedQueries) setMonthlyQueries(savedQueries);
+      // if (savedApiKey) setBraveApiKey(savedApiKey); // Commented out
+      // if (savedQueries) setMonthlyQueries(savedQueries); // Commented out
     } catch (error) {
       console.error('Error loading settings:', error);
     }
@@ -83,8 +83,8 @@ const SettingsScreen: React.FC<Props> = ({ navigation }) => {
       const formattedPrompt = addMetaTags(systemPrompt);
       await AsyncStorage.setItem('systemPrompt', formattedPrompt);
       await AsyncStorage.setItem('historyDays', historyDays);
-      await AsyncStorage.setItem('braveApiKey', braveApiKey);
-      await AsyncStorage.setItem('monthlyQueries', monthlyQueries);
+      // await AsyncStorage.setItem('braveApiKey', braveApiKey); // Commented out
+      // await AsyncStorage.setItem('monthlyQueries', monthlyQueries); // Commented out
       navigation.goBack();
     } catch (error) {
       console.error('Error saving settings:', error);
@@ -167,7 +167,7 @@ const SettingsScreen: React.FC<Props> = ({ navigation }) => {
           </Text>
         </View>
 
-        <View style={styles.section}>
+        {/* <View style={styles.section}>
           <Text style={styles.sectionTitle}>Brave Search API</Text>
           <Text style={styles.description}>
             Enter your Brave Search API key to enable web search capabilities
@@ -191,7 +191,7 @@ const SettingsScreen: React.FC<Props> = ({ navigation }) => {
           <Text style={styles.description}>
             Monthly queries used: {monthlyQueries}/2000
           </Text>
-        </View>
+        </View> */}
 
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>About</Text>
@@ -220,6 +220,11 @@ const SettingsScreen: React.FC<Props> = ({ navigation }) => {
               </Text>
             </View>
           </View>
+        </View>
+
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Danger Zone</Text>
+          {/* ... existing code ... */}
         </View>
       </ScrollView>
 

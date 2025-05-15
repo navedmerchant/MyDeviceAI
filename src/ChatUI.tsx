@@ -24,7 +24,7 @@ import {
   Image,
   FlatList,
 } from 'react-native';
-import { Send, Square, CirclePlus, Search, Settings, ArrowDown, Brain } from 'lucide-react-native';
+import { Send, Square, CirclePlus, Search, Settings, ArrowDown, Brain, Copy, Share as ShareIcon } from 'lucide-react-native';
 import { getModelParamsForDevice } from './Utils';
 import { styles, markdownStyles, popoverStyles, menuOptionStyles } from './Styles';
 import { Message } from './Message';
@@ -37,8 +37,9 @@ import { DrawerNavigationProp } from '@react-navigation/drawer';
 import { DrawerParamList } from '../App';
 import { useDatabase } from './DatabaseContext';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { performBraveSearch } from './BraveSearch';
+import { performSearXNGSearch } from './SearXNG';
 import ContextManager from './utils/ContextManager';
+import { Share } from 'react-native';
 
 type ChatScreenNavigationProp = DrawerNavigationProp<DrawerParamList, 'Chat'>;
 
@@ -615,7 +616,7 @@ want to talk and share about personal feelings.
       let searchResults = '';
       if (searchModeEnabled) {
         try {
-          searchResults = await performBraveSearch(getUserMessages(inputText, messages));
+          searchResults = await performSearXNGSearch(getUserMessages(inputText, messages));
         } catch (error) {
           console.log('Search error:', error);
           if (error instanceof Error) {
@@ -757,6 +758,22 @@ want to talk and share about personal feelings.
     setMenuVisible(false);
   };
 
+  // Add this function to handle sharing text
+  const handleShareText = async (text: string) => {
+    try {
+      // Strip out thinking sections from the message text before sharing
+      const textWithoutThinking = text.replace(/<think>.*?<\/think>/gs, '').trim();
+      await Share.share({
+        message: textWithoutThinking,
+      });
+    } catch (error) {
+      console.error('Error sharing text:', error);
+      // It's good practice to inform the user if sharing fails, e.g., via a Toast
+      Toast.showWithGravity("Failed to share text.", Toast.SHORT, Toast.TOP);
+    }
+    setMenuVisible(false); // Assuming you might want to close a menu if it was open
+  };
+
   // Move processThinkingContent outside of renderMessage
   const processThinkingContent = (text: string) => {
     // Find the first <think> tag
@@ -819,6 +836,15 @@ want to talk and share about personal feelings.
     const isAIMessage = !message.isUser;
 
     return (
+      <View key={message.id} style={isAIMessage ? styles.aiMessageContainer : styles.userMessageContainer}>
+        {/* For user messages, show copy button on the left */} 
+        {!isAIMessage && (
+          <View style={styles.userMessageActionsContainer}> 
+            <TouchableOpacity onPress={() => handleCopyText(message.text)} style={styles.messageActionButton}>
+              <Copy color="#aaa" size={18} />
+            </TouchableOpacity>
+          </View>
+        )}
         <View
           style={[
             styles.messageBubble,
@@ -828,25 +854,28 @@ want to talk and share about personal feelings.
         >
           {processThinkingContent(message.text)}
         </View>
+        {/* For AI messages, show copy and share buttons on the right/below */} 
+        {isAIMessage && (
+          <View style={styles.messageActionsContainer}>
+            <TouchableOpacity onPress={() => handleCopyText(message.text)} style={styles.messageActionButton}>
+              <Copy color="#aaa" size={18} />
+            </TouchableOpacity>
+            <TouchableOpacity onPress={() => handleShareText(message.text)} style={styles.messageActionButton}>
+              <ShareIcon color="#aaa" size={18} />
+            </TouchableOpacity>
+          </View>
+        )}
+      </View>
     );
   };
 
   const handleSearchToggle = async () => {
-    if (!searchModeEnabled) {
-      // Check for API key before enabling search
-      const apiKey = await AsyncStorage.getItem('braveApiKey');
-      if (!apiKey) {
-        Toast.showWithGravity('Please enter your Brave Search API key in settings to enable web search.', Toast.LONG, Toast.TOP);
-        return;
-      }
-    }
     setSearchModeEnabled(!searchModeEnabled);
   };
 
   const handleThinkingToggle = () => {
     const newState = !thinkingModeEnabled;
     setThinkingModeEnabled(newState);
-    Toast.showWithGravity(newState ? "Thinking mode enabled" : "Thinking mode disabled", Toast.SHORT, Toast.TOP);
   };
 
   const getUserMessages = (currentInput: string, messages: Message[]): string => {
@@ -944,7 +973,7 @@ want to talk and share about personal feelings.
         <TouchableOpacity 
           style={[
             styles.scrollToBottomButton,
-            { bottom: 90 + keyboardOffset }
+            { bottom: 120 + keyboardOffset }
           ]}
           onPress={scrollToBottom}
         >
@@ -976,7 +1005,7 @@ want to talk and share about personal feelings.
             style={styles.input}
             value={inputText}
             onChangeText={setInputText}
-            placeholder={searchModeEnabled ? "Ask me anything (with web search)" : "Ask me anything, or just chat!"}
+            placeholder={"Ask me anything, or just chat!"}
             placeholderTextColor="#999"
             ref={textInputRef}
             multiline={true}

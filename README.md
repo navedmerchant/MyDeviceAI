@@ -12,7 +12,7 @@ MyDeviceAI brings the power of artificial intelligence directly to your iPhone, 
 
 - **Seamless Experience**: The app comes with bundled AI models that load asynchronously in the background, ensuring zero waiting time and a smooth user experience from the moment you launch.
 
-- **Brave Web Search Integration**: Bridge the knowledge gap between local AI and cloud capabilities with our Brave Web Search integration. Add your API key to access comprehensive web searches while maintaining privacy.
+- **Web Search Integration**: Bridge the knowledge gap between local AI and cloud capabilities with our web search integration, utilizing a self-hosted SearXNG instance for privacy-focused results.
 
 - **Thinking Mode**: Powered by Qwen 3, our Thinking Mode helps you tackle complex problems and brainstorming sessions with advanced reasoning capabilities.
 
@@ -69,7 +69,7 @@ MyDeviceAI brings the power of artificial intelligence directly to your iPhone, 
 - **AI Models**: 
   - Qwen 3 (1.7B Q4) for chat and reasoning
   - BGE Small for embeddings
-- **Web Search**: Brave API Integration
+- **Web Search**: SearXNG Integration
 - **State Management**: Redux + Redux Toolkit
 - **Storage**: AsyncStorage for chat history and user contexts
 - **UI Components**: Lucide
@@ -99,7 +99,7 @@ We welcome contributions to MyDeviceAI! Here's how you can help:
 MyDeviceAI is built with privacy at its core:
 - All AI processing happens locally on your device
 - No data is sent to external servers without explicit consent
-- Brave Web Search integration respects user privacy
+- Web Search integration via SearXNG respects user privacy
 - Chat history is stored locally and never uploaded
 
 ## 📄 License
