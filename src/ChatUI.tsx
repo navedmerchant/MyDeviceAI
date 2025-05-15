@@ -1009,6 +1009,7 @@ want to talk and share about personal feelings.
             multiline={true}
             editable={true}
             numberOfLines={2}
+            onFocus={scrollToBottom}
           />
           {isTyping ? 
             (<TouchableOpacity style={styles.stopButton} onPress={handleStop}>
