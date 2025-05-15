@@ -4,7 +4,7 @@ interface SearXNGResult {
   title: string;
   content: string;
   // Add other fields if needed, e.g., engine, score, etc.
-  // thumbnail?: string;
+  thumbnail?: string;
   // engine?: string;
   // parsed_url?: string[];
   // img_src?: string;
@@ -14,6 +14,12 @@ interface SearXNGResult {
   // score?: number;
   // category?: string;
   // publishedDate?: string | null;
+}
+
+// Define the return type for the search function
+interface SearchResult {
+  formattedText: string;
+  thumbnails: string[];
 }
 
 interface SearXNGResponse {
@@ -27,7 +33,7 @@ interface SearXNGResponse {
 }
 
 // Renamed and updated function
-async function performSearXNGSearch(query: string): Promise<string> {
+async function performSearXNGSearch(query: string): Promise<SearchResult> {
   const baseUrl = "https://SAMPLE_URL";
   const params = new URLSearchParams({
     q: query,
@@ -58,11 +64,20 @@ async function performSearXNGSearch(query: string): Promise<string> {
     }
 
     if (!data.results || data.results.length === 0) {
-      return "No search results found.";
+      return {
+        formattedText: "No search results found.",
+        thumbnails: []
+      };
     }
 
     // Take the first 5 results
     const topResults = data.results.slice(0, 5);
+    
+    console.log('Top results:', topResults);
+    // Collect thumbnails
+    const thumbnails: string[] = topResults
+      .filter(result => result.thumbnail)
+      .map(result => result.thumbnail as string);
 
     const formattedResults = topResults.map(result => {
       // Ensure newlines are correctly within the template literal for the desired output string
@@ -73,16 +88,26 @@ URL: ${result.url}`;
       return formattedResult + '\n\n';
     }).join(''); // Join with an empty string, as newlines are already appended
 
-    return `Here are some relevant search results:\n\n${formattedResults.trimEnd()}`;
+    return {
+      formattedText: `Here are some relevant search results:\n\n${formattedResults.trimEnd()}`,
+      thumbnails
+    };
 
   } catch (error) {
     // Re-throw the error so the caller can handle it
     // Or handle it more gracefully here, e.g., return an error message string
     if (error instanceof Error) {
-        return `Error performing search: ${error.message}`;
+        return {
+          formattedText: `Error performing search: ${error.message}`,
+          thumbnails: []
+        };
     }
-    return "An unknown error occurred during the search.";
+    return {
+      formattedText: "An unknown error occurred during the search.",
+      thumbnails: []
+    };
   }
 }
 
 export { performSearXNGSearch };
+export type { SearchResult };

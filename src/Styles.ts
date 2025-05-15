@@ -410,6 +410,37 @@ const styles = StyleSheet.create({
     modeToggleTextActive: {
       color: '#28a745',
     },
+    // Thumbnail gallery styles
+    thumbnailContainer: {
+      marginTop: 10,
+      marginBottom: 5,
+    },
+    thumbnailList: {
+      paddingVertical: 5,
+    },
+    thumbnail: {
+      width: 80,
+      height: 80,
+      borderRadius: 8,
+      marginRight: 10,
+      backgroundColor: '#333',
+    },
+    expandedImageOverlay: {
+      position: 'absolute',
+      top: 0,
+      left: 0,
+      right: 0,
+      bottom: 0,
+      backgroundColor: 'rgba(0, 0, 0, 0.9)',
+      justifyContent: 'center',
+      alignItems: 'center',
+      zIndex: 1000,
+    },
+    expandedImage: {
+      width: '90%',
+      height: '90%',
+      borderRadius: 8,
+    },
   });
   
   const markdownStyles = {

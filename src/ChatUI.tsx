@@ -37,7 +37,7 @@ import { DrawerNavigationProp } from '@react-navigation/drawer';
 import { DrawerParamList } from '../App';
 import { useDatabase } from './DatabaseContext';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { performSearXNGSearch } from './SearXNG';
+import { performSearXNGSearch, SearchResult } from './SearXNG';
 import ContextManager from './utils/ContextManager';
 import { Share } from 'react-native';
 
@@ -297,11 +297,65 @@ const StreamingThinkingIndicator = () => (
   </View>
 );
 
+// Define ThumbnailGallery component 
+interface ThumbnailGalleryProps {
+  thumbnails: string[];
+}
+
+const ThumbnailGallery: React.FC<ThumbnailGalleryProps> = ({ thumbnails }) => {
+  const [expandedImage, setExpandedImage] = useState<string | null>(null);
+  
+  if (!thumbnails || thumbnails.length === 0) return null;
+
+  const handleImagePress = (url: string) => {
+    setExpandedImage(url);
+  };
+
+  const handleCloseExpanded = () => {
+    setExpandedImage(null);
+  };
+
+  return (
+    <View style={styles.thumbnailContainer}>
+      <FlatList
+        horizontal
+        data={thumbnails}
+        keyExtractor={(item, index) => `thumbnail-${index}`}
+        renderItem={({ item }) => (
+          <TouchableOpacity onPress={() => handleImagePress(item)}>
+            <Image 
+              source={{ uri: item }} 
+              style={styles.thumbnail} 
+            />
+          </TouchableOpacity>
+        )}
+        showsHorizontalScrollIndicator={false}
+        contentContainerStyle={styles.thumbnailList}
+      />
+      
+      {expandedImage && (
+        <TouchableOpacity 
+          style={styles.expandedImageOverlay} 
+          activeOpacity={1} 
+          onPress={handleCloseExpanded}
+        >
+          <Image 
+            source={{ uri: expandedImage }} 
+            style={styles.expandedImage} 
+            resizeMode="contain"
+          />
+        </TouchableOpacity>
+      )}
+    </View>
+  );
+};
+
 const ChatUI: React.FC<ChatUIProps> = ({ historyId, onMenuPress, MenuIcon, navigation, setParentIsTyping }) => {
   const [messages, setMessages] = useState<Message[]>([]);
   const [inputText, setInputText] = useState('');
   const [isTyping, setIsTyping] = useState(false);
   const [currentResponse, setCurrentResponse] = useState('');
+  const [currentThumbnails, setCurrentThumbnails] = useState<string[]>([]);
   const contextRef = useRef<LlamaContext | undefined>();
   const [unsppportedDevice, setUnsupportedDevice] = useState(false);
   const [currentHistoryId, setCurrentHistoryId] = useState<number | null>(null);
@@ -542,8 +596,8 @@ want to talk and share about personal feelings.
     }
   }
 
-  const addMessage = useCallback(async (text: string, isUser: boolean) => {
-    const newMessage = { id: Date.now(), text, isUser };
+  const addMessage = useCallback(async (text: string, isUser: boolean, thumbnails?: string[]) => {
+    const newMessage = { id: Date.now(), text, isUser, thumbnails };
     setMessages(prevMessages => [...prevMessages, newMessage]);
     if (currentHistoryIdRef.current) {
       await saveChatMessage(currentHistoryIdRef.current, text, isUser);
@@ -614,9 +668,14 @@ want to talk and share about personal feelings.
       setIsTyping(true);
 
       let searchResults = '';
+      let thumbnails: string[] = [];
+      
       if (searchModeEnabled) {
         try {
-          searchResults = await performSearXNGSearch(getUserMessages(inputText, messages));
+          const searchResponse: SearchResult = await performSearXNGSearch(getUserMessages(inputText, messages));
+          searchResults = searchResponse.formattedText;
+          thumbnails = searchResponse.thumbnails;
+          setCurrentThumbnails(thumbnails);
         } catch (error) {
           console.log('Search error:', error);
           if (error instanceof Error) {
@@ -624,14 +683,6 @@ want to talk and share about personal feelings.
           }
         }
       }
-
-      // // Add user message to context if it contains personal information
-      // if (contextManager.current) {
-      //   const wasContextSaved = await contextManager.current.addContext(inputText);
-      //   if (wasContextSaved) {
-      //     Toast.show("Personal context saved for future reference", Toast.SHORT);
-      //   }
-      // }
 
       // Get relevant context from previous conversations
       let userContext = '';
@@ -706,13 +757,14 @@ want to talk and share about personal feelings.
         chatContext.current = chatContext.current + textWithoutThinking;
         const displayText = text.replace("<|im_end|>", "")
           .trim();
-        addMessage(displayText, false);
+        addMessage(displayText, false, thumbnails);
       } catch (error) {
         console.error('Error generating AI response:', error);
         addMessage('Sorry, I encountered an error. Please try again.', false);
       } finally {
         setIsTyping(false);
         setCurrentResponse('');
+        setCurrentThumbnails([]);
       }
     }
   }, [inputText, addMessage, contextManager, searchModeEnabled, thinkingModeEnabled]);
@@ -853,6 +905,11 @@ want to talk and share about personal feelings.
             isAIMessage && { maxWidth: '100%' } // Override maxWidth for AI messages
           ]}
         >
+          {/* Show thumbnails at the top for AI messages */}
+          {isAIMessage && message.thumbnails && message.thumbnails.length > 0 && (
+            <ThumbnailGallery thumbnails={message.thumbnails} />
+          )}
+          
           {processThinkingContent(message.text, false)}
         </View>
         {/* For AI messages, show copy and share buttons on the right/below */} 
@@ -954,6 +1011,11 @@ want to talk and share about personal feelings.
               styles.aiMessage,
               { maxWidth: '100%' } // AI typing indicator is always full width
             ]}>
+              {/* Show thumbnails at the top while typing if available */}
+              {currentThumbnails.length > 0 && (
+                <ThumbnailGallery thumbnails={currentThumbnails} />
+              )}
+              
               {currentResponse ? (
                 <>
                   {processThinkingContent(currentResponse, true)}
