@@ -300,20 +300,11 @@ const StreamingThinkingIndicator = () => (
 // Define ThumbnailGallery component 
 interface ThumbnailGalleryProps {
   thumbnails: string[];
+  onImagePress: (url: string) => void;
 }
 
-const ThumbnailGallery: React.FC<ThumbnailGalleryProps> = ({ thumbnails }) => {
-  const [expandedImage, setExpandedImage] = useState<string | null>(null);
-  
+const ThumbnailGallery: React.FC<ThumbnailGalleryProps> = ({ thumbnails, onImagePress }) => {
   if (!thumbnails || thumbnails.length === 0) return null;
-
-  const handleImagePress = (url: string) => {
-    setExpandedImage(url);
-  };
-
-  const handleCloseExpanded = () => {
-    setExpandedImage(null);
-  };
 
   return (
     <View style={styles.thumbnailContainer}>
@@ -322,7 +313,7 @@ const ThumbnailGallery: React.FC<ThumbnailGalleryProps> = ({ thumbnails }) => {
         data={thumbnails}
         keyExtractor={(item, index) => `thumbnail-${index}`}
         renderItem={({ item }) => (
-          <TouchableOpacity onPress={() => handleImagePress(item)}>
+          <TouchableOpacity onPress={() => onImagePress(item)}>
             <Image 
               source={{ uri: item }} 
               style={styles.thumbnail} 
@@ -332,20 +323,6 @@ const ThumbnailGallery: React.FC<ThumbnailGalleryProps> = ({ thumbnails }) => {
         showsHorizontalScrollIndicator={false}
         contentContainerStyle={styles.thumbnailList}
       />
-      
-      {expandedImage && (
-        <TouchableOpacity 
-          style={styles.expandedImageOverlay} 
-          activeOpacity={1} 
-          onPress={handleCloseExpanded}
-        >
-          <Image 
-            source={{ uri: expandedImage }} 
-            style={styles.expandedImage} 
-            resizeMode="contain"
-          />
-        </TouchableOpacity>
-      )}
     </View>
   );
 };
@@ -362,10 +339,9 @@ const ChatUI: React.FC<ChatUIProps> = ({ historyId, onMenuPress, MenuIcon, navig
   const [searchModeEnabled, setSearchModeEnabled] = useState(false);
   const [thinkingModeEnabled, setThinkingModeEnabled] = useState(false);
   const { setGlobalHistoryId, loadHistories } = useDatabase();
-  const [selectedMessage, setSelectedMessage] = useState<Message | null>(null);
-  const [menuVisible, setMenuVisible] = useState(false);
   const [showScrollButton, setShowScrollButton] = useState(false);
   const [keyboardOffset, setKeyboardOffset] = useState(0);
+  const [expandedImage, setExpandedImage] = useState<string | null>(null);
 
   const chatContext = useRef('');
   const scrollViewRef = useRef<ScrollView>(null);
@@ -799,16 +775,10 @@ want to talk and share about personal feelings.
     }, 100);
   }, []);
 
-  const handleMessageLongPress = (message: Message) => {
-    setSelectedMessage(message);
-    setMenuVisible(true);
-  };
-
   const handleCopyText = (text: string) => {
     const textWithoutThinking = text.replace(/<think>.*?<\/think>/gs, '').trim();
     Clipboard.setString(textWithoutThinking);
     Toast.showWithGravity("Text copied to Clipboard", Toast.SHORT, Toast.CENTER);
-    setMenuVisible(false);
   };
 
   // Add this function to handle sharing text
@@ -824,7 +794,6 @@ want to talk and share about personal feelings.
       // It's good practice to inform the user if sharing fails, e.g., via a Toast
       Toast.showWithGravity("Failed to share text.", Toast.SHORT, Toast.TOP);
     }
-    setMenuVisible(false); // Assuming you might want to close a menu if it was open
   };
 
   // Move processThinkingContent outside of renderMessage
@@ -907,7 +876,9 @@ want to talk and share about personal feelings.
         >
           {/* Show thumbnails at the top for AI messages */}
           {isAIMessage && message.thumbnails && message.thumbnails.length > 0 && (
-            <ThumbnailGallery thumbnails={message.thumbnails} />
+            <ThumbnailGallery thumbnails={message.thumbnails} onImagePress={(url) => {
+              setExpandedImage(url);
+            }} />
           )}
           
           {processThinkingContent(message.text, false)}
@@ -969,6 +940,34 @@ want to talk and share about personal feelings.
     )
   }
 
+  // If there's an expanded image, render it as a full-screen overlay
+  if (expandedImage) {
+    return (
+      <View style={styles.expandedImageContainer}>
+        <TouchableOpacity style={styles.closeButton} onPress={() => setExpandedImage(null)}>
+          <Text style={styles.closeButtonText}>Close</Text>
+        </TouchableOpacity>
+        <Image
+          source={{ uri: expandedImage }}
+          style={styles.expandedImage}
+          resizeMode="contain"
+        />
+        <Text style={styles.closeTapText}>Tap anywhere to close</Text>
+        <TouchableOpacity 
+          style={{ 
+            position: 'absolute', 
+            top: 0, 
+            left: 0, 
+            right: 0, 
+            bottom: 0, 
+            zIndex: 9998 
+          }} 
+          activeOpacity={1} 
+          onPress={() => setExpandedImage(null)} 
+        />
+      </View>
+    );
+  }
 
   return (
     <KeyboardAvoidingView 
@@ -1013,7 +1012,9 @@ want to talk and share about personal feelings.
             ]}>
               {/* Show thumbnails at the top while typing if available */}
               {currentThumbnails.length > 0 && (
-                <ThumbnailGallery thumbnails={currentThumbnails} />
+                <ThumbnailGallery thumbnails={currentThumbnails} onImagePress={(url) => {
+                  setExpandedImage(url);
+                }} />
               )}
               
               {currentResponse ? (
