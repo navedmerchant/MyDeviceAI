@@ -402,7 +402,6 @@ const ChatUI: React.FC<ChatUIProps> = ({ historyId, onMenuPress, MenuIcon, navig
   const loadSystemPrompt = async () => {
     try {
       const savedPrompt = await AsyncStorage.getItem('systemPrompt');
-      console.log('savedPrompt:', savedPrompt);
 
       if (savedPrompt) {
         // For custom prompts, ensure they have the begin/header tags
@@ -486,7 +485,6 @@ want to talk and share about personal feelings.
         appState.current.match(/inactive|background/) &&
         nextAppState === 'active'
       ) {
-        console.log('App has come to the foreground!');
         loadModel();
         // Initialize context manager
         contextManager.current.initialize().catch(error => {
@@ -496,7 +494,6 @@ want to talk and share about personal feelings.
         appState.current === 'active' &&
         nextAppState.match(/inactive|background/)
       ) {
-        console.log('App has gone to the background!');
         if (isTyping) {
           contextRef.current?.stopCompletion();
         }
@@ -524,15 +521,12 @@ want to talk and share about personal feelings.
   }, [isTyping]);
 
   const loadModel = async () => {
-    console.log("Loading model");
-    console.log("Started load and predict");
     try {
       const modelParams = getModelParamsForDevice();
       if (modelParams == null) {
         console.log("Model params null! Unsupported device!");
         return;
       }
-      console.log("model params:", modelParams)
       const newContext = await initLlama(modelParams);
       contextRef.current = newContext;
       console.log("model loaded successfully");
@@ -543,9 +537,7 @@ want to talk and share about personal feelings.
   }
 
   const unloadModel = async () => {
-    console.log("Unloading model");
     await releaseAllLlama();
-    console.log("releaseed all LLama");
   }
 
   const scrollToBottom = () => {
@@ -597,7 +589,6 @@ want to talk and share about personal feelings.
 
   const handleSend = useCallback(async () => {
     const length = inputText.split(/\s+/).length;
-    console.log(`current input length ${length}`);
     if (length > 2000) {
       Toast.showWithGravity("Text too long, please try something shorter", Toast.SHORT, Toast.TOP);
       return;
@@ -672,12 +663,10 @@ want to talk and share about personal feelings.
         }
       }
 
-      console.log("searchResults: " + searchResults);
-
       const searchResultsPrompt = searchResults ? `\nHere are some
        search results for your query: ${searchResults} \n\n Use these to
         enhance your response if needed. Provide all the links at the end of your response.
-        Format the links with the following format: [Link Name](Link URL).` : '';
+        Format the links with the following format: [Title](Link URL).` : '';
 
       const firstPrompt = `${systemPrompt.current}<|im_start|>user\n 
       ${thinkingModeEnabled ? './think' : './no_think'} ${inputText}
@@ -700,7 +689,6 @@ want to talk and share about personal feelings.
       }
 
 
-      console.log("current prompt: " + prompt);
       chatContext.current = chatContext.current + prompt;
 
       if (!contextRef.current) {
