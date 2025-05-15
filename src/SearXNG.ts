@@ -41,18 +41,15 @@ async function performSearXNGSearch(query: string): Promise<string> {
     if (!response.ok) {
       // It's good practice to try and get more error info if possible
       const errorText = await response.text();
-      console.error("SearXNG API Error Text:", errorText); // Log error text
       throw new Error(`HTTP error! status: ${response.status} - ${errorText}`);
     }
 
     // Log raw response text before parsing
     const responseText = await response.text();
-    console.log("SearXNG Raw Response Text:", responseText);
 
     let data: SearXNGResponse;
     try {
       data = JSON.parse(responseText); // Parse the logged text
-      console.log("SearXNG Parsed Data:", JSON.stringify(data, null, 2)); // Log parsed data
     } catch (parseError: unknown) {
       if (parseError instanceof Error) {
         throw new Error(`Failed to parse API response: ${parseError.message}`);
@@ -66,21 +63,19 @@ async function performSearXNGSearch(query: string): Promise<string> {
 
     // Take the first 5 results
     const topResults = data.results.slice(0, 5);
-    console.log("SearXNG Top Results:", JSON.stringify(topResults, null, 2)); // Log top results
 
     const formattedResults = topResults.map(result => {
       // Ensure newlines are correctly within the template literal for the desired output string
-      let formattedResult = `Title: ${result.title}\nContent: ${result.content || 'No content available.'}\nURL: ${result.url}`;
+      let formattedResult = `Title: ${result.title}
+Content: ${result.content || 'No content available.'}
+URL: ${result.url}`;
       // Add two newlines after each result's formatted string
       return formattedResult + '\n\n';
     }).join(''); // Join with an empty string, as newlines are already appended
 
-    console.log("SearXNG Formatted Results String:", formattedResults); // Log formatted results string
-
     return `Here are some relevant search results:\n\n${formattedResults.trimEnd()}`;
 
   } catch (error) {
-    console.error("Error fetching from SearXNG:", error);
     // Re-throw the error so the caller can handle it
     // Or handle it more gracefully here, e.g., return an error message string
     if (error instanceof Error) {

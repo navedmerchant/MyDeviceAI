@@ -312,7 +312,7 @@ const styles = StyleSheet.create({
       padding: 10,
       flexDirection: 'row',
       alignItems: 'center',
-      backgroundColor: 'rgba(125, 23, 176, 0.3)',
+      backgroundColor: 'rgba(53, 53, 53, 0.3)',
     },
     thinkingHeaderText: {
       color: '#fff',

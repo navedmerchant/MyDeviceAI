@@ -255,13 +255,13 @@ const TypingIndicator = () => {
   
   return (
     <Text style={{ color: '#fff', opacity: 0.7 }}>
-      Thinking{dots}
+      Loading{dots}
     </Text>
   );
 };
 
 // Add this component for collapsible thinking content
-const ThinkingContent = ({ content }: { content: string }) => {
+const ThinkingContent = ({ content, isCurrentlyThinking = false }: { content: string, isCurrentlyThinking?: boolean }) => {
   const [isExpanded, setIsExpanded] = useState(false);
   
   // Don't render anything if content is empty or only whitespace
@@ -269,6 +269,8 @@ const ThinkingContent = ({ content }: { content: string }) => {
     return null;
   }
   
+  const collapsedText = isCurrentlyThinking ? '🤔 Thinking...' : '🤔 Show Thinking Process';
+
   return (
     <View style={styles.thinkingContainer}>
       <TouchableOpacity 
@@ -276,7 +278,7 @@ const ThinkingContent = ({ content }: { content: string }) => {
         onPress={() => setIsExpanded(!isExpanded)}
       >
         <Text style={styles.thinkingHeaderText}>
-          {isExpanded ? '🤔 Hide Thinking Process' : '🤔 Show Thinking Process'}
+          {isExpanded ? '🤔 Hide Thinking Process' : collapsedText}
         </Text>
       </TouchableOpacity>
       {isExpanded && (
@@ -685,7 +687,7 @@ want to talk and share about personal feelings.
           {
             prompt: chatContext.current,
             n_predict: 4096,
-            temperature: thinkingModeEnabled ? 0.6 : 0.7,
+            temperature: 0.7,
             top_p: thinkingModeEnabled ? 0.95 : 0.8,
             top_k: 20,
             min_p: 0,
@@ -751,8 +753,9 @@ want to talk and share about personal feelings.
   };
 
   const handleCopyText = (text: string) => {
-    Clipboard.setString(text);
-    Toast.showWithGravity("Text copied to Clipboard", Toast.SHORT, Toast.TOP);
+    const textWithoutThinking = text.replace(/<think>.*?<\/think>/gs, '').trim();
+    Clipboard.setString(textWithoutThinking);
+    Toast.showWithGravity("Text copied to Clipboard", Toast.SHORT, Toast.CENTER);
     setMenuVisible(false);
   };
 
@@ -773,7 +776,7 @@ want to talk and share about personal feelings.
   };
 
   // Move processThinkingContent outside of renderMessage
-  const processThinkingContent = (text: string) => {
+  const processThinkingContent = (text: string, isCurrentlyThinking: boolean = false) => {
     // Find the first <think> tag
     const startIndex = text.indexOf("<think>");
     if (startIndex === -1) {
@@ -804,7 +807,7 @@ want to talk and share about personal feelings.
     const trimmedThinkingContent = thinkingContent.trim();
     if (trimmedThinkingContent) {
       parts.push(
-        <ThinkingContent key="thinking" content={trimmedThinkingContent} />
+        <ThinkingContent key="thinking" content={trimmedThinkingContent} isCurrentlyThinking={isCurrentlyThinking} />
       );
     }
     
@@ -850,7 +853,7 @@ want to talk and share about personal feelings.
             isAIMessage && { maxWidth: '100%' } // Override maxWidth for AI messages
           ]}
         >
-          {processThinkingContent(message.text)}
+          {processThinkingContent(message.text, false)}
         </View>
         {/* For AI messages, show copy and share buttons on the right/below */} 
         {isAIMessage && (
@@ -953,7 +956,7 @@ want to talk and share about personal feelings.
             ]}>
               {currentResponse ? (
                 <>
-                  {processThinkingContent(currentResponse)}
+                  {processThinkingContent(currentResponse, true)}
                   {(currentResponse.match(/<think>/g) || []).length > 
                    (currentResponse.match(/<\/think>/g) || []).length && (
                     <StreamingThinkingIndicator />
