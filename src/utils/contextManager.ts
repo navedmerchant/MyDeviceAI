@@ -1,5 +1,5 @@
 import { LlamaContext, initLlama, releaseAllLlama } from 'llama.rn';
-import * as DatabaseHelper from '../DatabaseHelper';
+import * as DatabaseHelper from '../db/DatabaseHelper';
 
 const EMBEDDING_DIMENSIONS = 384; // BGE small model dimension
 

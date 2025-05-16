@@ -73,7 +73,7 @@ async function performSearXNGSearch(query: string): Promise<SearchResult> {
     // Take the first 5 results
     const topResults = data.results.slice(0, 5);
     
-    console.log('Top results:', topResults);
+    // console.log('Top results:', topResults);
     // Collect thumbnails
     const thumbnails: string[] = topResults
       .filter(result => result.thumbnail)

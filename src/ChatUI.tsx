@@ -25,21 +25,28 @@ import {
   FlatList,
 } from 'react-native';
 import { Send, Square, CirclePlus, Search, Settings, ArrowDown, Brain, Copy, Share as ShareIcon } from 'lucide-react-native';
-import { getModelParamsForDevice } from './Utils';
+import { getModelParamsForDevice } from './utils/Utils';
 import { styles, markdownStyles, popoverStyles, menuOptionStyles } from './Styles';
-import { Message } from './Message';
+import { Message } from './model/Message';
 import {
   initDatabase,
   saveNewChatHistory,
   saveChatMessage,
-  loadChatHistory} from './DatabaseHelper';
+  loadChatHistory} from './db/DatabaseHelper';
 import { DrawerNavigationProp } from '@react-navigation/drawer';
 import { DrawerParamList } from '../App';
-import { useDatabase } from './DatabaseContext';
+import { useDatabase } from './db/DatabaseContext';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { performSearXNGSearch, SearchResult } from './SearXNG';
+import { performSearXNGSearch, SearchResult } from './search/SearXNG';
 import ContextManager from './utils/ContextManager';
 import { Share } from 'react-native';
+
+// Import the components we moved to separate files
+import EmptyState from './components/EmptyState';
+import TypingIndicator from './components/TypingIndicator';
+import ThinkingContent from './components/ThinkingContent';
+import StreamingThinkingIndicator from './components/StreamingThinkingIndicator';
+import ThumbnailGallery from './components/ThumbnailGallery';
 
 type ChatScreenNavigationProp = DrawerNavigationProp<DrawerParamList, 'Chat'>;
 
@@ -50,282 +57,6 @@ interface ChatUIProps {
   navigation: ChatScreenNavigationProp;
   setParentIsTyping: (isTyping: boolean) => void;
 }
-
-// List of suggested prompts
-const SUGGESTED_PROMPTS = [
-  "Tell me about yourself. What can you do?",
-  "Write a short story about a robot learning to paint",
-  "Explain quantum computing to a 10-year-old",
-  "What are some creative ways to stay productive?",
-  "Help me plan a weekend trip",
-  "Create a meal plan for someone trying to eat healthier",
-  "What's the difference between machine learning and AI?",
-  "Give me 5 book recommendations based on popular science",
-  "Write a poem about the beauty of nature",
-  "How can I improve my public speaking skills?",
-  "Explain the basics of investing for beginners",
-  "What are the most promising renewable energy technologies?",
-  "Tell me about the history of artificial intelligence",
-  "What are some interesting philosophical paradoxes?",
-  "Help me draft a professional email requesting feedback",
-  "What would happen if humans could photosynthesize like plants?",
-  "Recommend some easy home workouts that don't require equipment",
-  "What are the key differences between various programming languages?",
-  "Explain how blockchain technology works",
-  "Write a creative story about time travel",
-  "What scientific discoveries might we make in the next 50 years?",
-  "How can I start a small vegetable garden at home?",
-  "Give me tips for improving my sleep quality",
-  "What are some effective techniques for memorization?",
-  "Explain the concept of mindfulness and how to practice it",
-  "How do I start learning a new language efficiently?",
-  "What advances in medicine are most exciting right now?",
-  "Write a dialogue between a human and an advanced AI from the year 2100",
-  "How can I improve my critical thinking skills?",
-  "Explain how the internet actually works",
-  "What are some interesting psychological experiments?",
-  "Create a fictional world with unique natural laws",
-  "What are the best strategies for negotiation?",
-  "How can I be more creative in my daily life?",
-  "What are the most fascinating space discoveries of the last decade?",
-  "Give me a crash course on music theory",
-  "Explain the concept of emotional intelligence",
-  "How do different cultures approach the concept of happiness?",
-  "What are the implications of advanced AI for society?",
-  "Help me understand the basics of quantum physics",
-  "What makes a good story? Tell me about narrative structure",
-  "How can I reduce my environmental impact?",
-  "Explain the psychology behind habit formation",
-  "What are some fascinating animal adaptations?",
-  "How can I improve my financial literacy?",
-  "Recommend some thought-provoking documentaries",
-  "Write a short screenplay about first contact with aliens",
-  "What are the ethical considerations of genetic engineering?",
-  "How can I become a better listener?",
-  "Explain the process of scientific discovery",
-  "What are the most beautiful mathematical concepts?",
-  "How can I overcome creative blocks?",
-  "Tell me about the history and cultural significance of tea",
-  "What would a human settlement on Mars look like?",
-  "How do our senses actually work?",
-  "What makes certain pieces of art valuable?",
-  "Help me understand the basics of nutrition science",
-  "What are some lesser-known historical events that changed the world?",
-  "How does machine translation work?",
-  "What life lessons can we learn from nature?",
-  "Explain the importance of biodiversity",
-];
-
-// Fisher-Yates shuffle algorithm
-const shuffleArray = <T,>(array: T[]): T[] => {
-  const shuffled = [...array];
-  for (let i = shuffled.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
-  }
-  return shuffled;
-};
-
-// Pre-shuffle the prompts once when the file loads
-const SHUFFLED_PROMPTS = shuffleArray([...SUGGESTED_PROMPTS]);
-
-// EmptyState component to show when there are no messages
-const EmptyState = ({ onPromptPress }: { onPromptPress: (prompt: string) => void }) => {
-  const flatListRef = useRef<FlatList>(null);
-  // Use the pre-shuffled prompts
-  const visiblePrompts = useRef([...SHUFFLED_PROMPTS]);
-  const [isPaused, setIsPaused] = useState(false);
-  const [userScrollPos, setUserScrollPos] = useState(0);
-  
-  // Auto-scrolling logic
-  useEffect(() => {
-    let scrollInterval: NodeJS.Timeout;
-    let currentScrollPosition = userScrollPos;
-    const itemWidth = 280; // Width of each item + horizontal margins
-    const totalWidth = SUGGESTED_PROMPTS.length * itemWidth; // Total width of all items
-    
-    // Start auto-scrolling after a short delay
-    const timer = setTimeout(() => {
-      scrollInterval = setInterval(() => {
-        if (!isPaused) {
-          currentScrollPosition += 1; // Slower, smoother scrolling
-          
-          // Create circular scrolling effect
-          const actualPosition = currentScrollPosition % totalWidth;
-          
-          // Check if we need to update the visible window of prompts
-          // This creates an illusion of infinite scrolling with better performance
-          if (Math.floor(actualPosition / itemWidth) > SUGGESTED_PROMPTS.length - 10) {
-            // Approaching the end, append prompts from beginning to create seamless loop
-            visiblePrompts.current = [...SHUFFLED_PROMPTS, ...SHUFFLED_PROMPTS.slice(0, 15)];
-          } else if (actualPosition < 10 * itemWidth) {
-            // Near the beginning, reset to original list
-            visiblePrompts.current = [...SHUFFLED_PROMPTS];
-          }
-          
-          // Smooth scrolling
-          flatListRef.current?.scrollToOffset({ 
-            offset: actualPosition,
-            animated: false 
-          });
-        }
-      }, 20); // Update more frequently for smoother scrolling
-    }, 1500); // Start after 1.5 seconds
-    
-    return () => {
-      clearTimeout(timer);
-      clearInterval(scrollInterval);
-    };
-  }, [isPaused, userScrollPos]);
-  
-  // Handle touch events to pause/resume scrolling
-  const handleTouchStart = () => setIsPaused(true);
-  const handleTouchEnd = () => setIsPaused(false);
-  
-  // Track scroll position
-  const handleScroll = (event: NativeSyntheticEvent<NativeScrollEvent>) => {
-    if (isPaused) {
-      setUserScrollPos(event.nativeEvent.contentOffset.x);
-    }
-  };
-  
-  return (
-    <View 
-      style={styles.emptyStateContainer}
-      onTouchStart={handleTouchStart}
-      onTouchEnd={handleTouchEnd}
-    >
-      <Image
-        source={require('./images/MyDeviceAI-NoBG.png')}
-        style={styles.emptyStateLogo}
-      />
-      <Text style={styles.emptyStateTitle}>MyDeviceAI</Text>      
-      <FlatList
-        ref={flatListRef}
-        data={visiblePrompts.current}
-        keyExtractor={(item, index) => `prompt-${index}`}
-        renderItem={({ item }) => (
-          <TouchableOpacity 
-            style={styles.promptItem} 
-            onPress={() => onPromptPress(item)}
-          >
-            <Text style={styles.promptText}>{item}</Text>
-          </TouchableOpacity>
-        )}
-        horizontal={true}
-        showsHorizontalScrollIndicator={false}
-        decelerationRate="fast"
-        snapToAlignment="center"
-        snapToInterval={280} // Match the itemWidth for snap effect
-        contentContainerStyle={styles.promptsContainer}
-        bounces={false}
-        scrollEventThrottle={16}
-        onScroll={handleScroll}
-        onScrollBeginDrag={() => setIsPaused(true)}
-        onScrollEndDrag={() => {
-          // Small delay before resuming auto-scroll to allow momentum scrolling to settle
-          setTimeout(() => setIsPaused(false), 500);
-        }}
-        onMomentumScrollEnd={(event) => {
-          setUserScrollPos(event.nativeEvent.contentOffset.x);
-        }}
-        windowSize={10} // Optimize rendering for better performance
-        removeClippedSubviews={true} // Improve memory usage
-        maxToRenderPerBatch={8} // Limit batch rendering for smoother scrolling
-        initialNumToRender={6} // Start with fewer rendered items
-      />
-    </View>
-  );
-};
-
-// Add this component for the typing indicator
-const TypingIndicator = () => {
-  const [dots, setDots] = useState('');
-  
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setDots(prev => {
-        if (prev.length >= 3) return '';
-        return prev + '.';
-      });
-    }, 500);
-    
-    return () => clearInterval(interval);
-  }, []);
-  
-  return (
-    <Text style={{ color: '#fff', opacity: 0.7 }}>
-      Loading{dots}
-    </Text>
-  );
-};
-
-// Add this component for collapsible thinking content
-const ThinkingContent = ({ content, isCurrentlyThinking = false }: { content: string, isCurrentlyThinking?: boolean }) => {
-  const [isExpanded, setIsExpanded] = useState(false);
-  
-  // Don't render anything if content is empty or only whitespace
-  if (!content || !content.trim()) {
-    return null;
-  }
-  
-  const collapsedText = isCurrentlyThinking ? '🤔 Thinking...' : '🤔 Show Thinking Process';
-
-  return (
-    <View style={styles.thinkingContainer}>
-      <TouchableOpacity 
-        style={styles.thinkingHeader} 
-        onPress={() => setIsExpanded(!isExpanded)}
-      >
-        <Text style={styles.thinkingHeaderText}>
-          {isExpanded ? '🤔 Hide Thinking Process' : collapsedText}
-        </Text>
-      </TouchableOpacity>
-      {isExpanded && (
-        <View style={styles.thinkingContent}>
-          <Markdown style={markdownStyles}>{content}</Markdown>
-        </View>
-      )}
-    </View>
-  );
-};
-
-// Add this component for the thinking indicator during streaming
-const StreamingThinkingIndicator = () => (
-  <View style={styles.streamingThinkingIndicator}>
-    <Text style={styles.streamingThinkingText}></Text>
-  </View>
-);
-
-// Define ThumbnailGallery component 
-interface ThumbnailGalleryProps {
-  thumbnails: string[];
-  onImagePress: (url: string) => void;
-}
-
-const ThumbnailGallery: React.FC<ThumbnailGalleryProps> = ({ thumbnails, onImagePress }) => {
-  if (!thumbnails || thumbnails.length === 0) return null;
-
-  return (
-    <View style={styles.thumbnailContainer}>
-      <FlatList
-        horizontal
-        data={thumbnails}
-        keyExtractor={(item, index) => `thumbnail-${index}`}
-        renderItem={({ item }) => (
-          <TouchableOpacity onPress={() => onImagePress(item)}>
-            <Image 
-              source={{ uri: item }} 
-              style={styles.thumbnail} 
-            />
-          </TouchableOpacity>
-        )}
-        showsHorizontalScrollIndicator={false}
-        contentContainerStyle={styles.thumbnailList}
-      />
-    </View>
-  );
-};
 
 const ChatUI: React.FC<ChatUIProps> = ({ historyId, onMenuPress, MenuIcon, navigation, setParentIsTyping }) => {
   const [messages, setMessages] = useState<Message[]>([]);

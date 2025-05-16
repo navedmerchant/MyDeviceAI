@@ -13,7 +13,7 @@ import {
 import { ChevronLeft, ChevronRight, Cog, Settings } from 'lucide-react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { DrawerNavigationProp } from '@react-navigation/drawer';
-import { DrawerParamList } from '../App';
+import { DrawerParamList } from '../../App';
 
 type SettingsScreenNavigationProp = DrawerNavigationProp<DrawerParamList, 'Settings'>;
 

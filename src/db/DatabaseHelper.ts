@@ -1,6 +1,6 @@
 // DatabaseHelper.ts
 import { open, type DB } from '@op-engineering/op-sqlite';
-import { Message } from './Message';
+import { Message } from '../model/Message';
 
 let db: DB | null = null;
 
@@ -58,7 +58,6 @@ export const initDatabase = async () => {
       );
     `);
     
-    console.log('Database initialized');
   } catch (error) {
     console.error('Database initialization error', error);
   }

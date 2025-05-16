@@ -9,7 +9,7 @@ import {
 } from 'react-native';
 import { DrawerContentScrollView, DrawerContentComponentProps } from '@react-navigation/drawer';
 import { Trash2, Settings } from 'lucide-react-native';
-import { useDatabase } from './DatabaseContext';
+import { useDatabase } from '../db/DatabaseContext';
 import { DrawerNavigationProp } from '@react-navigation/drawer';
 import { CompositeNavigationProp, useFocusEffect, useNavigation } from '@react-navigation/native';
 import Markdown from 'react-native-markdown-display';

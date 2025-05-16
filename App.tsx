@@ -8,12 +8,12 @@ import { Colors } from 'react-native/Libraries/NewAppScreen';
 import { MenuProvider } from 'react-native-popup-menu';
 import { NavigationContainer } from '@react-navigation/native';
 import { createDrawerNavigator } from '@react-navigation/drawer';
-import { DatabaseProvider } from './src/DatabaseContext';
+import { DatabaseProvider } from './src/db/DatabaseContext';
 import ChatUI from './src/ChatUI';
-import CustomDrawerContent from './src/CustomDrawerContent';
+import CustomDrawerContent from './src/drawer/CustomDrawerContent';
 import 'react-native-gesture-handler';
-import ChatScreen from './src/ChatScreen';
-import SettingsScreen from './src/SettingsScreen';
+import ChatScreen from './src/screens/ChatScreen';
+import SettingsScreen from './src/screens/SettingsScreen';
 import ContextSettings from './src/screens/ContextSettings';
 
 export type DrawerParamList = {
