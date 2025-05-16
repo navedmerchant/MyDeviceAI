@@ -1,7 +1,7 @@
 import { LlamaContext, initLlama, releaseAllLlama } from 'llama.rn';
 import React, { useState, useCallback, useRef, useEffect } from 'react';
 import Markdown from 'react-native-markdown-display';
-import Toast from 'react-native-simple-toast';
+import { showToast } from './utils/ToastUtils';
 
 import {
   View,
@@ -155,6 +155,28 @@ want to talk and share about personal feelings.
       console.error('Error loading system prompt:', error);
     }
   };
+
+  // Load toggle states from AsyncStorage
+  const loadToggleStates = async () => {
+    try {
+      const savedThinkingMode = await AsyncStorage.getItem('thinkingModeEnabled');
+      const savedSearchMode = await AsyncStorage.getItem('searchModeEnabled');
+      
+      if (savedThinkingMode !== null) {
+        setThinkingModeEnabled(savedThinkingMode === 'true');
+      }
+      if (savedSearchMode !== null) {
+        setSearchModeEnabled(savedSearchMode === 'true');
+      }
+    } catch (error) {
+      console.error('Error loading toggle states:', error);
+    }
+  };
+
+  // Add initial load of toggle states
+  useEffect(() => {
+    loadToggleStates();
+  }, []);
 
   // Add a listener for when the settings screen is focused
   useEffect(() => {
@@ -321,10 +343,10 @@ want to talk and share about personal feelings.
   const handleSend = useCallback(async () => {
     const length = inputText.split(/\s+/).length;
     if (length > 2000) {
-      Toast.showWithGravity("Text too long, please try something shorter", Toast.SHORT, Toast.TOP);
+      showToast("Text too long, please try something shorter");
       return;
     }
-
+    
     scrollToBottom();
 
     // Check if model needs to be loaded
@@ -377,7 +399,7 @@ want to talk and share about personal feelings.
         } catch (error) {
           console.log('Search error:', error);
           if (error instanceof Error) {
-            Toast.showWithGravity(error.message, Toast.LONG, Toast.TOP);
+            showToast(error.message);
           }
         }
       }
@@ -497,7 +519,7 @@ want to talk and share about personal feelings.
   const handleCopyText = (text: string) => {
     const textWithoutThinking = text.replace(/<think>.*?<\/think>/gs, '').trim();
     Clipboard.setString(textWithoutThinking);
-    Toast.showWithGravity("Text copied to Clipboard", Toast.SHORT, Toast.CENTER);
+    showToast("Text copied to Clipboard");
   };
 
   // Add this function to handle sharing text
@@ -510,8 +532,7 @@ want to talk and share about personal feelings.
       });
     } catch (error) {
       console.error('Error sharing text:', error);
-      // It's good practice to inform the user if sharing fails, e.g., via a Toast
-      Toast.showWithGravity("Failed to share text.", Toast.SHORT, Toast.TOP);
+      showToast("Failed to share text.");
     }
   };
 
@@ -627,12 +648,23 @@ want to talk and share about personal feelings.
   };
 
   const handleSearchToggle = async () => {
-    setSearchModeEnabled(!searchModeEnabled);
+    const newState = !searchModeEnabled;
+    setSearchModeEnabled(newState);
+    try {
+      await AsyncStorage.setItem('searchModeEnabled', newState.toString());
+    } catch (error) {
+      console.error('Error saving search mode state:', error);
+    }
   };
 
-  const handleThinkingToggle = () => {
+  const handleThinkingToggle = async () => {
     const newState = !thinkingModeEnabled;
     setThinkingModeEnabled(newState);
+    try {
+      await AsyncStorage.setItem('thinkingModeEnabled', newState.toString());
+    } catch (error) {
+      console.error('Error saving thinking mode state:', error);
+    }
   };
 
   const getUserMessages = (currentInput: string, messages: Message[]): string => {
@@ -774,10 +806,14 @@ want to talk and share about personal feelings.
             multiline={true}
             editable={true}
             numberOfLines={2}
-            onFocus={scrollToBottom}
+            onFocus={() => setTimeout(scrollToBottom, 100)}
           />
           {isTyping ? 
-            (<TouchableOpacity style={styles.stopButton} onPress={handleStop}>
+            (<TouchableOpacity 
+              style={[styles.stopButton, !currentResponse && styles.stopButtonDisabled]} 
+              onPress={handleStop}
+              disabled={!currentResponse}
+            >
               <Square color="#fff"></Square>
             </TouchableOpacity>) : 
             (<TouchableOpacity style={styles.sendButton} onPress={handleSend}>

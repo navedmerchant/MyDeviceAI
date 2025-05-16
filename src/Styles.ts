@@ -166,6 +166,10 @@ const styles = StyleSheet.create({
       borderRadius: 20,
       padding: 10,
     },
+    stopButtonDisabled: {
+      backgroundColor: '#666',
+      opacity: 0.5,
+    },
     sendButtonText: {
       color: '#fff',
       fontWeight: 'bold',

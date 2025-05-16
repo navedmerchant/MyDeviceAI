@@ -221,11 +221,6 @@ const SettingsScreen: React.FC<Props> = ({ navigation }) => {
             </View>
           </View>
         </View>
-
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Danger Zone</Text>
-          {/* ... existing code ... */}
-        </View>
       </ScrollView>
 
       <TouchableOpacity 
