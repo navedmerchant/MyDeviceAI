@@ -573,6 +573,14 @@ want to talk and share about personal feelings.
     return parts.length > 0 ? parts : <Markdown style={markdownStyles}>{text}</Markdown>;
   };
 
+  const handleImagePress = (url: string, allImages: string[]) => {
+    const initialIndex = allImages.indexOf(url);
+    navigation.navigate('ImageGallery', {
+      images: allImages,
+      initialIndex: initialIndex,
+    });
+  };
+
   const renderMessage = (message: Message) => {
     const isAIMessage = !message.isUser;
 
@@ -595,9 +603,10 @@ want to talk and share about personal feelings.
         >
           {/* Show thumbnails at the top for AI messages */}
           {isAIMessage && message.thumbnails && message.thumbnails.length > 0 && (
-            <ThumbnailGallery thumbnails={message.thumbnails} onImagePress={(url) => {
-              setExpandedImage(url);
-            }} />
+            <ThumbnailGallery 
+              thumbnails={message.thumbnails} 
+              onImagePress={(url) => handleImagePress(url, message.thumbnails || [])} 
+            />
           )}
           
           {processThinkingContent(message.text, false)}
@@ -659,35 +668,6 @@ want to talk and share about personal feelings.
     )
   }
 
-  // If there's an expanded image, render it as a full-screen overlay
-  if (expandedImage) {
-    return (
-      <View style={styles.expandedImageContainer}>
-        <TouchableOpacity style={styles.closeButton} onPress={() => setExpandedImage(null)}>
-          <Text style={styles.closeButtonText}>Close</Text>
-        </TouchableOpacity>
-        <Image
-          source={{ uri: expandedImage }}
-          style={styles.expandedImage}
-          resizeMode="contain"
-        />
-        <Text style={styles.closeTapText}>Tap anywhere to close</Text>
-        <TouchableOpacity 
-          style={{ 
-            position: 'absolute', 
-            top: 0, 
-            left: 0, 
-            right: 0, 
-            bottom: 0, 
-            zIndex: 9998 
-          }} 
-          activeOpacity={1} 
-          onPress={() => setExpandedImage(null)} 
-        />
-      </View>
-    );
-  }
-
   return (
     <KeyboardAvoidingView 
       style={styles.container} 
@@ -727,13 +707,13 @@ want to talk and share about personal feelings.
             <View style={[
               styles.messageBubble,
               styles.aiMessage,
-              { maxWidth: '100%' } // AI typing indicator is always full width
+              { maxWidth: '100%' }
             ]}>
-              {/* Show thumbnails at the top while typing if available */}
               {currentThumbnails.length > 0 && (
-                <ThumbnailGallery thumbnails={currentThumbnails} onImagePress={(url) => {
-                  setExpandedImage(url);
-                }} />
+                <ThumbnailGallery 
+                  thumbnails={currentThumbnails} 
+                  onImagePress={(url) => handleImagePress(url, currentThumbnails)} 
+                />
               )}
               
               {currentResponse ? (

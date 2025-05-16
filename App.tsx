@@ -15,11 +15,13 @@ import 'react-native-gesture-handler';
 import ChatScreen from './src/screens/ChatScreen';
 import SettingsScreen from './src/screens/SettingsScreen';
 import ContextSettings from './src/screens/ContextSettings';
+import ImageGalleryScreen from './src/screens/ImageGalleryScreen';
 
 export type DrawerParamList = {
   Chat: { historyId?: number };
   Settings: undefined;
   ContextSettings: undefined;
+  ImageGallery: { images: string[]; initialIndex: number };
 };
 
 const Drawer = createDrawerNavigator<DrawerParamList>();
@@ -65,6 +67,13 @@ function App(): React.JSX.Element {
             <Drawer.Screen 
               name="ContextSettings"
               component={ContextSettings}
+              options={{
+                swipeEnabled: false,
+              }}
+            />
+            <Drawer.Screen 
+              name="ImageGallery"
+              component={ImageGalleryScreen}
               options={{
                 swipeEnabled: false,
               }}
