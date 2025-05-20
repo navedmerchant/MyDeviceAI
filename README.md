@@ -115,6 +115,16 @@ If you discover any bugs, please create an issue in the GitHub repository includ
 - Steps to reproduce the bug
 - Expected and actual behavior
 
+## ⚠️ Known Issues
+
+We are actively working on the following issues and welcome contributions:
+
+1. **Formula Rendering**: Need to implement mathematical formula support using KaTeX or a Redux-compatible parser
+2. **Image Rendering**: Some base64 images from search results fail to render properly
+3. **Think Token Display**: Occasional display of raw think tokens in the thinking section needs better parsing logic
+
+If you'd like to help solve any of these issues, please check our Contributing section above!
+
 ## 📞 Contact
 
 If you have any questions or suggestions, feel free to open an issue or reach out to the maintainers.
