@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import {
   View,
   Image,
@@ -29,6 +29,14 @@ const ImageGalleryScreen: React.FC<ImageGalleryScreenProps> = ({ navigation, rou
   const { images, initialIndex } = route.params;
   const [currentIndex, setCurrentIndex] = useState(initialIndex);
   const flatListRef = useRef<FlatList>(null);
+
+  useEffect(() => {
+    setCurrentIndex(initialIndex);
+    flatListRef.current?.scrollToIndex({
+      index: initialIndex,
+      animated: false,
+    });
+  }, [initialIndex]);
 
   const renderItem = ({ item }: { item: string }) => (
     <View style={styles.imageContainer}>

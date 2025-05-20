@@ -419,7 +419,7 @@ want to talk and share about personal feelings.
       const searchResultsPrompt = searchResults ? `\nHere are some
        search results for your query: ${searchResults} \n\n Use these to
         enhance your response if needed. Provide all the links at the end of your response.
-        Format the links with the following format: [Title](Link URL).` : '';
+        Markdown format the links` : '';
 
       const firstPrompt = `${systemPrompt.current}<|im_start|>user\n 
       ${thinkingModeEnabled ? './think' : './no_think'} ${inputText}
@@ -595,10 +595,10 @@ want to talk and share about personal feelings.
   };
 
   const handleImagePress = (url: string, allImages: string[]) => {
-    const initialIndex = allImages.indexOf(url);
+    const initialIndex = allImages.findIndex(image => image === url);
     navigation.navigate('ImageGallery', {
       images: allImages,
-      initialIndex: initialIndex,
+      initialIndex: initialIndex >= 0 ? initialIndex : 0,
     });
   };
 
