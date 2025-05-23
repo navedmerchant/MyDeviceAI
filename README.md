@@ -44,19 +44,25 @@ MyDeviceAI brings the power of artificial intelligence directly to your iPhone, 
    - Download [Qwen3 1.7B Q4](https://huggingface.co/bartowski/Qwen_Qwen3-1.7B-GGUF) and place it in the `ios/` directory
    - Download [BGE Small](https://huggingface.co/CompendiumLabs/bge-small-en-v1.5-gguf) and place it in the `ios/` directory
 
-3. Install dependencies:
+3. Create configuration file:
+   - Create `src/config/Env.ts` with the following content:
+     ```typescript
+     export const HOSTNAME = 'YOUR_SEARXNG_INSTANCE_URL';
+     ```
+
+4. Install dependencies:
    ```bash
    npm install
    # or
    yarn install
    ```
 
-4. Install pods:
+5. Install pods:
    ```bash
    cd ios && pod install && cd ..
    ```
 
-5. Start the application:
+6. Start the application:
    ```bash
    npm run ios
    # or

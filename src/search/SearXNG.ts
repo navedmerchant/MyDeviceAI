@@ -1,3 +1,5 @@
+import { HOSTNAME } from "../config/Env";
+
 // Define interfaces for the SearXNG API response
 interface SearXNGResult {
   url: string;
@@ -34,7 +36,7 @@ interface SearXNGResponse {
 
 // Renamed and updated function
 async function performSearXNGSearch(query: string): Promise<SearchResult> {
-  const baseUrl = "https://SAMPLE_URL";
+  const baseUrl = HOSTNAME;
   const params = new URLSearchParams({
     q: query,
     format: "json",
