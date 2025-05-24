@@ -14,20 +14,16 @@ import {
 import { ChevronLeft, ChevronRight, Cog, Settings, Download } from 'lucide-react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { DrawerNavigationProp } from '@react-navigation/drawer';
-<<<<<<< HEAD:src/screens/SettingsScreen.tsx
 import { DrawerParamList } from '../../App';
-=======
-import { DrawerParamList } from '../App';
 import RNFS from 'react-native-fs';
 import * as Progress from 'react-native-progress';
-import { MODEL_NAMES, MODEL_URLS } from './constants/Models';
+import { MODEL_NAMES, MODEL_URLS } from '../constants/Models';
 
 interface DownloadProgressData {
   bytesWritten: number;
   contentLength: number;
   jobId: number;
 }
->>>>>>> baf273f (Android Support):src/SettingsScreen.tsx
 
 type SettingsScreenNavigationProp = DrawerNavigationProp<DrawerParamList, 'Settings'>;
 
@@ -64,10 +60,6 @@ const addMetaTags = (prompt: string): string => {
 const SettingsScreen: React.FC<Props> = ({ navigation }) => {
   const [systemPrompt, setSystemPrompt] = useState('');
   const [historyDays, setHistoryDays] = useState('30');
-<<<<<<< HEAD:src/screens/SettingsScreen.tsx
-  // const [braveApiKey, setBraveApiKey] = useState(''); // Commented out
-  // const [monthlyQueries, setMonthlyQueries] = useState('0'); // Commented out
-=======
   const [braveApiKey, setBraveApiKey] = useState('');
   const [monthlyQueries, setMonthlyQueries] = useState('0');
   const [modelDownloadProgress, setModelDownloadProgress] = useState(0);
@@ -81,7 +73,6 @@ const SettingsScreen: React.FC<Props> = ({ navigation }) => {
     ios: `${RNFS.DocumentDirectoryPath}/model`,
     android: `${RNFS.DocumentDirectoryPath}/model`,
   }) as string;
->>>>>>> baf273f (Android Support):src/SettingsScreen.tsx
 
   // Load settings when component mounts
   useEffect(() => {
