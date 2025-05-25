@@ -1,4 +1,4 @@
-import { LlamaContext, initLlama, releaseAllLlama } from 'cui-llama.rn';
+import { LlamaContext, initLlama, releaseAllLlama } from 'llama.rn';
 import * as DatabaseHelper from '../db/DatabaseHelper';
 import { Platform } from "react-native";
 import DeviceInfo from "react-native-device-info";
@@ -72,6 +72,7 @@ class ContextManager {
         n_gpu_layers: 0, // CPU only for embeddings
         embedding: true // enable embedding mode
       });
+      console.log('Embedding Model initialized');
     } catch (error) {
       console.error('Error loading model:', error);
       throw error;

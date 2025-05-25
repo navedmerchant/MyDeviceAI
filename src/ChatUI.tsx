@@ -1,4 +1,4 @@
-import { LlamaContext, initLlama, releaseAllLlama } from 'cui-llama.rn';
+import { LlamaContext, initLlama, releaseAllLlama } from 'llama.rn';
 import React, { useState, useCallback, useRef, useEffect } from 'react';
 import Markdown from 'react-native-markdown-display';
 import { showToast } from './utils/ToastUtils';
@@ -303,7 +303,6 @@ const ChatUI: React.FC<ChatUIProps> = ({ historyId, onMenuPress, MenuIcon, navig
   }, []);
 
   useEffect(() => {
-    initDatabase();
     loadSystemPrompt();
 
     // Add keyboard listeners
@@ -320,31 +319,6 @@ const ChatUI: React.FC<ChatUIProps> = ({ historyId, onMenuPress, MenuIcon, navig
         setKeyboardOffset(0);
       }
     );
-
-    // Initialize context manager when component mounts
-    const initContextManager = async () => {
-      try {
-        // Check if model exists on Android
-        if (Platform.OS === 'android') {
-          const modelPath = `${MODEL_DIR}/${MODEL_NAMES.QWEN_MODEL}`;
-          const embeddingPath = `${MODEL_DIR}/${MODEL_NAMES.BGE_EMBEDDING_MODEL}`;
-          const modelExists = await RNFS.exists(modelPath);
-          const embeddingExists = await RNFS.exists(embeddingPath);
-          
-          if (!modelExists || !embeddingExists) {
-            console.log('Models not downloaded yet, skipping initialization');
-            return;
-          }
-        }
-        await contextManager.current.initialize();
-      } catch (error) {
-        console.error('Error initializing context manager:', error);
-      }
-    };
-
-    if (appState.current === 'active') {
-      initContextManager();
-    }
 
     return () => {
       keyboardWillShow.remove();

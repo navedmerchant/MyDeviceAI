@@ -1,7 +1,7 @@
 import { Platform } from "react-native";
 import DeviceInfo from "react-native-device-info";
 import RNFS from 'react-native-fs';
-import { MODEL_NAMES } from './constants/Models';
+import { MODEL_NAMES } from '../constants/Models';
 
 function getModelParamsForDevice() {
     const modelPath = Platform.OS === 'ios' 
