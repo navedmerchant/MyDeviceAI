@@ -50,6 +50,17 @@ import ThumbnailGallery from './components/ThumbnailGallery';
 
 type ChatScreenNavigationProp = DrawerNavigationProp<DrawerParamList, 'Chat'>;
 
+// Add KeyboardEvent type for keyboardWillChangeFrame listener
+interface KeyboardEvent {
+  endCoordinates: {
+    width: number;
+    screenX: number;
+    screenY: number;
+    height: number;
+  };
+  // Add other properties if needed based on the actual event structure
+}
+
 interface ChatUIProps {
   historyId?: number;
   onMenuPress: () => void;
@@ -57,6 +68,38 @@ interface ChatUIProps {
   navigation: ChatScreenNavigationProp;
   setParentIsTyping: (isTyping: boolean) => void;
 }
+
+const useIsFloatingKeyboard = () => {
+  const [floating, setFloating] = useState(false);
+  const [windowWidth, setWindowWidth] = useState(Dimensions.get('window').width);
+
+  useEffect(() => {
+    const updateWidth = () => {
+      setWindowWidth(Dimensions.get('window').width);
+    };
+
+    const dimensionsSubscription = Dimensions.addEventListener('change', updateWidth);
+
+    const onKeyboardWillChangeFrame = (event: KeyboardEvent) => {
+      // Check if the platform is iOS and then if the keyboard is floating
+      if (Platform.OS === 'ios') {
+        // Use the current windowWidth from state
+        setFloating(event.endCoordinates.width !== windowWidth);
+      } else {
+        setFloating(false); // On Android, or if not iOS, assume not floating
+      }
+    };
+
+    const keyboardListener = Keyboard.addListener('keyboardWillChangeFrame', onKeyboardWillChangeFrame as any); // Use 'as any' if type conflict
+
+    return () => {
+      keyboardListener.remove();
+      dimensionsSubscription?.remove();
+    };
+  }, [windowWidth]); // Add windowWidth to dependency array
+
+  return floating;
+};
 
 const ChatUI: React.FC<ChatUIProps> = ({ historyId, onMenuPress, MenuIcon, navigation, setParentIsTyping }) => {
   const [messages, setMessages] = useState<Message[]>([]);
@@ -78,6 +121,7 @@ const ChatUI: React.FC<ChatUIProps> = ({ historyId, onMenuPress, MenuIcon, navig
   const scrollViewRef = useRef<ScrollView>(null);
   const textInputRef = useRef<TextInput>(null);
   const currentHistoryIdRef = useRef(currentHistoryId);
+  const isFloatingKeyboard = useIsFloatingKeyboard(); // Use the custom hook
 
   const systemPrompt = useRef('');
   const appState = useRef(AppState.currentState);
@@ -93,7 +137,6 @@ const ChatUI: React.FC<ChatUIProps> = ({ historyId, onMenuPress, MenuIcon, navig
   }, []);
 
   useEffect(() => {
-    initDatabase();
     loadSystemPrompt();
 
     // Add keyboard listeners
@@ -110,19 +153,6 @@ const ChatUI: React.FC<ChatUIProps> = ({ historyId, onMenuPress, MenuIcon, navig
         setKeyboardOffset(0);
       }
     );
-
-    // Initialize context manager when component mounts
-    const initContextManager = async () => {
-      try {
-        await contextManager.current.initialize();
-      } catch (error) {
-        console.error('Error initializing context manager:', error);
-      }
-    };
-
-    if (appState.current === 'active') {
-      initContextManager();
-    }
 
     return () => {
       keyboardWillShow.remove();
@@ -704,6 +734,7 @@ want to talk and share about personal feelings.
     <KeyboardAvoidingView 
       style={styles.container} 
       behavior={Platform.OS === "ios" ? "padding" : "height"}
+      enabled={!isFloatingKeyboard} // Disable on iOS if keyboard is floating
     >
       <StatusBar barStyle="light-content" />
       

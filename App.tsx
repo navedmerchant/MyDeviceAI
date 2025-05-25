@@ -3,6 +3,8 @@ import {
   StyleSheet,
   useColorScheme,
   View,
+  Platform,
+  Dimensions,
 } from 'react-native';
 import { Colors } from 'react-native/Libraries/NewAppScreen';
 import { MenuProvider } from 'react-native-popup-menu';
@@ -42,7 +44,7 @@ function App(): React.JSX.Element {
             screenOptions={{
               headerShown: false,
               drawerStyle: {
-                width: '75%',
+                width: Platform.OS === 'ios' && Dimensions.get('window').width > 768 ? 500 : '75%',
                 backgroundColor: '#000000',
               },
               drawerType: 'front',
