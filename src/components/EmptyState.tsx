@@ -6,7 +6,10 @@ import {
   Image,
   FlatList,
   NativeSyntheticEvent,
-  NativeScrollEvent
+  NativeScrollEvent,
+  Platform,
+  Keyboard,
+  Dimensions
 } from 'react-native';
 import { styles } from '../Styles';
 import { SUGGESTED_PROMPTS } from '../constants/SuggestedPrompts';
@@ -25,6 +28,9 @@ const EmptyState: React.FC<EmptyStateProps> = ({ onPromptPress }) => {
   const visiblePrompts = useRef([...SHUFFLED_PROMPTS]);
   const [isPaused, setIsPaused] = useState(false);
   const [userScrollPos, setUserScrollPos] = useState(0);
+  const [isKeyboardVisible, setKeyboardVisible] = useState(false);
+  const [isLandscape, setIsLandscape] = useState(false);
+  const [shouldShowPrompts, setShouldShowPrompts] = useState(true);
   
   // Auto-scrolling logic
   useEffect(() => {
@@ -78,6 +84,50 @@ const EmptyState: React.FC<EmptyStateProps> = ({ onPromptPress }) => {
     }
   };
   
+  // Handle orientation changes
+  useEffect(() => {
+    const updateOrientation = () => {
+      const { width, height } = Dimensions.get('window');
+      setIsLandscape(width > height);
+    };
+
+    // Set initial orientation
+    updateOrientation();
+
+    // Add event listener for orientation changes
+    const dimensionsSubscription = Dimensions.addEventListener('change', updateOrientation);
+
+    return () => {
+      dimensionsSubscription.remove();
+    };
+  }, []);
+
+  // Handle keyboard visibility
+  useEffect(() => {
+    const keyboardWillShow = Keyboard.addListener(
+      Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow',
+      () => setKeyboardVisible(true)
+    );
+    const keyboardWillHide = Keyboard.addListener(
+      Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide',
+      () => setKeyboardVisible(false)
+    );
+
+    return () => {
+      keyboardWillShow.remove();
+      keyboardWillHide.remove();
+    };
+  }, []);
+
+  // Update prompt visibility based on keyboard and orientation
+  useEffect(() => {
+    if (Platform.OS === 'ios' && Platform.isPad) {
+      setShouldShowPrompts(!isKeyboardVisible || !isLandscape);
+    } else {
+      setShouldShowPrompts(true);
+    }
+  }, [isKeyboardVisible, isLandscape]);
+
   return (
     <View 
       style={styles.emptyStateContainer}
@@ -89,40 +139,42 @@ const EmptyState: React.FC<EmptyStateProps> = ({ onPromptPress }) => {
         style={styles.emptyStateLogo}
       />
       <Text style={styles.emptyStateTitle}>MyDeviceAI</Text>      
-      <FlatList
-        ref={flatListRef}
-        data={visiblePrompts.current}
-        keyExtractor={(item, index) => `prompt-${index}`}
-        renderItem={({ item }) => (
-          <TouchableOpacity 
-            style={styles.promptItem} 
-            onPress={() => onPromptPress(item)}
-          >
-            <Text style={styles.promptText}>{item}</Text>
-          </TouchableOpacity>
-        )}
-        horizontal={true}
-        showsHorizontalScrollIndicator={false}
-        decelerationRate="fast"
-        snapToAlignment="center"
-        snapToInterval={280} // Match the itemWidth for snap effect
-        contentContainerStyle={styles.promptsContainer}
-        bounces={false}
-        scrollEventThrottle={16}
-        onScroll={handleScroll}
-        onScrollBeginDrag={() => setIsPaused(true)}
-        onScrollEndDrag={() => {
-          // Small delay before resuming auto-scroll to allow momentum scrolling to settle
-          setTimeout(() => setIsPaused(false), 500);
-        }}
-        onMomentumScrollEnd={(event) => {
-          setUserScrollPos(event.nativeEvent.contentOffset.x);
-        }}
-        windowSize={10} // Optimize rendering for better performance
-        removeClippedSubviews={true} // Improve memory usage
-        maxToRenderPerBatch={8} // Limit batch rendering for smoother scrolling
-        initialNumToRender={6} // Start with fewer rendered items
-      />
+      {shouldShowPrompts && (
+        <FlatList
+          ref={flatListRef}
+          data={visiblePrompts.current}
+          keyExtractor={(item, index) => `prompt-${index}`}
+          renderItem={({ item }) => (
+            <TouchableOpacity 
+              style={styles.promptItem} 
+              onPress={() => onPromptPress(item)}
+            >
+              <Text style={styles.promptText}>{item}</Text>
+            </TouchableOpacity>
+          )}
+          horizontal={true}
+          showsHorizontalScrollIndicator={false}
+          decelerationRate="fast"
+          snapToAlignment="center"
+          snapToInterval={280} // Match the itemWidth for snap effect
+          contentContainerStyle={styles.promptsContainer}
+          bounces={false}
+          scrollEventThrottle={16}
+          onScroll={handleScroll}
+          onScrollBeginDrag={() => setIsPaused(true)}
+          onScrollEndDrag={() => {
+            // Small delay before resuming auto-scroll to allow momentum scrolling to settle
+            setTimeout(() => setIsPaused(false), 500);
+          }}
+          onMomentumScrollEnd={(event) => {
+            setUserScrollPos(event.nativeEvent.contentOffset.x);
+          }}
+          windowSize={10} // Optimize rendering for better performance
+          removeClippedSubviews={true} // Improve memory usage
+          maxToRenderPerBatch={8} // Limit batch rendering for smoother scrolling
+          initialNumToRender={6} // Start with fewer rendered items
+        />
+      )}
     </View>
   );
 };
