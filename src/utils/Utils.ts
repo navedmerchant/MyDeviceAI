@@ -16,7 +16,7 @@ function getModelParamsForDevice() {
     const deviceId = DeviceInfo.getDeviceId();
     console.log(`deviceId: ${deviceId}`);
     // TODO: n_threads should be based on the number of cores
-    return {...modelParams,  n_ctx: 4096,  n_gpu_layers: 0, n_threads: 4}
+    return {...modelParams,  n_ctx: 4096,  n_gpu_layers: 0, n_threads: 4, batch_size: 512}
 }
 
 export {getModelParamsForDevice}

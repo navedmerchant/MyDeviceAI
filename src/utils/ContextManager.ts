@@ -1,4 +1,4 @@
-import { LlamaContext, initLlama, releaseAllLlama } from 'llama.rn';
+import { LlamaContext, initLlama, releaseAllLlama } from 'cui-llama.rn';
 import * as DatabaseHelper from '../db/DatabaseHelper';
 import { Platform } from "react-native";
 import DeviceInfo from "react-native-device-info";

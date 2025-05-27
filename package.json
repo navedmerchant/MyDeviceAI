@@ -16,7 +16,7 @@
     "@react-navigation/native": "^7.0.14",
     "@types/react-native-fs": "^2.8.3",
     "ios": "^0.0.1",
-    "llama.rn": "0.6.0-rc.4",
+    "cui-llama.rn": "1.6.1",
     "lucide-react-native": "^0.446.0",
     "react": "18.3.1",
     "react-native": "0.75.3",

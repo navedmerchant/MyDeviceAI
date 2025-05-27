@@ -1,4 +1,4 @@
-import { LlamaContext, initLlama, releaseAllLlama } from 'llama.rn';
+import { LlamaContext, initLlama, releaseAllLlama } from 'cui-llama.rn';
 import React, { useState, useCallback, useRef, useEffect } from 'react';
 import Markdown from 'react-native-markdown-display';
 import { showToast } from './utils/ToastUtils';
