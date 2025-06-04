@@ -117,7 +117,6 @@ const ChatUI: React.FC<ChatUIProps> = ({ historyId, onMenuPress, MenuIcon, navig
   const [keyboardOffset, setKeyboardOffset] = useState(0);
   const [expandedImage, setExpandedImage] = useState<string | null>(null);
 
-  const chatContext = useRef('');
   const scrollViewRef = useRef<ScrollView>(null);
   const textInputRef = useRef<TextInput>(null);
   const currentHistoryIdRef = useRef(currentHistoryId);
@@ -165,21 +164,14 @@ const ChatUI: React.FC<ChatUIProps> = ({ historyId, onMenuPress, MenuIcon, navig
       const savedPrompt = await AsyncStorage.getItem('systemPrompt');
 
       if (savedPrompt) {
-        // For custom prompts, ensure they have the begin/header tags
-        if (!savedPrompt.includes('<|im_start|>')) {
-          systemPrompt.current = `<|im_start|>system\n${savedPrompt}\n<|im_end|>`;
-        } else {
-          systemPrompt.current = savedPrompt;
-        }
+        systemPrompt.current = savedPrompt;
       } else {
         // Set default prompt only if no saved prompt exists
-        systemPrompt.current = `<|im_start|>system\n
-You are a helpful personal AI assistant. Your name is Chloe, and you will be 
+        systemPrompt.current = `You are a helpful personal AI assistant. Your name is Chloe, and you will be 
 a professional AI assistant trying to answer all your users questions. You are locally
 running on the device so you will never share any information outside of the chat.
 Be as helpful as possible without being overly friendly. Be empathetic only when users
-want to talk and share about personal feelings.
-<|im_end|>`;
+want to talk and share about personal feelings.`;
       }
     } catch (error) {
       console.error('Error loading system prompt:', error);
@@ -225,7 +217,6 @@ want to talk and share about personal feelings.
       setMessages([]);
       setCurrentHistoryId(null);
       currentHistoryIdRef.current = null;
-      chatContext.current = '';
       setCurrentResponse('');
     }
   }, [historyId]);  
@@ -235,7 +226,6 @@ want to talk and share about personal feelings.
       const messages = await loadChatHistory(historyId);
       setMessages(messages);
       setCurrentHistoryId(historyId);
-      rebuildChatContext(messages);
       currentHistoryIdRef.current = historyId;
       setGlobalHistoryId(historyId);
       // Reset scroll button state and scroll to bottom when changing chats
@@ -323,29 +313,14 @@ want to talk and share about personal feelings.
     await releaseAllLlama();
   }
 
+  // Helper function to strip thinking content from text
+  const stripThinkingContent = (text: string): string => {
+    return text.replace(/<think>.*?<\/think>/gs, '').trim();
+  };
+
   const scrollToBottom = () => {
     scrollViewRef.current?.scrollToEnd({ animated: true });
   };
-
-  const rebuildChatContext = (messages: Message[]) => {
-    const userHeader = `<|im_start|>user\n`;
-    const assistantHeader = `<|im_start|>assistant\n`;
-
-    const endToken = `<|im_end|>`;
-
-    for (const idx in messages) {
-      const message = messages[idx];
-      // Strip out thinking sections from the message text
-      const textWithoutThinking = message.text.replace(/<think>.*?<\/think>/gs, '').trim();
-      if (idx == '0') {
-        chatContext.current += systemPrompt.current + userHeader + textWithoutThinking + endToken;
-      } else if (message.isUser) {
-        chatContext.current += userHeader + textWithoutThinking + endToken;
-      } else {
-        chatContext.current += assistantHeader + textWithoutThinking + endToken;
-      }
-    }
-  }
 
   const addMessage = useCallback(async (text: string, isUser: boolean, thumbnails?: string[]) => {
     const newMessage = { id: Date.now(), text, isUser, thumbnails };
@@ -446,33 +421,7 @@ want to talk and share about personal feelings.
         }
       }
 
-      const searchResultsPrompt = searchResults ? `\nHere are some
-       search results for your query: ${searchResults} \n\n Use these to
-        enhance your response if needed. Provide all the links at the end of your response.
-        Markdown format the links` : '';
-
-      const firstPrompt = `${systemPrompt.current}<|im_start|>user\n 
-      ${thinkingModeEnabled ? './think' : './no_think'} ${inputText}
-      ${searchModeEnabled ? `\nYou have access to the internet and can use it to search for information.
-      When provided with search results, use them to enhance your responses with current and accurate information.
-      Use these results to provide up-to-date information while maintaining your helpful and professional demeanor.\n` : ''}
-      ${searchResultsPrompt}
-      ${userContext}<|im_end|><|im_start|>assistant`
-
-      const otherPrompts = `<|im_start|>user 
-      ${thinkingModeEnabled ? './think' : './no_think'} ${inputText}
-      ${searchResultsPrompt}
-      ${userContext}<|im_end|><|im_start|>assistant`
-
-      let prompt;
-      if (messages.length == 0) {
-        prompt = firstPrompt;
-      } else {
-        prompt = otherPrompts;
-      }
-
-
-      chatContext.current = chatContext.current + prompt;
+      const searchResultsPrompt = searchResults ? `\nHere are some search results for your query: ${searchResults} \n\n Use these to enhance your response if needed. Provide all the links at the end of your response. Markdown format the links` : '';
 
       if (!contextRef.current) {
         console.log("context is undefined!")
@@ -483,27 +432,38 @@ want to talk and share about personal feelings.
         // Do completion
         const { text, timings } = await contextRef.current.completion(
           {
-            prompt: chatContext.current,
+            messages: [
+              {
+                role: 'system',
+                content: `${thinkingModeEnabled ? './think' : './no_think'}\n${systemPrompt.current}`
+              },
+              ...messages.map(msg => ({
+                role: msg.isUser ? 'user' : 'assistant',
+                content: stripThinkingContent(msg.text)
+              })),
+              {
+                role: 'user',
+                content: `${inputText}
+                ${searchModeEnabled ? `\nYou have access to the internet and can use it to search for information.
+                When provided with search results, use them to enhance your responses with current and accurate information.
+                Use these results to provide up-to-date information while maintaining your helpful and professional demeanor.\n` : ''}
+                ${searchResultsPrompt}
+                ${userContext}`
+              }
+            ],
             n_predict: 4096,
             temperature: 0.7,
             top_p: thinkingModeEnabled ? 0.95 : 0.8,
             top_k: 20,
             min_p: 0,
+            stop: ['<|im_end|>', '<|im_start|>', '<|end|>', '<|user|>', '<|assistant|>', 'User:', 'Assistant:', 'Human:', 'AI:'],
           },
           (data: { token: string }) => {
-            if (data.token == "<|im_end|>") {
-              return;
-            }
-            
             // Add token to current response
             setCurrentResponse(prev => prev + data.token);
           },
         )
-        // Strip out thinking sections before adding to context
-        const textWithoutThinking = text.replace(/<think>.*?<\/think>/gs, '').trim();
-        chatContext.current = chatContext.current + textWithoutThinking;
-        const displayText = text.replace("<|im_end|>", "")
-          .trim();
+        const displayText = text.trim();
         addMessage(displayText, false, thumbnails);
       } catch (error) {
         console.error('Error generating AI response:', error);
@@ -534,7 +494,6 @@ want to talk and share about personal feelings.
 
   const handleNewChat = useCallback(async () => {
     setMessages([]);
-    chatContext.current = '';
     setCurrentHistoryId(null);
     currentHistoryIdRef.current = null;
     setGlobalHistoryId(null);

@@ -21,31 +21,17 @@ type Props = {
   navigation: SettingsScreenNavigationProp;
 };
 
-const DEFAULT_SYSTEM_PROMPT = `<|im_start|>system\n
-You are a helpful personal AI assistant. Your name is Chloe, and you will be 
+const DEFAULT_SYSTEM_PROMPT = `You are a helpful personal AI assistant. Your name is Chloe, and you will be 
 a professional AI assistant trying to answer all your users questions. You are locally
 running on the device so you will never share any information outside of the chat.
 Be as helpful as possible without being overly friendly. Be empathetic only when users
-want to talk and share about personal feelings.<|im_end|>`;
+want to talk and share about personal feelings.`;
 
 const CONSTANT_PROMPT_INFO = `
 You have access to the internet and can use it to search for information, if it is enabled by the user.
 When provided with search results, use them to enhance your responses with current and accurate information.
 The search results will be clearly marked with "Search Results:" in the user's messages.
 Use these results to provide up-to-date information while maintaining your helpful and professional demeanor.`;
-
-// Helper function to strip meta tags from the prompt
-const stripMetaTags = (prompt: string): string => {
-  return prompt
-    .replace('<|im_start|>system\n', '')
-    .replace('<|im_end|>', '')
-    .trim();
-};
-
-// Helper function to add meta tags to the prompt
-const addMetaTags = (prompt: string): string => {
-  return `<|im_start|>system\n${prompt.trim()}\n<|im_end|>`;
-};
 
 const SettingsScreen: React.FC<Props> = ({ navigation }) => {
   const [systemPrompt, setSystemPrompt] = useState('');
@@ -66,9 +52,9 @@ const SettingsScreen: React.FC<Props> = ({ navigation }) => {
       // const savedQueries = await AsyncStorage.getItem('monthlyQueries'); // Commented out
       
       if (savedPrompt) {
-        setSystemPrompt(stripMetaTags(savedPrompt));
+        setSystemPrompt(savedPrompt);
       } else {
-        setSystemPrompt(stripMetaTags(DEFAULT_SYSTEM_PROMPT));
+        setSystemPrompt(DEFAULT_SYSTEM_PROMPT);
       }
       if (savedDays) setHistoryDays(savedDays);
       // if (savedApiKey) setBraveApiKey(savedApiKey); // Commented out
@@ -80,8 +66,7 @@ const SettingsScreen: React.FC<Props> = ({ navigation }) => {
 
   const saveSettings = async () => {
     try {
-      const formattedPrompt = addMetaTags(systemPrompt);
-      await AsyncStorage.setItem('systemPrompt', formattedPrompt);
+      await AsyncStorage.setItem('systemPrompt', systemPrompt);
       await AsyncStorage.setItem('historyDays', historyDays);
       // await AsyncStorage.setItem('braveApiKey', braveApiKey); // Commented out
       // await AsyncStorage.setItem('monthlyQueries', monthlyQueries); // Commented out
@@ -92,7 +77,7 @@ const SettingsScreen: React.FC<Props> = ({ navigation }) => {
   };
 
   const handleResetPrompt = () => {
-    setSystemPrompt(stripMetaTags(DEFAULT_SYSTEM_PROMPT));
+    setSystemPrompt(DEFAULT_SYSTEM_PROMPT);
   };
 
   return (
