@@ -6,6 +6,7 @@ import {
   ChatHistory,
   deleteChatHistory,
   deleteAllHistories,
+  cleanupOldChatHistories,
 } from './DatabaseHelper';
 
 interface DatabaseContextType {
@@ -24,8 +25,14 @@ export const DatabaseProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   const [globalHistoryId, setGlobalHistoryId] = useState<number | null>(null);
 
   useEffect(() => {
-    initDatabase();
-    loadHistories();
+    const initializeDatabase = async () => {
+      await initDatabase();
+      // Clean up old histories on app startup
+      await cleanupOldChatHistories();
+      await loadHistories();
+    };
+    
+    initializeDatabase();
   }, []);
 
   const loadHistories = async () => {

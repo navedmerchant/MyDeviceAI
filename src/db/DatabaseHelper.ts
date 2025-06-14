@@ -1,6 +1,7 @@
 // DatabaseHelper.ts
 import { open, type DB } from '@op-engineering/op-sqlite';
 import { Message } from '../model/Message';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 let db: DB | null = null;
 
@@ -155,6 +156,45 @@ export const loadChatHistory = async (historyId: number): Promise<Message[]> => 
   } catch (error) {
     console.error('Error loading chat history', error);
     throw error;
+  }
+};
+
+export const cleanupOldChatHistories = async (): Promise<void> => {
+  if (!db) {
+    await initDatabase();
+  }
+  
+  try {
+    // Get the configured history days from AsyncStorage
+    const savedDays = await AsyncStorage.getItem('historyDays');
+    const historyDays = savedDays ? parseInt(savedDays, 10) : 30; // Default to 30 days
+    
+    // Calculate the cutoff timestamp (current time - configured days in milliseconds)
+    const cutoffTimestamp = Date.now() - (historyDays * 24 * 60 * 60 * 1000);
+    
+    // Get all chat histories older than the cutoff
+    const oldHistoriesResult = await db!.execute(
+      'SELECT id FROM chat_histories WHERE timestamp < ?',
+      [cutoffTimestamp]
+    );
+    
+    // Delete messages for old histories first (due to foreign key constraint)
+    for (const row of oldHistoriesResult.rows) {
+      await db!.execute(
+        'DELETE FROM chat_messages WHERE history_id = ?',
+        [row.id]
+      );
+    }
+    
+    // Delete the old chat histories
+    await db!.execute(
+      'DELETE FROM chat_histories WHERE timestamp < ?',
+      [cutoffTimestamp]
+    );
+    
+    console.log(`Cleaned up ${oldHistoriesResult.rows.length} old chat histories older than ${historyDays} days`);
+  } catch (error) {
+    console.error('Error cleaning up old chat histories:', error);
   }
 };
 

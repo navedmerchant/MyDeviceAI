@@ -9,11 +9,13 @@ import {
   KeyboardAvoidingView,
   Platform,
   Linking,
+  Alert,
 } from 'react-native';
 import { ChevronLeft, ChevronRight, Cog, Settings } from 'lucide-react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { DrawerNavigationProp } from '@react-navigation/drawer';
 import { DrawerParamList } from '../../App';
+import { cleanupOldChatHistories } from '../db/DatabaseHelper';
 
 type SettingsScreenNavigationProp = DrawerNavigationProp<DrawerParamList, 'Settings'>;
 
@@ -66,10 +68,21 @@ const SettingsScreen: React.FC<Props> = ({ navigation }) => {
 
   const saveSettings = async () => {
     try {
+      // Validate history days input
+      const historyDaysNum = parseInt(historyDays, 10);
+      if (isNaN(historyDaysNum) || historyDaysNum < 1) {
+        Alert.alert('Invalid Input', 'Please enter a valid number of days (minimum 1)');
+        return;
+      }
+      
       await AsyncStorage.setItem('systemPrompt', systemPrompt);
       await AsyncStorage.setItem('historyDays', historyDays);
       // await AsyncStorage.setItem('braveApiKey', braveApiKey); // Commented out
       // await AsyncStorage.setItem('monthlyQueries', monthlyQueries); // Commented out
+      
+      // Trigger cleanup of old chat histories based on the new setting
+      await cleanupOldChatHistories();
+      
       navigation.goBack();
     } catch (error) {
       console.error('Error saving settings:', error);
@@ -124,7 +137,7 @@ const SettingsScreen: React.FC<Props> = ({ navigation }) => {
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Chat History</Text>
           <Text style={styles.description}>
-            Number of days to keep chat history
+            Number of days to keep chat history (minimum 1 day)
           </Text>
           <TextInput
             style={styles.textInput}
