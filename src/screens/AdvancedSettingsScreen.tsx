@@ -91,11 +91,15 @@ const AdvancedSettingsScreen: React.FC<Props> = ({ navigation }) => {
   const loadDownloadedModels = async () => {
     try {
       const stored = await AsyncStorage.getItem('downloadedModels');
+      const activeModelId = await AsyncStorage.getItem('activeModelId');
       let models: DownloadedModel[] = [];
       
       if (stored) {
         models = JSON.parse(stored);
       }
+      
+      // Determine if built-in model should be active
+      const shouldBuiltInBeActive = !activeModelId || activeModelId === 'built-in-default';
       
       // Always include the built-in default model
       const builtInModel: DownloadedModel = {
@@ -105,7 +109,7 @@ const AdvancedSettingsScreen: React.FC<Props> = ({ navigation }) => {
         size: 'Built-in',
         downloadDate: new Date().toISOString(),
         filePath: '', // No file path for built-in model
-        isActive: models.length === 0 || !models.some(m => m.isActive), // Active by default if no other active model
+        isActive: shouldBuiltInBeActive,
       };
       
       // Check if built-in model already exists in the list
@@ -116,6 +120,20 @@ const AdvancedSettingsScreen: React.FC<Props> = ({ navigation }) => {
         // Update the existing built-in model to ensure it has correct properties
         const builtInIndex = models.findIndex(m => m.id === 'built-in-default');
         models[builtInIndex] = { ...models[builtInIndex], ...builtInModel };
+      }
+      
+      // Set other models' active status based on activeModelId
+      if (activeModelId && activeModelId !== 'built-in-default') {
+        models = models.map(model => ({
+          ...model,
+          isActive: model.id === activeModelId
+        }));
+      } else {
+        // If no activeModelId or it's the built-in model, make sure only built-in is active
+        models = models.map(model => ({
+          ...model,
+          isActive: model.id === 'built-in-default'
+        }));
       }
       
       setDownloadedModels(models);
@@ -541,10 +559,18 @@ const AdvancedSettingsScreen: React.FC<Props> = ({ navigation }) => {
           <Settings color="#28a745" size={16} />
         </TouchableOpacity>
         <TouchableOpacity
-          style={[styles.actionButton, styles.activateButton]}
+          style={[
+            styles.actionButton, 
+            styles.activateButton,
+            item.isActive && styles.disabledButton
+          ]}
           onPress={() => setActiveModel(item.id)}
+          disabled={item.isActive}
         >
-          <Text style={styles.actionButtonText}>
+          <Text style={[
+            styles.actionButtonText,
+            item.isActive && styles.disabledButtonText
+          ]}>
             {item.isActive ? 'Active' : 'Activate'}
           </Text>
         </TouchableOpacity>
@@ -1107,6 +1133,13 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 12,
     fontWeight: 'bold',
+  },
+  disabledButton: {
+    backgroundColor: '#333',
+    opacity: 0.6,
+  },
+  disabledButtonText: {
+    color: '#999',
   },
   emptyState: {
     flex: 1,

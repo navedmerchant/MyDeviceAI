@@ -246,7 +246,7 @@ const CustomDrawerContent = (props: DrawerContentComponentProps) => {
                 style={styles.deleteAllButton}
                 onPress={handleDeleteAllHistories}
               >
-                <Trash2 size={20} color="#666" />
+                <Trash2 size={20} color="#FFF" />
               </TouchableOpacity>
               <TouchableOpacity
                 style={styles.settingsHeaderButton}
@@ -255,7 +255,7 @@ const CustomDrawerContent = (props: DrawerContentComponentProps) => {
                   props.navigation.closeDrawer();
                 }}
               >
-                <Settings size={20} color="#666" />
+                <Settings size={20} color="#FFF" />
               </TouchableOpacity>
             </View>
           </View>
