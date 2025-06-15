@@ -18,11 +18,13 @@ import ChatScreen from './src/screens/ChatScreen';
 import SettingsScreen from './src/screens/SettingsScreen';
 import ContextSettings from './src/screens/ContextSettings';
 import ImageGalleryScreen from './src/screens/ImageGalleryScreen';
+import AdvancedSettingsScreen from './src/screens/AdvancedSettingsScreen';
 
 export type DrawerParamList = {
   Chat: { historyId?: number };
   Settings: undefined;
   ContextSettings: undefined;
+  AdvancedSettings: undefined;
   ImageGallery: { images: string[]; initialIndex: number };
 };
 
@@ -69,6 +71,13 @@ function App(): React.JSX.Element {
             <Drawer.Screen 
               name="ContextSettings"
               component={ContextSettings}
+              options={{
+                swipeEnabled: false,
+              }}
+            />
+            <Drawer.Screen 
+              name="AdvancedSettings"
+              component={AdvancedSettingsScreen}
               options={{
                 swipeEnabled: false,
               }}

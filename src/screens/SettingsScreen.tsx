@@ -165,6 +165,22 @@ const SettingsScreen: React.FC<Props> = ({ navigation }) => {
           </Text>
         </View>
 
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Advanced Settings</Text>
+          <TouchableOpacity 
+            style={styles.navigationButton}
+            onPress={() => navigation.navigate('AdvancedSettings')}
+          >
+            <View style={styles.navigationButtonContent}>
+              <Text style={styles.navigationButtonText}>Manage GGUF Models</Text>
+              <ChevronRight color="#fff" size={20} />
+            </View>
+          </TouchableOpacity>
+          <Text style={styles.description}>
+            Search, download, and manage GGUF models from Hugging Face.
+          </Text>
+        </View>
+
         {/* <View style={styles.section}>
           <Text style={styles.sectionTitle}>Brave Search API</Text>
           <Text style={styles.description}>
