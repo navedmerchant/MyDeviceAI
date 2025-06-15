@@ -433,6 +433,12 @@ const AdvancedSettingsScreen: React.FC<Props> = ({ navigation }) => {
   const saveModelParameters = async () => {
     if (!selectedModelForConfig) return;
 
+    // Check if initialization parameters changed (requires model reload)
+    const oldParams = selectedModelForConfig.parameters || DEFAULT_PARAMETERS;
+    const initParamsChanged = 
+      oldParams.n_ctx !== tempParameters.n_ctx || 
+      oldParams.n_gpu_layers !== tempParameters.n_gpu_layers;
+
     const updatedModels = downloadedModels.map(model => {
       if (model.id === selectedModelForConfig.id) {
         return {
@@ -444,9 +450,24 @@ const AdvancedSettingsScreen: React.FC<Props> = ({ navigation }) => {
     });
 
     await saveDownloadedModels(updatedModels);
+    
+    // Set flag to indicate model needs reloading if this is the active model
+    if (selectedModelForConfig.isActive && initParamsChanged) {
+      await AsyncStorage.setItem('modelNeedsReload', 'true');
+    }
+    
     setShowParameterModal(false);
     setSelectedModelForConfig(null);
-    Alert.alert('Success', 'Model parameters updated successfully!');
+    
+    if (selectedModelForConfig.isActive && initParamsChanged) {
+      Alert.alert(
+        'Parameters Updated', 
+        'Context length or GPU layers were changed. The model will reload automatically on your next message.',
+        [{ text: 'OK' }]
+      );
+    } else {
+      Alert.alert('Success', 'Model parameters updated successfully!');
+    }
   };
 
   const resetParametersToDefault = () => {
@@ -554,7 +575,7 @@ const AdvancedSettingsScreen: React.FC<Props> = ({ navigation }) => {
         </TouchableOpacity>
         <View style={styles.titleContainer}>
           <HardDrive color="#fff" size={24} />
-          <Text style={styles.title}>Advanced Settings</Text>
+          <Text style={styles.title}>Advanced</Text>
         </View>
         <View style={styles.placeholder} />
       </View>

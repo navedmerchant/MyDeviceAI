@@ -377,10 +377,13 @@ want to talk and share about personal feelings.`;
     // Check if active model has changed and reload if necessary
     const currentActiveModelId = await AsyncStorage.getItem('activeModelId');
     const lastLoadedModelId = await AsyncStorage.getItem('lastLoadedModelId');
+    const modelNeedsReload = await AsyncStorage.getItem('modelNeedsReload');
     
-    if (currentActiveModelId !== lastLoadedModelId) {
-      console.log("Active model changed, reloading...");
+    if (currentActiveModelId !== lastLoadedModelId || modelNeedsReload === 'true') {
+      console.log("Model parameters or active model changed, reloading...");
       await reloadModel();
+      // Clear the reload flag
+      await AsyncStorage.removeItem('modelNeedsReload');
     }
 
     // Check if model needs to be loaded

@@ -172,7 +172,7 @@ const SettingsScreen: React.FC<Props> = ({ navigation }) => {
             onPress={() => navigation.navigate('AdvancedSettings')}
           >
             <View style={styles.navigationButtonContent}>
-              <Text style={styles.navigationButtonText}>Manage GGUF Models</Text>
+              <Text style={styles.navigationButtonText}>Manage Models</Text>
               <ChevronRight color="#fff" size={20} />
             </View>
           </TouchableOpacity>
