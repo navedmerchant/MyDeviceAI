@@ -202,8 +202,18 @@ want to talk and share about personal feelings.`;
 
   // Add a listener for when the settings screen is focused
   useEffect(() => {
-    const unsubscribe = navigation.addListener('focus', () => {
+    const unsubscribe = navigation.addListener('focus', async () => {
       loadSystemPrompt();
+      
+      // Check if active model has changed
+      const currentActiveModelId = await AsyncStorage.getItem('activeModelId');
+      const storedActiveModelId = await AsyncStorage.getItem('lastLoadedModelId');
+      
+      if (currentActiveModelId !== storedActiveModelId) {
+        console.log(`Active model changed from ${storedActiveModelId} to ${currentActiveModelId}`);
+        await reloadModel();
+        await AsyncStorage.setItem('lastLoadedModelId', currentActiveModelId || '');
+      }
     });
 
     return unsubscribe;
@@ -248,10 +258,13 @@ want to talk and share about personal feelings.`;
   };
 
   useEffect(() => {
-    const modelParams = getModelParamsForDevice();
-    if (modelParams == null) {
-      setUnsupportedDevice(true)
-    }
+    const checkDeviceSupport = async () => {
+      const modelParams = await getModelParamsForDevice();
+      if (modelParams == null) {
+        setUnsupportedDevice(true)
+      }
+    };
+    checkDeviceSupport();
 
     const subscription = AppState.addEventListener('change', nextAppState => {
       if (
@@ -295,7 +308,7 @@ want to talk and share about personal feelings.`;
 
   const loadModel = async () => {
     try {
-      const modelParams = getModelParamsForDevice();
+      const modelParams = await getModelParamsForDevice();
       if (modelParams == null) {
         console.log("Model params null! Unsupported device!");
         return;
@@ -303,6 +316,10 @@ want to talk and share about personal feelings.`;
       const newContext = await initLlama(modelParams);
       contextRef.current = newContext;
       console.log("model loaded successfully");
+      
+      // Track which model was loaded
+      const activeModelId = await AsyncStorage.getItem('activeModelId');
+      await AsyncStorage.setItem('lastLoadedModelId', activeModelId || '');
     } catch (error) {
       console.log("Error loading model" + error);
       Alert.alert("Failed to load model! please close the app and try again by closing some background apps");
@@ -312,6 +329,24 @@ want to talk and share about personal feelings.`;
   const unloadModel = async () => {
     await releaseAllLlama();
   }
+
+  const reloadModel = async () => {
+    console.log("Reloading model due to active model change...");
+    
+    // Stop any ongoing completion
+    if (isTyping) {
+      await contextRef.current?.stopCompletion();
+      setIsTyping(false);
+      setCurrentResponse('');
+    }
+    
+    // Unload current model
+    await unloadModel();
+    contextRef.current = undefined;
+    
+    // Load new model
+    await loadModel();
+  };
 
   // Helper function to strip thinking content from text
   const stripThinkingContent = (text: string): string => {
@@ -353,6 +388,15 @@ want to talk and share about personal feelings.`;
     }
     
     scrollToBottom();
+
+    // Check if active model has changed and reload if necessary
+    const currentActiveModelId = await AsyncStorage.getItem('activeModelId');
+    const lastLoadedModelId = await AsyncStorage.getItem('lastLoadedModelId');
+    
+    if (currentActiveModelId !== lastLoadedModelId) {
+      console.log("Active model changed, reloading...");
+      await reloadModel();
+    }
 
     // Check if model needs to be loaded
     if (!contextRef.current) {
@@ -456,7 +500,7 @@ want to talk and share about personal feelings.`;
             top_p: thinkingModeEnabled ? 0.95 : 0.8,
             top_k: 20,
             min_p: 0,
-            stop: ['<|im_end|>', '<|im_start|>', '<|end|>', '<|user|>', '<|assistant|>', 'User:', 'Assistant:', 'Human:', 'AI:'],
+            stop: ['<|im_end|>', '<|im_start|>', '<|end|>', '<|user|>', '<|assistant|>', 'User:', 'Assistant:', 'Human:', 'AI:', '<|eot_id|>'],
           },
           (data: { token: string }) => {
             // Add token to current response
