@@ -258,13 +258,6 @@ want to talk and share about personal feelings.`;
   };
 
   useEffect(() => {
-    const checkDeviceSupport = async () => {
-      const modelParams = await getModelParamsForDevice();
-      if (modelParams == null) {
-        setUnsupportedDevice(true)
-      }
-    };
-    checkDeviceSupport();
 
     const subscription = AppState.addEventListener('change', nextAppState => {
       if (
@@ -465,7 +458,10 @@ want to talk and share about personal feelings.`;
       }
 
       try {
-        // Do completion
+        // Get model parameters from Utils
+        const modelParams = await getModelParamsForDevice();
+        
+        // Do completion using the configured parameters
         const { text, timings } = await contextRef.current.completion(
           {
             messages: [
@@ -487,12 +483,12 @@ want to talk and share about personal feelings.`;
                 ${userContext}`
               }
             ],
-            n_predict: 4096,
-            temperature: 0.7,
-            top_p: thinkingModeEnabled ? 0.95 : 0.8,
-            top_k: 20,
-            min_p: 0,
-            stop: ['<|im_end|>', '<|im_start|>', '<|end|>', '<|user|>', '<|assistant|>', 'User:', 'Assistant:', 'Human:', 'AI:', '<|eot_id|>'],
+            n_predict: modelParams.n_predict,
+            temperature: modelParams.temperature,
+            top_p: thinkingModeEnabled ? 0.95 : modelParams.top_p,
+            top_k: modelParams.top_k,
+            min_p: modelParams.min_p,
+            stop: modelParams.stop,
           },
           (data: { token: string }) => {
             // Add token to current response

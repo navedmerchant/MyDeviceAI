@@ -1,6 +1,17 @@
 import DeviceInfo from "react-native-device-info";
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
+interface ModelParameters {
+  n_ctx: number;
+  n_gpu_layers: number;
+  n_predict: number;
+  temperature: number;
+  top_p: number;
+  top_k: number;
+  min_p: number;
+  stop: string[];
+}
+
 interface DownloadedModel {
   id: string;
   name: string;
@@ -9,7 +20,20 @@ interface DownloadedModel {
   downloadDate: string;
   filePath: string;
   isActive: boolean;
+  parameters?: ModelParameters;
 }
+
+// Default parameters
+const DEFAULT_PARAMETERS: ModelParameters = {
+  n_ctx: 4096,
+  n_gpu_layers: 28,
+  n_predict: 4096,
+  temperature: 0.7,
+  top_p: 0.8,
+  top_k: 20,
+  min_p: 0,
+  stop: ['<|im_end|>', '<|im_start|>', '<|end|>', '<|user|>', '<|assistant|>', 'User:', 'Assistant:', 'Human:', 'AI:', '<|eot_id|>'],
+};
 
 async function getModelParamsForDevice() {
     try {
@@ -28,14 +52,18 @@ async function getModelParamsForDevice() {
           if (activeModel && activeModel.filePath) {
             console.log(`Loading active model: ${activeModel.name} from ${activeModel.filePath}`);
             
+            // Use stored parameters or default parameters
+            const parameters = activeModel.parameters || DEFAULT_PARAMETERS;
+            
             const modelParams = {
               model: activeModel.filePath,
               is_model_asset: false, // Downloaded models are not bundled assets
+              ...parameters,
             };
             
             const deviceId = DeviceInfo.getDeviceId();
             console.log(`deviceId: ${deviceId}`);
-            return {...modelParams, n_ctx: 4096, n_gpu_layers: 28};
+            return modelParams;
           }
         }
       }
@@ -45,11 +73,12 @@ async function getModelParamsForDevice() {
       const modelParams = {
         model: 'file://Qwen3-1.7B-Q4_K_M.gguf',
         is_model_asset: true,
+        ...DEFAULT_PARAMETERS,
       };
 
       const deviceId = DeviceInfo.getDeviceId();
       console.log(`deviceId: ${deviceId}`);
-      return {...modelParams, n_ctx: 4096, n_gpu_layers: 28};
+      return modelParams;
       
     } catch (error) {
       console.error('Error getting model params:', error);
@@ -58,13 +87,15 @@ async function getModelParamsForDevice() {
       const modelParams = {
         model: 'file://Qwen3-1.7B-Q4_K_M.gguf',
         is_model_asset: true,
+        ...DEFAULT_PARAMETERS,
       };
 
       const deviceId = DeviceInfo.getDeviceId();
       console.log(`deviceId: ${deviceId}`);
-      return {...modelParams, n_ctx: 4096, n_gpu_layers: 28};
+      return modelParams;
     }
 }
   
 
-  export {getModelParamsForDevice}
+export { getModelParamsForDevice, DEFAULT_PARAMETERS };
+export type { ModelParameters };

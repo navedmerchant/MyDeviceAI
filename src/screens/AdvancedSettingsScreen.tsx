@@ -19,6 +19,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { DrawerNavigationProp } from '@react-navigation/drawer';
 import { DrawerParamList } from '../../App';
 import RNFS from 'react-native-fs';
+import { ModelParameters, DEFAULT_PARAMETERS } from '../utils/Utils';
 
 type AdvancedSettingsScreenNavigationProp = DrawerNavigationProp<DrawerParamList, 'AdvancedSettings'>;
 
@@ -48,6 +49,7 @@ interface DownloadedModel {
   downloadDate: string;
   filePath: string;
   isActive: boolean;
+  parameters?: ModelParameters;
 }
 
 interface GGUFFile {
@@ -72,6 +74,11 @@ const AdvancedSettingsScreen: React.FC<Props> = ({ navigation }) => {
   const [availableGGUFFiles, setAvailableGGUFFiles] = useState<GGUFFile[]>([]);
   const [loadingGGUFFiles, setLoadingGGUFFiles] = useState(false);
   const [totalStorageUsed, setTotalStorageUsed] = useState<string>('0 B');
+  
+  // Parameter configuration modal state
+  const [showParameterModal, setShowParameterModal] = useState(false);
+  const [selectedModelForConfig, setSelectedModelForConfig] = useState<DownloadedModel | null>(null);
+  const [tempParameters, setTempParameters] = useState<ModelParameters>(DEFAULT_PARAMETERS);
 
   useEffect(() => {
     loadDownloadedModels();
@@ -417,6 +424,35 @@ const AdvancedSettingsScreen: React.FC<Props> = ({ navigation }) => {
     Alert.alert('Success', 'Active model updated successfully!');
   };
 
+  const openParameterConfig = (model: DownloadedModel) => {
+    setSelectedModelForConfig(model);
+    setTempParameters(model.parameters || DEFAULT_PARAMETERS);
+    setShowParameterModal(true);
+  };
+
+  const saveModelParameters = async () => {
+    if (!selectedModelForConfig) return;
+
+    const updatedModels = downloadedModels.map(model => {
+      if (model.id === selectedModelForConfig.id) {
+        return {
+          ...model,
+          parameters: tempParameters
+        };
+      }
+      return model;
+    });
+
+    await saveDownloadedModels(updatedModels);
+    setShowParameterModal(false);
+    setSelectedModelForConfig(null);
+    Alert.alert('Success', 'Model parameters updated successfully!');
+  };
+
+  const resetParametersToDefault = () => {
+    setTempParameters(DEFAULT_PARAMETERS);
+  };
+
   const renderSearchResult = ({ item }: { item: HuggingFaceModel }) => {
     const hasActiveDownload = Object.keys(downloadProgress).some(key => key.startsWith(item.id));
     const progressKey = Object.keys(downloadProgress).find(key => key.startsWith(item.id));
@@ -477,6 +513,12 @@ const AdvancedSettingsScreen: React.FC<Props> = ({ navigation }) => {
         )}
       </View>
       <View style={styles.modelActions}>
+        <TouchableOpacity
+          style={[styles.actionButton, styles.configButton]}
+          onPress={() => openParameterConfig(item)}
+        >
+          <Settings color="#28a745" size={16} />
+        </TouchableOpacity>
         <TouchableOpacity
           style={[styles.actionButton, styles.activateButton]}
           onPress={() => setActiveModel(item.id)}
@@ -669,6 +711,177 @@ const AdvancedSettingsScreen: React.FC<Props> = ({ navigation }) => {
           )}
         </View>
       </Modal>
+
+      {/* Parameter Configuration Modal */}
+      <Modal
+        visible={showParameterModal}
+        animationType="slide"
+        presentationStyle="pageSheet"
+        onRequestClose={() => setShowParameterModal(false)}
+      >
+        <View style={styles.modalContainer}>
+          <View style={styles.modalHeader}>
+            <Text style={styles.modalTitle}>
+              Configure Model Parameters
+            </Text>
+            <TouchableOpacity
+              style={styles.closeButton}
+              onPress={() => setShowParameterModal(false)}
+            >
+              <X color="#fff" size={24} />
+            </TouchableOpacity>
+          </View>
+          
+          {selectedModelForConfig && (
+            <View style={styles.modalModelInfo}>
+              <Text style={styles.modalModelName}>{selectedModelForConfig.name}</Text>
+              <Text style={styles.modalModelAuthor}>by {selectedModelForConfig.author}</Text>
+            </View>
+          )}
+
+          <ScrollView style={styles.parameterConfigContainer}>
+            <View style={styles.parameterSection}>
+              <Text style={styles.parameterSectionTitle}>Context & GPU Settings</Text>
+              
+              <View style={styles.parameterRow}>
+                <Text style={styles.parameterLabel}>Context Length (n_ctx)</Text>
+                <TextInput
+                  style={styles.parameterInput}
+                  value={tempParameters.n_ctx.toString()}
+                  onChangeText={(text) => setTempParameters(prev => ({
+                    ...prev,
+                    n_ctx: parseInt(text) || 0
+                  }))}
+                  keyboardType="numeric"
+                  placeholderTextColor="#666"
+                />
+              </View>
+
+              <View style={styles.parameterRow}>
+                <Text style={styles.parameterLabel}>GPU Layers (n_gpu_layers)</Text>
+                <TextInput
+                  style={styles.parameterInput}
+                  value={tempParameters.n_gpu_layers.toString()}
+                  onChangeText={(text) => setTempParameters(prev => ({
+                    ...prev,
+                    n_gpu_layers: parseInt(text) || 0
+                  }))}
+                  keyboardType="numeric"
+                  placeholderTextColor="#666"
+                />
+              </View>
+
+              <View style={styles.parameterRow}>
+                <Text style={styles.parameterLabel}>Max Tokens (n_predict)</Text>
+                <TextInput
+                  style={styles.parameterInput}
+                  value={tempParameters.n_predict.toString()}
+                  onChangeText={(text) => setTempParameters(prev => ({
+                    ...prev,
+                    n_predict: parseInt(text) || 0
+                  }))}
+                  keyboardType="numeric"
+                  placeholderTextColor="#666"
+                />
+              </View>
+            </View>
+
+            <View style={styles.parameterSection}>
+              <Text style={styles.parameterSectionTitle}>Sampling Parameters</Text>
+              
+              <View style={styles.parameterRow}>
+                <Text style={styles.parameterLabel}>Temperature</Text>
+                <TextInput
+                  style={styles.parameterInput}
+                  value={tempParameters.temperature.toString()}
+                  onChangeText={(text) => setTempParameters(prev => ({
+                    ...prev,
+                    temperature: parseFloat(text) || 0
+                  }))}
+                  keyboardType="decimal-pad"
+                  placeholderTextColor="#666"
+                />
+              </View>
+
+              <View style={styles.parameterRow}>
+                <Text style={styles.parameterLabel}>Top P</Text>
+                <TextInput
+                  style={styles.parameterInput}
+                  value={tempParameters.top_p.toString()}
+                  onChangeText={(text) => setTempParameters(prev => ({
+                    ...prev,
+                    top_p: parseFloat(text) || 0
+                  }))}
+                  keyboardType="decimal-pad"
+                  placeholderTextColor="#666"
+                />
+              </View>
+
+              <View style={styles.parameterRow}>
+                <Text style={styles.parameterLabel}>Top K</Text>
+                <TextInput
+                  style={styles.parameterInput}
+                  value={tempParameters.top_k.toString()}
+                  onChangeText={(text) => setTempParameters(prev => ({
+                    ...prev,
+                    top_k: parseInt(text) || 0
+                  }))}
+                  keyboardType="numeric"
+                  placeholderTextColor="#666"
+                />
+              </View>
+
+              <View style={styles.parameterRow}>
+                <Text style={styles.parameterLabel}>Min P</Text>
+                <TextInput
+                  style={styles.parameterInput}
+                  value={tempParameters.min_p.toString()}
+                  onChangeText={(text) => setTempParameters(prev => ({
+                    ...prev,
+                    min_p: parseFloat(text) || 0
+                  }))}
+                  keyboardType="decimal-pad"
+                  placeholderTextColor="#666"
+                />
+              </View>
+            </View>
+
+            <View style={styles.parameterSection}>
+              <Text style={styles.parameterSectionTitle}>Stop Sequences</Text>
+              <Text style={styles.parameterDescription}>
+                Enter stop sequences separated by commas
+              </Text>
+              <TextInput
+                style={[styles.parameterInput, styles.stopSequenceInput]}
+                value={tempParameters.stop.join(', ')}
+                onChangeText={(text) => setTempParameters(prev => ({
+                  ...prev,
+                  stop: text.split(',').map(s => s.trim()).filter(s => s.length > 0)
+                }))}
+                multiline
+                placeholderTextColor="#666"
+                placeholder="<|im_end|>, <|im_start|>, <|end|>"
+              />
+            </View>
+
+            <View style={styles.parameterButtonContainer}>
+              <TouchableOpacity
+                style={styles.resetButton}
+                onPress={resetParametersToDefault}
+              >
+                <Text style={styles.resetButtonText}>Reset to Default</Text>
+              </TouchableOpacity>
+              
+              <TouchableOpacity
+                style={styles.saveButton}
+                onPress={saveModelParameters}
+              >
+                <Text style={styles.saveButtonText}>Save Parameters</Text>
+              </TouchableOpacity>
+            </View>
+          </ScrollView>
+        </View>
+      </Modal>
     </KeyboardAvoidingView>
   );
 };
@@ -859,6 +1072,11 @@ const styles = StyleSheet.create({
   activateButton: {
     backgroundColor: '#007AFF',
   },
+  configButton: {
+    backgroundColor: 'transparent',
+    borderWidth: 1,
+    borderColor: '#28a745',
+  },
   deleteButton: {
     backgroundColor: 'transparent',
     borderWidth: 1,
@@ -983,6 +1201,80 @@ const styles = StyleSheet.create({
     color: '#999',
     fontSize: 14,
     marginTop: 4,
+  },
+  // Parameter configuration modal styles
+  parameterConfigContainer: {
+    flex: 1,
+    padding: 16,
+  },
+  parameterSection: {
+    marginBottom: 24,
+  },
+  parameterSectionTitle: {
+    color: '#fff',
+    fontSize: 18,
+    fontWeight: 'bold',
+    marginBottom: 16,
+  },
+  parameterRow: {
+    marginBottom: 16,
+  },
+  parameterLabel: {
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: '600',
+    marginBottom: 8,
+  },
+  parameterDescription: {
+    color: '#999',
+    fontSize: 12,
+    marginBottom: 8,
+  },
+  parameterInput: {
+    backgroundColor: '#1a1a1a',
+    borderRadius: 8,
+    padding: 12,
+    color: '#fff',
+    borderWidth: 1,
+    borderColor: '#333',
+    fontSize: 14,
+  },
+  stopSequenceInput: {
+    minHeight: 80,
+    textAlignVertical: 'top',
+  },
+  parameterButtonContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginTop: 24,
+    marginBottom: 32,
+    gap: 12,
+  },
+  resetButton: {
+    flex: 1,
+    backgroundColor: 'transparent',
+    borderWidth: 1,
+    borderColor: '#666',
+    borderRadius: 8,
+    padding: 16,
+    alignItems: 'center',
+  },
+  resetButtonText: {
+    color: '#666',
+    fontSize: 16,
+    fontWeight: 'bold',
+  },
+  saveButton: {
+    flex: 1,
+    backgroundColor: '#007AFF',
+    borderRadius: 8,
+    padding: 16,
+    alignItems: 'center',
+  },
+  saveButtonText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: 'bold',
   },
 });
 
