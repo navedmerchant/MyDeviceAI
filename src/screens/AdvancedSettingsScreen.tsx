@@ -66,7 +66,7 @@ const AdvancedSettingsScreen: React.FC<Props> = ({ navigation }) => {
   const [isSearching, setIsSearching] = useState(false);
   const [isDownloading, setIsDownloading] = useState<string | null>(null);
   const [downloadProgress, setDownloadProgress] = useState<{[key: string]: number}>({});
-  const [activeTab, setActiveTab] = useState<'search' | 'downloaded'>('search');
+  const [activeTab, setActiveTab] = useState<'search' | 'downloaded'>('downloaded');
   const [showGGUFModal, setShowGGUFModal] = useState(false);
   const [selectedModel, setSelectedModel] = useState<HuggingFaceModel | null>(null);
   const [availableGGUFFiles, setAvailableGGUFFiles] = useState<GGUFFile[]>([]);
@@ -84,9 +84,34 @@ const AdvancedSettingsScreen: React.FC<Props> = ({ navigation }) => {
   const loadDownloadedModels = async () => {
     try {
       const stored = await AsyncStorage.getItem('downloadedModels');
+      let models: DownloadedModel[] = [];
+      
       if (stored) {
-        setDownloadedModels(JSON.parse(stored));
+        models = JSON.parse(stored);
       }
+      
+      // Always include the built-in default model
+      const builtInModel: DownloadedModel = {
+        id: 'built-in-default',
+        name: 'Built-in Default Model',
+        author: 'Qwen3 1.7B',
+        size: 'Built-in',
+        downloadDate: new Date().toISOString(),
+        filePath: '', // No file path for built-in model
+        isActive: models.length === 0 || !models.some(m => m.isActive), // Active by default if no other active model
+      };
+      
+      // Check if built-in model already exists in the list
+      const hasBuiltIn = models.some(m => m.id === 'built-in-default');
+      if (!hasBuiltIn) {
+        models.unshift(builtInModel); // Add at the beginning
+      } else {
+        // Update the existing built-in model to ensure it has correct properties
+        const builtInIndex = models.findIndex(m => m.id === 'built-in-default');
+        models[builtInIndex] = { ...models[builtInIndex], ...builtInModel };
+      }
+      
+      setDownloadedModels(models);
     } catch (error) {
       console.error('Error loading downloaded models:', error);
     }
@@ -316,6 +341,9 @@ const AdvancedSettingsScreen: React.FC<Props> = ({ navigation }) => {
       let totalBytes = 0;
       
       for (const model of downloadedModels) {
+        // Skip built-in model for storage calculation
+        if (model.id === 'built-in-default') continue;
+        
         if (model.filePath) {
           const fileExists = await RNFS.exists(model.filePath);
           if (fileExists) {
@@ -333,6 +361,12 @@ const AdvancedSettingsScreen: React.FC<Props> = ({ navigation }) => {
   };
 
   const deleteModel = async (modelId: string) => {
+    // Prevent deletion of built-in model
+    if (modelId === 'built-in-default') {
+      Alert.alert('Cannot Delete', 'The built-in default model cannot be deleted.');
+      return;
+    }
+    
     Alert.alert(
       'Delete Model',
       'Are you sure you want to delete this model? This action cannot be undone.',
@@ -425,14 +459,19 @@ const AdvancedSettingsScreen: React.FC<Props> = ({ navigation }) => {
   };
 
   const renderDownloadedModel = ({ item }: { item: DownloadedModel }) => (
-    <View style={[styles.modelCard, item.isActive && styles.activeModelCard]}>
+    <View style={[styles.modelCard, item.isActive && styles.activeModelCard, item.id === 'built-in-default' && styles.builtInModelCard]}>
       <View style={styles.modelInfo}>
         <Text style={styles.modelName}>{item.name}</Text>
         <Text style={styles.modelAuthor}>by {item.author}</Text>
         <Text style={styles.modelSize}>Size: {item.size}</Text>
-        <Text style={styles.downloadDate}>
-          Downloaded: {new Date(item.downloadDate).toLocaleDateString()}
-        </Text>
+        {item.id !== 'built-in-default' && (
+          <Text style={styles.downloadDate}>
+            Downloaded: {new Date(item.downloadDate).toLocaleDateString()}
+          </Text>
+        )}
+        {item.id === 'built-in-default' && (
+          <Text style={styles.builtInLabel}>Default model included with the app</Text>
+        )}
         {item.isActive && (
           <Text style={styles.activeLabel}>ACTIVE</Text>
         )}
@@ -446,12 +485,14 @@ const AdvancedSettingsScreen: React.FC<Props> = ({ navigation }) => {
             {item.isActive ? 'Active' : 'Activate'}
           </Text>
         </TouchableOpacity>
-        <TouchableOpacity
-          style={[styles.actionButton, styles.deleteButton]}
-          onPress={() => deleteModel(item.id)}
-        >
-          <Trash2 color="#ff4444" size={16} />
-        </TouchableOpacity>
+        {item.id !== 'built-in-default' && (
+          <TouchableOpacity
+            style={[styles.actionButton, styles.deleteButton]}
+            onPress={() => deleteModel(item.id)}
+          >
+            <Trash2 color="#ff4444" size={16} />
+          </TouchableOpacity>
+        )}
       </View>
     </View>
   );
@@ -478,21 +519,21 @@ const AdvancedSettingsScreen: React.FC<Props> = ({ navigation }) => {
 
       <View style={styles.tabContainer}>
         <TouchableOpacity
-          style={[styles.tab, activeTab === 'search' && styles.activeTab]}
-          onPress={() => setActiveTab('search')}
-        >
-          <Search color={activeTab === 'search' ? '#007AFF' : '#666'} size={20} />
-          <Text style={[styles.tabText, activeTab === 'search' && styles.activeTabText]}>
-            Search Models
-          </Text>
-        </TouchableOpacity>
-        <TouchableOpacity
           style={[styles.tab, activeTab === 'downloaded' && styles.activeTab]}
           onPress={() => setActiveTab('downloaded')}
         >
           <HardDrive color={activeTab === 'downloaded' ? '#007AFF' : '#666'} size={20} />
           <Text style={[styles.tabText, activeTab === 'downloaded' && styles.activeTabText]}>
             Downloaded ({downloadedModels.length})
+          </Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[styles.tab, activeTab === 'search' && styles.activeTab]}
+          onPress={() => setActiveTab('search')}
+        >
+          <Search color={activeTab === 'search' ? '#007AFF' : '#666'} size={20} />
+          <Text style={[styles.tabText, activeTab === 'search' && styles.activeTabText]}>
+            Search Models
           </Text>
         </TouchableOpacity>
       </View>
@@ -742,6 +783,10 @@ const styles = StyleSheet.create({
     borderWidth: 2,
     borderColor: '#007AFF',
   },
+  builtInModelCard: {
+    borderLeftWidth: 4,
+    borderLeftColor: '#34C759',
+  },
   modelInfo: {
     flex: 1,
   },
@@ -784,6 +829,11 @@ const styles = StyleSheet.create({
     color: '#007AFF',
     fontSize: 12,
     fontWeight: 'bold',
+  },
+  builtInLabel: {
+    color: '#34C759',
+    fontSize: 12,
+    fontStyle: 'italic',
   },
   downloadButton: {
     backgroundColor: '#007AFF',

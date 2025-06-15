@@ -137,7 +137,7 @@ const ChatUI: React.FC<ChatUIProps> = ({ historyId, onMenuPress, MenuIcon, navig
 
   useEffect(() => {
     loadSystemPrompt();
-
+    contextManager.current.initialize();
     // Add keyboard listeners
     const keyboardWillShow = Keyboard.addListener(
       Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow',
@@ -272,10 +272,6 @@ want to talk and share about personal feelings.`;
         nextAppState === 'active'
       ) {
         loadModel();
-        // Initialize context manager
-        contextManager.current.initialize().catch(error => {
-          console.error('Error initializing context manager:', error);
-        });
       } else if (
         appState.current === 'active' &&
         nextAppState.match(/inactive|background/)
@@ -284,10 +280,6 @@ want to talk and share about personal feelings.`;
           contextRef.current?.stopCompletion();
         }
         unloadModel();
-        // Unload context manager
-        contextManager.current.unloadModel().catch(error => {
-          console.error('Error unloading context manager:', error);
-        });
       }
 
       appState.current = nextAppState;
