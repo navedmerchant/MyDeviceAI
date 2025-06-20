@@ -439,7 +439,6 @@ const AdvancedSettingsScreen: React.FC<Props> = ({ navigation }) => {
     }));
     await saveDownloadedModels(updatedModels);
     await AsyncStorage.setItem('activeModelId', modelId);
-    Alert.alert('Success', 'Active model updated successfully!');
   };
 
   const openParameterConfig = (model: DownloadedModel) => {

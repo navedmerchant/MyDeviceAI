@@ -112,6 +112,7 @@ const ChatUI: React.FC<ChatUIProps> = ({ historyId, onMenuPress, MenuIcon, navig
   const [currentHistoryId, setCurrentHistoryId] = useState<number | null>(null);
   const [searchModeEnabled, setSearchModeEnabled] = useState(false);
   const [thinkingModeEnabled, setThinkingModeEnabled] = useState(false);
+  const [isQwen3Model, setIsQwen3Model] = useState(true);
   const { setGlobalHistoryId, loadHistories } = useDatabase();
   const [showScrollButton, setShowScrollButton] = useState(false);
   const [keyboardOffset, setKeyboardOffset] = useState(0);
@@ -305,6 +306,10 @@ want to talk and share about personal feelings.`;
       // Track which model was loaded
       const activeModelId = await AsyncStorage.getItem('activeModelId');
       await AsyncStorage.setItem('lastLoadedModelId', activeModelId || '');
+
+      // Check if the model is qwen3
+      const modelDescription = newContext.model.desc || '';
+      setIsQwen3Model(modelDescription.toLowerCase().includes('qwen3'));
     } catch (error) {
       console.log("Error loading model" + error);
       Alert.alert("Failed to load model! please close the app and try again by closing some background apps");
@@ -470,7 +475,7 @@ want to talk and share about personal feelings.`;
             messages: [
               {
                 role: 'system',
-                content: `${thinkingModeEnabled ? './think' : './no_think'}\n${systemPrompt.current}`
+                content: `${isQwen3Model ? (thinkingModeEnabled ? './think' : './no_think') + '\n' : ''}${systemPrompt.current}`
               },
               ...messages.map(msg => ({
                 role: msg.isUser ? 'user' : 'assistant',
@@ -803,14 +808,16 @@ want to talk and share about personal feelings.`;
 
       <View style={styles.inputContainer}>
         <View style={styles.modeToggleContainer}>
-          <TouchableOpacity 
-            style={[styles.modeToggleButton, thinkingModeEnabled && styles.modeToggleButtonActive]} 
-            onPress={handleThinkingToggle}
-            disabled={isTyping}
-          >
-            <Brain color={thinkingModeEnabled ? "#28a745" : "#666"} size={20} />
-            <Text style={[styles.modeToggleText, thinkingModeEnabled && styles.modeToggleTextActive]}>Think</Text>
-          </TouchableOpacity>
+          {isQwen3Model && (
+            <TouchableOpacity 
+              style={[styles.modeToggleButton, thinkingModeEnabled && styles.modeToggleButtonActive]} 
+              onPress={handleThinkingToggle}
+              disabled={isTyping}
+            >
+              <Brain color={thinkingModeEnabled ? "#28a745" : "#666"} size={20} />
+              <Text style={[styles.modeToggleText, thinkingModeEnabled && styles.modeToggleTextActive]}>Think</Text>
+            </TouchableOpacity>
+          )}
           <TouchableOpacity 
             style={[styles.modeToggleButton, searchModeEnabled && styles.modeToggleButtonActive]} 
             onPress={handleSearchToggle}
