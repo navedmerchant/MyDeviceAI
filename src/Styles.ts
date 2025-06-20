@@ -48,6 +48,36 @@ const styles = StyleSheet.create({
       alignItems: "center",
       gap: 5,
     },
+    progressBarContainer: {
+      backgroundColor: '#000',
+      paddingHorizontal: 15,
+      paddingVertical: 10,
+      borderBottomWidth: 1,
+      borderBottomColor: '#333',
+    },
+    progressBarRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 10,
+    },
+    progressBarBackground: {
+      height: 4,
+      backgroundColor: '#333',
+      borderRadius: 2,
+      marginBottom: 5,
+      flex: 1,
+    },
+    progressBarFill: {
+      height: 4,
+      backgroundColor: '#007AFF',
+      borderRadius: 2,
+    },
+    progressText: {
+      color: '#fff',
+      fontSize: 12,
+      minWidth: 35,
+      textAlign: 'right',
+    },
     messagesContainer: {
       flex: 1,
     },

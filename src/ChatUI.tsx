@@ -117,6 +117,8 @@ const ChatUI: React.FC<ChatUIProps> = ({ historyId, onMenuPress, MenuIcon, navig
   const [showScrollButton, setShowScrollButton] = useState(false);
   const [keyboardOffset, setKeyboardOffset] = useState(0);
   const [expandedImage, setExpandedImage] = useState<string | null>(null);
+  const [isLoadingModel, setIsLoadingModel] = useState(false);
+  const [loadingProgress, setLoadingProgress] = useState(0);
 
   const scrollViewRef = useRef<ScrollView>(null);
   const textInputRef = useRef<TextInput>(null);
@@ -294,12 +296,20 @@ want to talk and share about personal feelings.`;
 
   const loadModel = async () => {
     try {
+      setIsLoadingModel(true);
+      setLoadingProgress(0);
+      
       const modelParams = await getModelParamsForDevice();
       if (modelParams == null) {
         console.log("Model params null! Unsupported device!");
+        setIsLoadingModel(false);
         return;
       }
-      const newContext = await initLlama(modelParams);
+      
+      const newContext = await initLlama(modelParams, (progress: number) => {
+        setLoadingProgress(progress);
+      });
+      
       contextRef.current = newContext;
       console.log("model loaded successfully");
       
@@ -313,6 +323,9 @@ want to talk and share about personal feelings.`;
     } catch (error) {
       console.log("Error loading model" + error);
       Alert.alert("Failed to load model! please close the app and try again by closing some background apps");
+    } finally {
+      setIsLoadingModel(false);
+      setLoadingProgress(0);
     }
   }
 
@@ -334,7 +347,7 @@ want to talk and share about personal feelings.`;
     await unloadModel();
     contextRef.current = undefined;
     
-    // Load new model
+    // Load new model with progress tracking
     await loadModel();
   };
 
@@ -753,6 +766,25 @@ want to talk and share about personal feelings.`;
           </TouchableOpacity>
         </View>
       </View>
+
+      {/* Model Loading Progress Bar */}
+      {isLoadingModel && (
+        <View style={styles.progressBarContainer}>
+          <View style={styles.progressBarRow}>
+            <View style={styles.progressBarBackground}>
+              <View 
+                style={[
+                  styles.progressBarFill, 
+                  { width: `${loadingProgress}%` }
+                ]} 
+              />
+            </View>
+            <Text style={styles.progressText}>
+              {Math.round(loadingProgress)}%
+            </Text>
+          </View>
+        </View>
+      )}
 
       {messages.length === 0 ? (
         <EmptyState onPromptPress={handlePromptSelect} />
