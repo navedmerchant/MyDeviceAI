@@ -35,7 +35,7 @@ interface SearXNGResponse {
 }
 
 // Renamed and updated function
-async function performSearXNGSearch(query: string): Promise<SearchResult> {
+async function performSearXNGSearch(query: string, signal?: AbortSignal): Promise<SearchResult> {
   const baseUrl = HOSTNAME;
   const params = new URLSearchParams({
     q: query,
@@ -45,7 +45,7 @@ async function performSearXNGSearch(query: string): Promise<SearchResult> {
   const url = `${baseUrl}?${params.toString()}`;
 
   try {
-    const response = await fetch(url);
+    const response = await fetch(url, { signal });
     if (!response.ok) {
       // It's good practice to try and get more error info if possible
       const errorText = await response.text();

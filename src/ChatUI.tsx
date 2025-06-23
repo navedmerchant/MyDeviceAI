@@ -52,6 +52,7 @@ import { Share } from 'react-native';
 // Import the components we moved to separate files
 import EmptyState from './components/EmptyState';
 import TypingIndicator from './components/TypingIndicator';
+import SearchingIndicator from './components/SearchingIndicator';
 import ThinkingContent from './components/ThinkingContent';
 import StreamingThinkingIndicator from './components/StreamingThinkingIndicator';
 import ThumbnailGallery from './components/ThumbnailGallery';
@@ -129,10 +130,13 @@ const ChatUI: React.FC<ChatUIProps> = ({ historyId, onMenuPress, MenuIcon, navig
   const [expandedImage, setExpandedImage] = useState<string | null>(null);
   const [isLoadingModel, setIsLoadingModel] = useState(false);
   const [loadingProgress, setLoadingProgress] = useState(0);
+  const [isSearching, setIsSearching] = useState(false);
 
   const scrollViewRef = useRef<ScrollView>(null);
   const textInputRef = useRef<TextInput>(null);
   const currentHistoryIdRef = useRef(currentHistoryId);
+  const searchControllerRef = useRef<AbortController | null>(null);
+  const isCancelledRef = useRef(false);
   const isFloatingKeyboard = useIsFloatingKeyboard(); // Use the custom hook
 
   // Animated values for progress bar
@@ -608,14 +612,22 @@ want to talk and share about personal feelings.`;
       Keyboard.dismiss();  // Dismiss keyboard when AI starts typing
       addMessage(inputText, true);
       setInputText('');
-      setIsTyping(true);
-
+      
+      // Reset cancellation flag
+      isCancelledRef.current = false;
+      
       let searchResults = '';
       let thumbnails: string[] = [];
       
       if (searchModeEnabled) {
+        setIsSearching(true);
         try {
-          const searchResponse: SearchResult = await performSearXNGSearch(getUserMessages(inputText, messages));
+          // Create abort controller for search cancellation
+          searchControllerRef.current = new AbortController();
+          const searchResponse: SearchResult = await performSearXNGSearch(
+            getUserMessages(inputText, messages), 
+            searchControllerRef.current.signal
+          );
           searchResults = searchResponse.formattedText;
           thumbnails = searchResponse.thumbnails;
           setCurrentThumbnails(thumbnails);
@@ -624,8 +636,20 @@ want to talk and share about personal feelings.`;
           if (error instanceof Error) {
             showToast(error.message);
           }
+        } finally {
+          setIsSearching(false);
+          searchControllerRef.current = null;
         }
       }
+      
+      console.log("isCancelledRef.current", isCancelledRef.current);
+      // Exit early if user cancelled
+      if (isCancelledRef.current) {
+        return;
+      }
+      
+      // Only proceed with AI processing if not cancelled
+      setIsTyping(true);
 
       // Get relevant context from previous conversations
       let userContext = '';
@@ -694,8 +718,25 @@ want to talk and share about personal feelings.`;
   }, [inputText, addMessage, searchModeEnabled, thinkingModeEnabled]);
 
   async function handleStop(event: GestureResponderEvent): Promise<void> {
-    await contextRef.current?.stopCompletion();
-    setIsTyping(false);
+    
+    // If we're currently searching, cancel the search and reset chat state
+    if (isSearching && searchControllerRef.current) {
+      searchControllerRef.current.abort();
+      setIsSearching(false);
+      setCurrentResponse('');
+      setCurrentThumbnails([]);
+      // Set cancellation flag
+      isCancelledRef.current = true;
+      return;
+    }
+    
+    // If we're typing (AI is processing), stop the completion and reset state
+    if (isTyping) {
+      await contextRef.current?.stopCompletion();
+      setIsTyping(false);
+      setCurrentResponse('');
+      setCurrentThumbnails([]);
+    }
   }
 
   const isCloseToBottom = ({layoutMeasurement, contentOffset, contentSize} : NativeScrollEvent) => {
@@ -900,7 +941,7 @@ want to talk and share about personal feelings.`;
       // Animate in
       Animated.parallel([
         Animated.timing(progressBarContainerHeight, {
-          toValue: 20, // Reduced height to match new design
+          toValue: 10, // Reduced height to match new design
           duration: 300,
           useNativeDriver: false,
         }),
@@ -958,7 +999,7 @@ want to talk and share about personal feelings.`;
       
       <View style={styles.header}>
         <View style={styles.headerLeftButtons}>
-          <TouchableOpacity style={styles.headerButton} onPress={handleMenuPress} disabled={isTyping}>
+          <TouchableOpacity style={styles.headerButton} onPress={handleMenuPress} disabled={isTyping || isSearching}>
             <MenuIcon color="#fff" size={24} />
           </TouchableOpacity>
         </View>
@@ -967,13 +1008,13 @@ want to talk and share about personal feelings.`;
           style={styles.headerLogo}
         />
         <View style={styles.headerRightButtons}>
-          <TouchableOpacity style={styles.headerButton} onPress={handleNewChat} disabled={isTyping}>
+          <TouchableOpacity style={styles.headerButton} onPress={handleNewChat} disabled={isTyping || isSearching}>
             <CirclePlus color="#fff" size={24} />
           </TouchableOpacity>
         </View>
       </View>
 
-            {/* Model Loading Progress Bar */}
+      {/* Model Loading Progress Bar */}
       <Animated.View 
         style={[
           styles.progressBarContainer,
@@ -1008,7 +1049,7 @@ want to talk and share about personal feelings.`;
           scrollEventThrottle={16}
         >
           {messages.map(renderMessage)}
-          {isTyping && (
+          {(isTyping || isSearching) && (
             <View style={[
               styles.messageBubble,
               styles.aiMessage,
@@ -1021,7 +1062,9 @@ want to talk and share about personal feelings.`;
                 />
               )}
               
-              {currentResponse ? (
+              {isSearching ? (
+                <SearchingIndicator />
+              ) : currentResponse ? (
                 <>
                   {processThinkingContent(currentResponse, true)}
                   {(currentResponse.match(/<think>/g) || []).length > 
@@ -1055,7 +1098,7 @@ want to talk and share about personal feelings.`;
             <TouchableOpacity 
               style={[styles.modeToggleButton, thinkingModeEnabled && styles.modeToggleButtonActive]} 
               onPress={handleThinkingToggle}
-              disabled={isTyping}
+              disabled={isTyping || isSearching}
             >
               <Brain color={thinkingModeEnabled ? "#28a745" : "#666"} size={20} />
               <Text style={[styles.modeToggleText, thinkingModeEnabled && styles.modeToggleTextActive]}>Think</Text>
@@ -1064,7 +1107,7 @@ want to talk and share about personal feelings.`;
           <TouchableOpacity 
             style={[styles.modeToggleButton, searchModeEnabled && styles.modeToggleButtonActive]} 
             onPress={handleSearchToggle}
-            disabled={isTyping}
+            disabled={isTyping || isSearching}
           >
             <Search color={searchModeEnabled ? "#28a745" : "#666"} size={20} />
             <Text style={[styles.modeToggleText, searchModeEnabled && styles.modeToggleTextActive]}>Search</Text>
@@ -1083,11 +1126,11 @@ want to talk and share about personal feelings.`;
             numberOfLines={2}
             onFocus={() => setTimeout(scrollToBottom, 100)}
           />
-          {isTyping ? 
+          {(isTyping || isSearching) ? 
             (<TouchableOpacity 
-              style={[styles.stopButton, !currentResponse && styles.stopButtonDisabled]} 
+              style={[styles.stopButton, (!currentResponse && !isSearching) && styles.stopButtonDisabled]} 
               onPress={handleStop}
-              disabled={!currentResponse}
+              disabled={!currentResponse && !isSearching}
             >
               <Square color="#fff"></Square>
             </TouchableOpacity>) : 
