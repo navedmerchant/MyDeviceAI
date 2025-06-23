@@ -471,31 +471,61 @@ const AdvancedSettingsScreen: React.FC<Props> = ({ navigation }) => {
           text: 'Delete',
           style: 'destructive',
           onPress: async () => {
-            try {
-              // Find the model to get its file path
-              const modelToDelete = downloadedModels.find(m => m.id === modelId);
-              
-              if (modelToDelete && modelToDelete.filePath) {
-                // Delete the actual file
-                const fileExists = await RNFS.exists(modelToDelete.filePath);
-                if (fileExists) {
-                  await RNFS.unlink(modelToDelete.filePath);
-                }
+                      try {
+            // Find the model to get its file path and check if it was active
+            const modelToDelete = downloadedModels.find(m => m.id === modelId);
+            const wasActiveModel = modelToDelete?.isActive;
+            
+            if (modelToDelete && modelToDelete.filePath) {
+              // Delete the actual file
+              const fileExists = await RNFS.exists(modelToDelete.filePath);
+              if (fileExists) {
+                await RNFS.unlink(modelToDelete.filePath);
               }
-              
-              // Remove from downloaded models list
-              const updatedModels = downloadedModels.filter(m => m.id !== modelId);
-              await saveDownloadedModels(updatedModels);
-              
-              Alert.alert('Success', 'Model deleted successfully');
-            } catch (error) {
-              console.error('Error deleting model:', error);
-              Alert.alert('Error', 'Failed to delete model file, but removed from list');
-              
-              // Still remove from list even if file deletion failed
-              const updatedModels = downloadedModels.filter(m => m.id !== modelId);
+            }
+            
+            // Remove from downloaded models list
+            const updatedModels = downloadedModels.filter(m => m.id !== modelId);
+            
+            // Check if only built-in model remains or if we deleted the active model
+            const nonBuiltInModels = updatedModels.filter(m => m.id !== 'built-in-default');
+            if (nonBuiltInModels.length === 0 || wasActiveModel) {
+              // Set built-in model as active
+              const finalModels = updatedModels.map(model => ({
+                ...model,
+                isActive: model.id === 'built-in-default'
+              }));
+              await saveDownloadedModels(finalModels);
+              await AsyncStorage.setItem('activeModelId', 'built-in-default');
+            } else {
               await saveDownloadedModels(updatedModels);
             }
+            
+            Alert.alert('Success', 'Model deleted successfully');
+          } catch (error) {
+            console.error('Error deleting model:', error);
+            Alert.alert('Error', 'Failed to delete model file, but removed from list');
+            
+            // Still remove from list even if file deletion failed
+            const updatedModels = downloadedModels.filter(m => m.id !== modelId);
+            
+            // Check if we need to set built-in as active after failed deletion
+            const modelToDelete = downloadedModels.find(m => m.id === modelId);
+            const wasActiveModel = modelToDelete?.isActive;
+            const nonBuiltInModels = updatedModels.filter(m => m.id !== 'built-in-default');
+            
+            if (nonBuiltInModels.length === 0 || wasActiveModel) {
+              // Set built-in model as active
+              const finalModels = updatedModels.map(model => ({
+                ...model,
+                isActive: model.id === 'built-in-default'
+              }));
+              await saveDownloadedModels(finalModels);
+              await AsyncStorage.setItem('activeModelId', 'built-in-default');
+            } else {
+              await saveDownloadedModels(updatedModels);
+            }
+          }
           }
         }
       ]
