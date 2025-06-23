@@ -6,7 +6,6 @@ import {
   Platform,
   Dimensions,
 } from 'react-native';
-import { Colors } from 'react-native/Libraries/NewAppScreen';
 import { MenuProvider } from 'react-native-popup-menu';
 import { NavigationContainer } from '@react-navigation/native';
 import { createDrawerNavigator } from '@react-navigation/drawer';
@@ -32,9 +31,6 @@ const Drawer = createDrawerNavigator<DrawerParamList>();
 
 function App(): React.JSX.Element {
   const isDarkMode = useColorScheme() === 'dark';
-  const backgroundStyle = {
-    backgroundColor: isDarkMode ? Colors.darker : Colors.lighter,
-  };
 
   return (
     <DatabaseProvider>

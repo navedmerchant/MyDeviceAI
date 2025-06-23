@@ -75,5 +75,5 @@ yarn-error.log
 
 *.gguf
 .bundle
-
+.kotlin/
 Env.ts
