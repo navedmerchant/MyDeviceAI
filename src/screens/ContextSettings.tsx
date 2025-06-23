@@ -13,7 +13,20 @@ import {
 import { ChevronLeft, Trash2 } from 'lucide-react-native';
 import { DrawerNavigationProp } from '@react-navigation/drawer';
 import { DrawerParamList } from '../../App';
-import ContextManager from '../utils/ContextManager';
+import { LlamaContext, initLlama, releaseAllLlama } from 'llama.rn';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import {
+  initDatabase,
+  addContextEmbedding,
+  getAllContexts,
+  removeContext,
+  clearAllContext,
+  addReferenceStatement,
+  hasReferenceStatements,
+  getReferenceStatements,
+  updateReferenceEmbedding,
+  findSimilarReferenceEmbeddings
+} from '../db/DatabaseHelper';
 
 type ContextSettingsScreenNavigationProp = DrawerNavigationProp<DrawerParamList, 'ContextSettings'>;
 
@@ -21,35 +34,151 @@ type Props = {
   navigation: ContextSettingsScreenNavigationProp;
 };
 
+interface ContextSettings {
+  enabled: boolean;
+}
+
 const ContextSettings: React.FC<Props> = ({ navigation }) => {
-  const contextManager = useRef(ContextManager.getInstance());
-  const [settings, setSettings] = useState(contextManager.current.getSettings());
+  const embeddingContextRef = useRef<LlamaContext | undefined>(undefined);
+  const [settings, setSettings] = useState<ContextSettings>({ enabled: true });
   const [newMemory, setNewMemory] = useState('');
   const [savedContexts, setSavedContexts] = useState<Array<{id: string; text: string}>>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [isModelLoaded, setIsModelLoaded] = useState(false);
 
   useEffect(() => {
-    const initializeContextManager = async () => {
+    const initializeContext = async () => {
       try {
-        if (!contextManager.current.isModelInitialized()) {
-          await contextManager.current.initialize();
-        }
-        setSettings(contextManager.current.getSettings());
+        await initDatabase();
+        await loadContextSettings();
+        await loadEmbeddingModel();
+        await initializeReferenceEmbeddings();
         await loadSavedContexts();
       } catch (err) {
-        setError(err instanceof Error ? err.message : 'Failed to initialize context manager');
+        setError(err instanceof Error ? err.message : 'Failed to initialize context');
       }
     };
 
-    initializeContextManager();
+    initializeContext();
+
+    return () => {
+      unloadEmbeddingModel();
+    };
   }, []);
 
+  const loadContextSettings = async () => {
+    try {
+      const savedSettings = await AsyncStorage.getItem('contextSettings');
+      if (savedSettings) {
+        const parsedSettings = JSON.parse(savedSettings);
+        setSettings(parsedSettings);
+      }
+    } catch (error) {
+      console.error('Error loading context settings:', error);
+    }
+  };
+
+  const saveContextSettings = async (newSettings: ContextSettings) => {
+    try {
+      await AsyncStorage.setItem('contextSettings', JSON.stringify(newSettings));
+      setSettings(newSettings);
+    } catch (error) {
+      console.error('Error saving context settings:', error);
+    }
+  };
+
+  const loadEmbeddingModel = async () => {
+    try {
+      embeddingContextRef.current = await initLlama({
+        model: 'file://bge-small-en-v1.5-q4_k_m.gguf',
+        is_model_asset: true,
+        n_ctx: 512,
+        n_gpu_layers: 0,
+        embedding: true
+      });
+      setIsModelLoaded(true);
+    } catch (error) {
+      console.error('Error loading embedding model:', error);
+      setError('Failed to load embedding model');
+    }
+  };
+
+  const unloadEmbeddingModel = async () => {
+    embeddingContextRef.current = undefined;
+    setIsModelLoaded(false);
+    await releaseAllLlama();
+  };
+
+  const initializeReferenceEmbeddings = async () => {
+    if (!embeddingContextRef.current) return;
+
+    const hasExisting = await hasReferenceStatements();
+    if (!hasExisting) {
+      const referenceStatements = [
+        "I am feeling",
+        "I have been",
+        "I want to share",
+        "In my opinion",
+        "I think that",
+        "I believe",
+        "I feel like",
+        "I would like to"
+      ];
+
+      for (const text of referenceStatements) {
+        const id = Math.random().toString(36).substring(7);
+        const embedding = await getEmbedding(text);
+        if (embedding) {
+          await addReferenceStatement(id, text, embedding);
+        }
+      }
+    } else {
+      const results = await getReferenceStatements();
+      const referenceStatements = results.map(row => ({
+        id: String(row.id),
+        text: String(row.text)
+      }));
+      
+      for (const stmt of referenceStatements) {
+        if (stmt.id && stmt.text) {
+          const embedding = await getEmbedding(stmt.text);
+          if (embedding) {
+            await updateReferenceEmbedding(stmt.id, embedding);
+          }
+        }
+      }
+    }
+  };
+
+  const getEmbedding = async (text: string): Promise<Float32Array | null> => {
+    if (!embeddingContextRef.current) return null;
+    try {
+      const result = await embeddingContextRef.current.embedding(text);
+      return new Float32Array(result.embedding);
+    } catch (error) {
+      console.error('Error getting embedding:', error);
+      return null;
+    }
+  };
+
+  const isSelfReferential = async (text: string): Promise<boolean> => {
+    if (!embeddingContextRef.current) return false;
+    
+    const inputEmbedding = await getEmbedding(text);
+    if (!inputEmbedding) return false;
+
+    const results = await findSimilarReferenceEmbeddings(inputEmbedding, 1);
+    const DISTANCE_THRESHOLD = 0.9;
+    return results.length > 0 && 
+           typeof results[0].distance === 'number' && 
+           results[0].distance > DISTANCE_THRESHOLD;
+  };
+
   const loadSavedContexts = async () => {
-    if (!contextManager.current) return;
     setIsLoading(true);
     try {
-      const contexts = await contextManager.current.getAllContexts();
+      const contexts = await getAllContexts();
       setSavedContexts(contexts);
     } catch (err) {
       console.error('Error loading contexts:', err);
@@ -58,32 +187,49 @@ const ContextSettings: React.FC<Props> = ({ navigation }) => {
     }
   };
 
-  if (!contextManager.current) {
+  if (!isModelLoaded) {
     return (
       <View style={styles.loadingContainer}>
         <ActivityIndicator size="large" color="#007AFF" />
+        <Text style={styles.loadingText}>Loading context model...</Text>
         {error && <Text style={styles.errorText}>{error}</Text>}
       </View>
     );
   }
 
   const handleToggleEnabled = () => {
-    if (!settings) return;
     const newSettings = {
       ...settings,
       enabled: !settings.enabled,
     };
-    contextManager.current.updateSettings(newSettings);
-    setSettings(newSettings);
+    saveContextSettings(newSettings);
   };
 
   const handleAddMemory = async () => {
     if (!newMemory.trim()) return;
     
     try {
-      await contextManager.current.addContext(newMemory.trim(), true);
-      setNewMemory('');
-      loadSavedContexts(); // Refresh the list
+      if (!settings.enabled || !embeddingContextRef.current) {
+        Alert.alert('Error', 'Context system is not enabled or not ready');
+        return;
+      }
+
+      // Skip self-referential check for manually added memories
+      const embedding = await getEmbedding(newMemory.trim());
+      if (!embedding) {
+        Alert.alert('Error', 'Failed to process memory');
+        return;
+      }
+
+      const id = Math.random().toString(36).substring(7);
+      const success = await addContextEmbedding(id, newMemory.trim(), embedding);
+      
+      if (success) {
+        setNewMemory('');
+        loadSavedContexts(); // Refresh the list
+      } else {
+        Alert.alert('Error', 'Failed to add memory');
+      }
     } catch (err) {
       console.error('Error adding memory:', err);
       Alert.alert('Error', 'Failed to add memory');
@@ -92,7 +238,7 @@ const ContextSettings: React.FC<Props> = ({ navigation }) => {
 
   const handleRemoveContext = async (id: string) => {
     try {
-      await contextManager.current.removeContext(id);
+      await removeContext(id);
       loadSavedContexts(); // Refresh the list
     } catch (err) {
       console.error('Error removing context:', err);
@@ -190,7 +336,7 @@ const ContextSettings: React.FC<Props> = ({ navigation }) => {
                   text: 'Clear All',
                   style: 'destructive',
                   onPress: async () => {
-                    await contextManager.current.clearAllContext();
+                    await clearAllContext();
                     loadSavedContexts();
                   },
                 },
@@ -215,6 +361,11 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     backgroundColor: '#000000',
+  },
+  loadingText: {
+    color: '#fff',
+    marginTop: 16,
+    fontSize: 16,
   },
   errorText: {
     color: '#FF3B30',

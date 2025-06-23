@@ -32,13 +32,20 @@ import {
   initDatabase,
   saveNewChatHistory,
   saveChatMessage,
-  loadChatHistory} from './db/DatabaseHelper';
+  loadChatHistory,
+  addContextEmbedding,
+  findSimilarContexts,
+  addReferenceStatement,
+  hasReferenceStatements,
+  getReferenceStatements,
+  updateReferenceEmbedding,
+  findSimilarReferenceEmbeddings
+} from './db/DatabaseHelper';
 import { DrawerNavigationProp } from '@react-navigation/drawer';
 import { DrawerParamList } from '../App';
 import { useDatabase } from './db/DatabaseContext';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { performSearXNGSearch, SearchResult } from './search/SearXNG';
-import ContextManager from './utils/ContextManager';
 import { Share } from 'react-native';
 
 // Import the components we moved to separate files
@@ -107,12 +114,14 @@ const ChatUI: React.FC<ChatUIProps> = ({ historyId, onMenuPress, MenuIcon, navig
   const [isTyping, setIsTyping] = useState(false);
   const [currentResponse, setCurrentResponse] = useState('');
   const [currentThumbnails, setCurrentThumbnails] = useState<string[]>([]);
-  const contextRef = useRef<LlamaContext | undefined>(null);
+  const contextRef = useRef<LlamaContext | undefined>(undefined);
+  const embeddingContextRef = useRef<LlamaContext | undefined>(undefined);
   const [unsppportedDevice, setUnsupportedDevice] = useState(false);
   const [currentHistoryId, setCurrentHistoryId] = useState<number | null>(null);
   const [searchModeEnabled, setSearchModeEnabled] = useState(false);
   const [thinkingModeEnabled, setThinkingModeEnabled] = useState(false);
   const [isQwen3Model, setIsQwen3Model] = useState(true);
+  const [contextEnabled, setContextEnabled] = useState(true);
   const { setGlobalHistoryId, loadHistories } = useDatabase();
   const [showScrollButton, setShowScrollButton] = useState(false);
   const [keyboardOffset, setKeyboardOffset] = useState(0);
@@ -127,7 +136,6 @@ const ChatUI: React.FC<ChatUIProps> = ({ historyId, onMenuPress, MenuIcon, navig
 
   const systemPrompt = useRef('');
   const appState = useRef(AppState.currentState);
-  const contextManager = useRef(ContextManager.getInstance());
 
   // Handle when a suggested prompt is selected
   const handlePromptSelect = useCallback((prompt: string) => {
@@ -140,7 +148,8 @@ const ChatUI: React.FC<ChatUIProps> = ({ historyId, onMenuPress, MenuIcon, navig
 
   useEffect(() => {
     loadSystemPrompt();
-    contextManager.current.initialize();
+    loadContextSettings();
+    initializeContext();
     // Add keyboard listeners
     const keyboardWillShow = Keyboard.addListener(
       Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow',
@@ -161,6 +170,158 @@ const ChatUI: React.FC<ChatUIProps> = ({ historyId, onMenuPress, MenuIcon, navig
       keyboardWillHide.remove();
     };
   }, []);
+
+  const loadContextSettings = async () => {
+    try {
+      const savedSettings = await AsyncStorage.getItem('contextSettings');
+      if (savedSettings) {
+        const settings = JSON.parse(savedSettings);
+        setContextEnabled(settings.enabled ?? true);
+      }
+    } catch (error) {
+      console.error('Error loading context settings:', error);
+    }
+  };
+
+  const saveContextSettings = async (enabled: boolean) => {
+    try {
+      const settings = { enabled };
+      await AsyncStorage.setItem('contextSettings', JSON.stringify(settings));
+      setContextEnabled(enabled);
+    } catch (error) {
+      console.error('Error saving context settings:', error);
+    }
+  };
+
+  const initializeContext = async () => {
+    try {
+      await initDatabase();
+      await loadEmbeddingModel();
+      await initializeReferenceEmbeddings();
+    } catch (error) {
+      console.error('Error initializing context:', error);
+    }
+  };
+
+  const loadEmbeddingModel = async () => {
+    try {
+      embeddingContextRef.current = await initLlama({
+        model: 'file://bge-small-en-v1.5-q4_k_m.gguf',
+        is_model_asset: true,
+        n_ctx: 512,
+        n_gpu_layers: 0,
+        embedding: true
+      });
+    } catch (error) {
+      console.error('Error loading embedding model:', error);
+    }
+  };
+
+  const unloadEmbeddingModel = async () => {
+    embeddingContextRef.current = undefined;
+  };
+
+  const initializeReferenceEmbeddings = async () => {
+    if (!embeddingContextRef.current) return;
+
+    const hasExisting = await hasReferenceStatements();
+    if (!hasExisting) {
+      const referenceStatements = [
+        "I am feeling",
+        "I have been",
+        "I want to share",
+        "In my opinion",
+        "I think that",
+        "I believe",
+        "I feel like",
+        "I would like to"
+      ];
+
+      for (const text of referenceStatements) {
+        const id = Math.random().toString(36).substring(7);
+        const embedding = await getEmbedding(text);
+        if (embedding) {
+          await addReferenceStatement(id, text, embedding);
+        }
+      }
+    } else {
+      const results = await getReferenceStatements();
+      const referenceStatements = results.map(row => ({
+        id: String(row.id),
+        text: String(row.text)
+      }));
+      
+      for (const stmt of referenceStatements) {
+        if (stmt.id && stmt.text) {
+          const embedding = await getEmbedding(stmt.text);
+          if (embedding) {
+            await updateReferenceEmbedding(stmt.id, embedding);
+          }
+        }
+      }
+    }
+  };
+
+  const getEmbedding = async (text: string): Promise<Float32Array | null> => {
+    if (!embeddingContextRef.current) return null;
+    try {
+      const result = await embeddingContextRef.current.embedding(text);
+      return new Float32Array(result.embedding);
+    } catch (error) {
+      console.error('Error getting embedding:', error);
+      return null;
+    }
+  };
+
+  const isSelfReferential = async (text: string): Promise<boolean> => {
+    if (!embeddingContextRef.current) return false;
+    
+    const inputEmbedding = await getEmbedding(text);
+    if (!inputEmbedding) return false;
+
+    const results = await findSimilarReferenceEmbeddings(inputEmbedding, 1);
+    const DISTANCE_THRESHOLD = 0.9;
+    return results.length > 0 && 
+           typeof results[0].distance === 'number' && 
+           results[0].distance > DISTANCE_THRESHOLD;
+  };
+
+  const addContextMemory = async (text: string, skipSelfReferentialCheck: boolean = false): Promise<boolean> => {
+    if (!contextEnabled || !embeddingContextRef.current) return false;
+
+    if (!skipSelfReferentialCheck && !(await isSelfReferential(text))) return false;
+
+    try {
+      const embedding = await getEmbedding(text);
+      if (!embedding) return false;
+
+      const id = Math.random().toString(36).substring(7);
+      return await addContextEmbedding(id, text, embedding);
+    } catch (error) {
+      console.error('Error adding context:', error);
+      return false;
+    }
+  };
+
+  const findSimilarContext = async (query: string, limit: number = 3) => {
+    if (!contextEnabled || !embeddingContextRef.current) return [];
+
+    try {
+      const queryEmbedding = await getEmbedding(query);
+      if (!queryEmbedding) return [];
+
+      const results = await findSimilarContexts(queryEmbedding, limit);
+      
+      const RELEVANCE_THRESHOLD = 0.85;
+      return results.filter(context => 
+        typeof context.distance === 'number' && 
+        context.distance <= RELEVANCE_THRESHOLD
+      );
+    } catch (error) {
+      console.error('Error finding similar context:', error);
+      return [];
+    }
+  };
 
   const loadSystemPrompt = async () => {
     try {
@@ -268,6 +429,7 @@ want to talk and share about personal feelings.`;
         nextAppState === 'active'
       ) {
         loadModel();
+        loadEmbeddingModel();
       } else if (
         appState.current === 'active' &&
         nextAppState.match(/inactive|background/)
@@ -276,6 +438,7 @@ want to talk and share about personal feelings.`;
           contextRef.current?.stopCompletion();
         }
         unloadModel();
+        unloadEmbeddingModel();
       }
 
       appState.current = nextAppState;
@@ -284,9 +447,7 @@ want to talk and share about personal feelings.`;
     return () => {
       subscription.remove();
       unloadModel();
-      contextManager.current.unloadModel().catch(error => {
-        console.error('Error unloading context manager:', error);
-      });
+      unloadEmbeddingModel();
     };
   }, []);
 
@@ -461,14 +622,10 @@ want to talk and share about personal feelings.`;
 
       // Get relevant context from previous conversations
       let userContext = '';
-      if (contextManager.current) {
-        const similarContexts = await contextManager.current.findSimilarContext(inputText);
-        // print list of similar contexts
-        console.log("similar contexts: " + similarContexts.length);
-        if (similarContexts.length > 0) {
-          userContext = "Here's some relevant context from previous conversations:\n" +
-            similarContexts.map(context => context.text).join("\n") + "\n\n";
-        }
+      const similarContexts = await findSimilarContext(inputText);
+      if (similarContexts.length > 0) {
+        userContext = "Here's some relevant context from previous conversations:\n" +
+          similarContexts.map(context => context.text).join("\n") + "\n\n";
       }
 
       const searchResultsPrompt = searchResults ? `\nHere are some search results for your query: ${searchResults} \n\n Use these to enhance your response if needed. Provide all the links at the end of your response. Markdown format the links` : '';
@@ -527,7 +684,7 @@ want to talk and share about personal feelings.`;
         setCurrentThumbnails([]);
       }
     }
-  }, [inputText, addMessage, contextManager, searchModeEnabled, thinkingModeEnabled]);
+  }, [inputText, addMessage, searchModeEnabled, thinkingModeEnabled]);
 
   async function handleStop(event: GestureResponderEvent): Promise<void> {
     await contextRef.current?.stopCompletion();
