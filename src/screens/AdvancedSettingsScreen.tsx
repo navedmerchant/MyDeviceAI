@@ -50,6 +50,9 @@ interface DownloadedModel {
   filePath: string;
   isActive: boolean;
   parameters?: ModelParameters;
+  downloadStatus?: 'downloading' | 'paused' | 'cancelled' | 'completed' | 'failed';
+  downloadProgress?: number;
+  downloadJob?: any; // To store the RNFS download job for pause/cancel
 }
 
 interface GGUFFile {
@@ -67,7 +70,8 @@ const AdvancedSettingsScreen: React.FC<Props> = ({ navigation }) => {
   const [downloadedModels, setDownloadedModels] = useState<DownloadedModel[]>([]);
   const [isSearching, setIsSearching] = useState(false);
   const [isDownloading, setIsDownloading] = useState<string | null>(null);
-  const [downloadProgress, setDownloadProgress] = useState<{[key: string]: number}>({});
+
+  const [downloadJobs, setDownloadJobs] = useState<{[key: string]: any}>({});
   const [activeTab, setActiveTab] = useState<'search' | 'downloaded'>('downloaded');
   const [showGGUFModal, setShowGGUFModal] = useState(false);
   const [selectedModel, setSelectedModel] = useState<HuggingFaceModel | null>(null);
@@ -244,12 +248,8 @@ const AdvancedSettingsScreen: React.FC<Props> = ({ navigation }) => {
     const downloadKey = `${selectedModel.id}/${ggufFile.path}`;
     setIsDownloading(selectedModel.id);
     setShowGGUFModal(false);
-    setDownloadProgress(prev => ({ ...prev, [downloadKey]: 0 }));
     
     try {
-      // Construct download URL
-      const downloadUrl = `https://huggingface.co/${selectedModel.id}/resolve/main/${ggufFile.path}`;
-      
       // Create file path
       const fileName = `${selectedModel.id.replace('/', '_')}_${ggufFile.path}`.replace(/[^a-zA-Z0-9._-]/g, '_');
       const modelsDir = Platform.OS === 'ios' 
@@ -277,16 +277,79 @@ const AdvancedSettingsScreen: React.FC<Props> = ({ navigation }) => {
         return;
       }
       
+      // Create downloading model entry immediately
+      const downloadingModel: DownloadedModel = {
+        id: downloadKey,
+        name: ggufFile.path,
+        author: selectedModel.id.split('/')[0] || 'Unknown',
+        size: formatFileSize(ggufFile.lfs?.size || ggufFile.size || 0),
+        downloadDate: new Date().toISOString(),
+        filePath: filePath,
+        isActive: false,
+        downloadStatus: 'downloading',
+        downloadProgress: 0,
+      };
+      
+      // Add to downloaded models list immediately
+      const updatedModels = [...downloadedModels, downloadingModel];
+      setDownloadedModels(updatedModels);
+      
+      // Switch to downloaded tab
+      setActiveTab('downloaded');
+      
+      // Construct download URL
+      const downloadUrl = `https://huggingface.co/${selectedModel.id}/resolve/main/${ggufFile.path}`;
+      
+      console.log("downloadUrl", downloadUrl);
+      console.log("filePath", filePath);
+
       // Start download with progress tracking
       const downloadResult = RNFS.downloadFile({
         fromUrl: downloadUrl,
         toFile: filePath,
-        progress: (res) => {
-          const progress = (res.bytesWritten / res.contentLength) * 100;
-          setDownloadProgress(prev => ({ ...prev, [downloadKey]: progress }));
+        begin: (res) => {
+          if (!res.contentLength || res.contentLength === 0) {
+            console.warn('Server did not provide Content-Length header, progress tracking may not work');
+          }
+
+          setDownloadedModels(prev => prev.map(model => 
+            model.id === downloadKey 
+              ? { 
+                  ...model, 
+                  downloadStatus: 'downloading',
+                  downloadProgress: 0 
+                }
+              : model
+          ));
         },
-        progressDivider: 10, // Update progress every 10%
+        progress: (res) => {
+          if (res.contentLength && res.contentLength > 0) {
+            const progress = (res.bytesWritten / res.contentLength) * 100;
+            console.log("progress", progress);
+            
+            setDownloadedModels(prev => prev.map(model => 
+              model.id === downloadKey 
+                ? { ...model, downloadProgress: progress }
+                : model
+            ));
+          } else {
+            console.log(`Downloaded: ${formatFileSize(res.bytesWritten)}`);
+            setDownloadedModels(prev => prev.map(model => 
+              model.id === downloadKey 
+                ? { 
+                    ...model, 
+                    downloadProgress: -1,
+                    size: formatFileSize(res.bytesWritten)
+                  }
+                : model
+            ));
+          }
+        },
+        progressDivider: 1,
       });
+      
+      // Store the download job for pause/cancel functionality
+      setDownloadJobs(prev => ({ ...prev, [downloadKey]: downloadResult }));
       
       // Wait for download to complete
       const result = await downloadResult.promise;
@@ -299,30 +362,37 @@ const AdvancedSettingsScreen: React.FC<Props> = ({ navigation }) => {
       const fileInfo = await RNFS.stat(filePath);
       const actualSize = fileInfo.size;
       
-      const newModel: DownloadedModel = {
-        id: downloadKey,
-        name: ggufFile.path,
-        author: selectedModel.id.split('/')[0] || 'Unknown',
+      // Update model with completion status
+      const completedModel: DownloadedModel = {
+        ...downloadingModel,
         size: formatFileSize(actualSize),
-        downloadDate: new Date().toISOString(),
-        filePath: filePath,
-        isActive: false,
+        downloadStatus: 'completed',
+        downloadProgress: 100,
       };
       
-      const updatedModels = [...downloadedModels, newModel];
-      await saveDownloadedModels(updatedModels);
+      const finalModels = downloadedModels.map(model => 
+        model.id === downloadKey ? completedModel : model
+      ).concat(downloadedModels.find(m => m.id === downloadKey) ? [] : [completedModel]);
       
-      // Clear progress
-      setDownloadProgress(prev => {
-        const newProgress = { ...prev };
-        delete newProgress[downloadKey];
-        return newProgress;
+      await saveDownloadedModels(finalModels);
+      
+      // Clean up download job
+      setDownloadJobs(prev => {
+        const newJobs = { ...prev };
+        delete newJobs[downloadKey];
+        return newJobs;
       });
       
-      Alert.alert('Success', `Model "${newModel.name}" has been downloaded successfully!`);
-      setActiveTab('downloaded');
+      Alert.alert('Success', `Model "${completedModel.name}" has been downloaded successfully!`);
     } catch (error) {
       console.error('Error downloading model:', error);
+      
+      // Update model status to failed
+      setDownloadedModels(prev => prev.map(model => 
+        model.id === downloadKey 
+          ? { ...model, downloadStatus: 'failed' as const }
+          : model
+      ));
       
       // Clean up partial download if it exists
       try {
@@ -340,11 +410,11 @@ const AdvancedSettingsScreen: React.FC<Props> = ({ navigation }) => {
         console.error('Error cleaning up partial download:', cleanupError);
       }
       
-      // Clear progress on error
-      setDownloadProgress(prev => {
-        const newProgress = { ...prev };
-        delete newProgress[downloadKey];
-        return newProgress;
+      // Clean up download job
+      setDownloadJobs(prev => {
+        const newJobs = { ...prev };
+        delete newJobs[downloadKey];
+        return newJobs;
       });
       
       Alert.alert('Error', `Failed to download model: ${error instanceof Error ? error.message : 'Unknown error'}`);
@@ -491,10 +561,113 @@ const AdvancedSettingsScreen: React.FC<Props> = ({ navigation }) => {
     setTempParameters(DEFAULT_PARAMETERS);
   };
 
+  const pauseDownload = async (modelId: string) => {
+    const downloadJob = downloadJobs[modelId];
+    if (downloadJob) {
+      try {
+        downloadJob.stop();
+        setDownloadedModels(prev => prev.map(model => 
+          model.id === modelId 
+            ? { ...model, downloadStatus: 'paused' as const }
+            : model
+        ));
+      } catch (error) {
+        console.error('Error pausing download:', error);
+      }
+    }
+  };
+
+  const cancelDownload = async (modelId: string) => {
+    Alert.alert(
+      'Cancel Download',
+      'Are you sure you want to cancel this download?',
+      [
+        { text: 'No', style: 'cancel' },
+        {
+          text: 'Yes',
+          style: 'destructive',
+          onPress: async () => {
+            const downloadJob = downloadJobs[modelId];
+            if (downloadJob) {
+              try {
+                downloadJob.stop();
+                
+                // Remove the model from downloaded list
+                const updatedModels = downloadedModels.filter(m => m.id !== modelId);
+                setDownloadedModels(updatedModels);
+                
+                // Clean up partial download file
+                const modelToDelete = downloadedModels.find(m => m.id === modelId);
+                if (modelToDelete && modelToDelete.filePath) {
+                  const fileExists = await RNFS.exists(modelToDelete.filePath);
+                  if (fileExists) {
+                    await RNFS.unlink(modelToDelete.filePath);
+                  }
+                }
+                
+                // Clean up download job
+                setDownloadJobs(prev => {
+                  const newJobs = { ...prev };
+                  delete newJobs[modelId];
+                  return newJobs;
+                });
+                
+                setIsDownloading(null);
+              } catch (error) {
+                console.error('Error canceling download:', error);
+              }
+            }
+          }
+        }
+      ]
+    );
+  };
+
+  const resumeDownload = async (modelId: string) => {
+    const model = downloadedModels.find(m => m.id === modelId);
+    if (!model) return;
+    
+    // Find the original GGUF file info to resume download
+    const [originalModelId, fileName] = modelId.split('/');
+    const ggufFile: GGUFFile = {
+      path: fileName,
+      size: 0, // We'll use the stored size from the model
+    };
+    
+    // Temporarily set the selected model to resume download
+    const originalModel: HuggingFaceModel = {
+      id: originalModelId,
+      modelId: originalModelId,
+      author: model.author,
+      sha: '',
+      downloads: 0,
+      likes: 0,
+      tags: [],
+      createdAt: '',
+      updatedAt: '',
+    };
+    
+    // Remove the paused model first
+    const updatedModels = downloadedModels.filter(m => m.id !== modelId);
+    setDownloadedModels(updatedModels);
+    
+    // Clean up any existing partial file
+    if (model.filePath) {
+      const fileExists = await RNFS.exists(model.filePath);
+      if (fileExists) {
+        await RNFS.unlink(model.filePath);
+      }
+    }
+    
+    // Restart the download
+    setSelectedModel(originalModel);
+    await downloadSelectedGGUF(ggufFile);
+  };
+
   const renderSearchResult = ({ item }: { item: HuggingFaceModel }) => {
-    const hasActiveDownload = Object.keys(downloadProgress).some(key => key.startsWith(item.id));
-    const progressKey = Object.keys(downloadProgress).find(key => key.startsWith(item.id));
-    const progress = progressKey ? downloadProgress[progressKey] : 0;
+    const hasActiveDownload = downloadedModels.some(model => 
+      model.id.startsWith(item.id) && model.downloadStatus === 'downloading'
+    );
     
     return (
       <View style={styles.modelCard}>
@@ -509,12 +682,7 @@ const AdvancedSettingsScreen: React.FC<Props> = ({ navigation }) => {
             <Text style={styles.modelTag}>{item.pipeline_tag}</Text>
           )}
           {hasActiveDownload && (
-            <View style={styles.progressContainer}>
-              <Text style={styles.progressText}>Downloading: {progress.toFixed(1)}%</Text>
-              <View style={styles.progressBar}>
-                <View style={[styles.progressFill, { width: `${progress}%` }]} />
-              </View>
-            </View>
+            <Text style={styles.downloadingText}>Download in progress - check Downloaded tab</Text>
           )}
         </View>
         <TouchableOpacity
@@ -538,7 +706,28 @@ const AdvancedSettingsScreen: React.FC<Props> = ({ navigation }) => {
         <Text style={styles.modelName}>{item.name}</Text>
         <Text style={styles.modelAuthor}>by {item.author}</Text>
         <Text style={styles.modelSize}>Size: {item.size}</Text>
-        {item.id !== 'built-in-default' && (
+        
+        {/* Download progress for downloading models */}
+        {item.downloadStatus === 'downloading' && (
+          <View style={styles.progressContainer}>
+            <Text style={styles.progressText}>
+              Downloading: {item.downloadProgress?.toFixed(1) || 0}%
+            </Text>
+            <View style={styles.progressBar}>
+              <View style={[styles.progressFill, { width: `${item.downloadProgress || 0}%` }]} />
+            </View>
+          </View>
+        )}
+        
+        {/* Status indicators */}
+        {item.downloadStatus === 'paused' && (
+          <Text style={styles.pausedLabel}>PAUSED</Text>
+        )}
+        {item.downloadStatus === 'failed' && (
+          <Text style={styles.failedLabel}>FAILED</Text>
+        )}
+        
+        {item.id !== 'built-in-default' && item.downloadStatus === 'completed' && (
           <Text style={styles.downloadDate}>
             Downloaded: {new Date(item.downloadDate).toLocaleDateString()}
           </Text>
@@ -551,35 +740,92 @@ const AdvancedSettingsScreen: React.FC<Props> = ({ navigation }) => {
         )}
       </View>
       <View style={styles.modelActions}>
-        <TouchableOpacity
-          style={[styles.actionButton, styles.configButton]}
-          onPress={() => openParameterConfig(item)}
-        >
-          <Settings color="#28a745" size={16} />
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={[
-            styles.actionButton, 
-            styles.activateButton,
-            item.isActive && styles.disabledButton
-          ]}
-          onPress={() => setActiveModel(item.id)}
-          disabled={item.isActive}
-        >
-          <Text style={[
-            styles.actionButtonText,
-            item.isActive && styles.disabledButtonText
-          ]}>
-            {item.isActive ? 'Active' : 'Activate'}
-          </Text>
-        </TouchableOpacity>
-        {item.id !== 'built-in-default' && (
-          <TouchableOpacity
-            style={[styles.actionButton, styles.deleteButton]}
-            onPress={() => deleteModel(item.id)}
-          >
-            <Trash2 color="#ff4444" size={16} />
-          </TouchableOpacity>
+        {/* Download control buttons */}
+        {item.downloadStatus === 'downloading' && (
+          <>
+            <TouchableOpacity
+              style={[styles.actionButton, styles.pauseButton]}
+              onPress={() => pauseDownload(item.id)}
+            >
+              <Text style={styles.actionButtonText}>Pause</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.actionButton, styles.cancelButton]}
+              onPress={() => cancelDownload(item.id)}
+            >
+              <Text style={styles.actionButtonText}>Cancel</Text>
+            </TouchableOpacity>
+          </>
+        )}
+        
+        {item.downloadStatus === 'paused' && (
+          <>
+            <TouchableOpacity
+              style={[styles.actionButton, styles.resumeButton]}
+              onPress={() => resumeDownload(item.id)}
+            >
+              <Text style={styles.actionButtonText}>Resume</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.actionButton, styles.cancelButton]}
+              onPress={() => cancelDownload(item.id)}
+            >
+              <Text style={styles.actionButtonText}>Cancel</Text>
+            </TouchableOpacity>
+          </>
+        )}
+        
+        {item.downloadStatus === 'failed' && (
+          <>
+            <TouchableOpacity
+              style={[styles.actionButton, styles.retryButton]}
+              onPress={() => resumeDownload(item.id)}
+            >
+              <Text style={styles.actionButtonText}>Retry</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.actionButton, styles.deleteButton]}
+              onPress={() => deleteModel(item.id)}
+            >
+              <Trash2 color="#ff4444" size={16} />
+            </TouchableOpacity>
+          </>
+        )}
+        
+        {/* Normal actions for completed models */}
+        {(item.downloadStatus === 'completed' || !item.downloadStatus) && (
+          <>
+            <TouchableOpacity
+              style={[styles.actionButton, styles.configButton]}
+              onPress={() => openParameterConfig(item)}
+            >
+              <Settings color="#28a745" size={16} />
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[
+                styles.actionButton, 
+                styles.activateButton,
+                item.isActive && styles.disabledButton
+              ]}
+              onPress={() => setActiveModel(item.id)}
+              disabled={item.isActive}
+            >
+              <Text style={[
+                styles.actionButtonText,
+                item.isActive && styles.disabledButtonText
+              ]}>
+                {item.isActive ? 'Active' : 'Activate'}
+              </Text>
+            </TouchableOpacity>
+            {item.id !== 'built-in-default' && (
+              <TouchableOpacity
+                style={[styles.actionButton, styles.deleteButton]}
+                onPress={() => deleteModel(item.id)}
+              >
+                <Trash2 color="#ff4444" size={16} />
+              </TouchableOpacity>
+            )}
+          </>
         )}
       </View>
     </View>
@@ -1328,6 +1574,36 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 16,
     fontWeight: 'bold',
+  },
+  // Download status labels
+  pausedLabel: {
+    color: '#ff9500',
+    fontSize: 12,
+    fontWeight: 'bold',
+  },
+  failedLabel: {
+    color: '#ff4444',
+    fontSize: 12,
+    fontWeight: 'bold',
+  },
+  // Download control buttons
+  pauseButton: {
+    backgroundColor: '#ff9500',
+  },
+  resumeButton: {
+    backgroundColor: '#34C759',
+  },
+  retryButton: {
+    backgroundColor: '#007AFF',
+  },
+  cancelButton: {
+    backgroundColor: '#ff4444',
+  },
+  downloadingText: {
+    color: '#007AFF',
+    fontSize: 12,
+    fontStyle: 'italic',
+    marginTop: 4,
   },
 });
 
