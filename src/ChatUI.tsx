@@ -23,6 +23,7 @@ import {
   Dimensions,
   Image,
   FlatList,
+  Animated,
 } from 'react-native';
 import { Send, Square, CirclePlus, Search, Settings, ArrowDown, Brain, Copy, Share as ShareIcon } from 'lucide-react-native';
 import { getModelParamsForDevice } from './utils/Utils';
@@ -134,6 +135,11 @@ const ChatUI: React.FC<ChatUIProps> = ({ historyId, onMenuPress, MenuIcon, navig
   const currentHistoryIdRef = useRef(currentHistoryId);
   const isFloatingKeyboard = useIsFloatingKeyboard(); // Use the custom hook
 
+  // Animated values for progress bar
+  const progressBarContainerHeight = useRef(new Animated.Value(0)).current;
+  const progressBarOpacity = useRef(new Animated.Value(0)).current;
+  const progressBarWidth = useRef(new Animated.Value(0)).current;
+
   const systemPrompt = useRef('');
   const appState = useRef(AppState.currentState);
 
@@ -150,6 +156,7 @@ const ChatUI: React.FC<ChatUIProps> = ({ historyId, onMenuPress, MenuIcon, navig
     loadSystemPrompt();
     loadContextSettings();
     initializeContext();
+    loadModel()
     // Add keyboard listeners
     const keyboardWillShow = Keyboard.addListener(
       Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow',
@@ -887,6 +894,48 @@ want to talk and share about personal feelings.`;
     }, 100); // Small delay to ensure component is fully mounted
   }, []); // Empty dependency array means this runs once on mount
 
+  // Handle progress bar animations
+  useEffect(() => {
+    if (isLoadingModel) {
+      // Animate in
+      Animated.parallel([
+        Animated.timing(progressBarContainerHeight, {
+          toValue: 20, // Reduced height to match new design
+          duration: 300,
+          useNativeDriver: false,
+        }),
+        Animated.timing(progressBarOpacity, {
+          toValue: 1,
+          duration: 300,
+          useNativeDriver: false,
+        }),
+      ]).start();
+    } else {
+      // Animate out
+      Animated.parallel([
+        Animated.timing(progressBarContainerHeight, {
+          toValue: 0,
+          duration: 300,
+          useNativeDriver: false,
+        }),
+        Animated.timing(progressBarOpacity, {
+          toValue: 0,
+          duration: 300,
+          useNativeDriver: false,
+        }),
+      ]).start();
+    }
+  }, [isLoadingModel]);
+
+  // Animate progress fill
+  useEffect(() => {
+    Animated.timing(progressBarWidth, {
+      toValue: loadingProgress,
+      duration: 200,
+      useNativeDriver: false,
+    }).start();
+  }, [loadingProgress]);
+
   if (unsppportedDevice) {
     return (
       <View style={styles.unsupportedContainer}>
@@ -924,24 +973,29 @@ want to talk and share about personal feelings.`;
         </View>
       </View>
 
-      {/* Model Loading Progress Bar */}
-      {isLoadingModel && (
-        <View style={styles.progressBarContainer}>
-          <View style={styles.progressBarRow}>
-            <View style={styles.progressBarBackground}>
-              <View 
-                style={[
-                  styles.progressBarFill, 
-                  { width: `${loadingProgress}%` }
-                ]} 
-              />
-            </View>
-            <Text style={styles.progressText}>
-              {Math.round(loadingProgress)}%
-            </Text>
-          </View>
+            {/* Model Loading Progress Bar */}
+      <Animated.View 
+        style={[
+          styles.progressBarContainer,
+          {
+            height: progressBarContainerHeight,
+            opacity: progressBarOpacity,
+            overflow: 'hidden',
+          }
+        ]}
+      >
+        <View style={styles.progressBarBackground}>
+          <Animated.View 
+            style={[
+              styles.progressBarFill, 
+              { width: progressBarWidth.interpolate({
+                inputRange: [0, 100],
+                outputRange: ['0%', '100%']
+              }) }
+            ]} 
+          />
         </View>
-      )}
+      </Animated.View>
 
       {messages.length === 0 ? (
         <EmptyState onPromptPress={handlePromptSelect} />

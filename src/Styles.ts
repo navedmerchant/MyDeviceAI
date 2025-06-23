@@ -51,9 +51,10 @@ const styles = StyleSheet.create({
     progressBarContainer: {
       backgroundColor: '#000',
       paddingHorizontal: 15,
-      paddingVertical: 10,
+      paddingVertical: 5,
       borderBottomWidth: 1,
       borderBottomColor: '#333',
+      justifyContent: 'center',
     },
     progressBarRow: {
       flexDirection: 'row',
@@ -61,16 +62,15 @@ const styles = StyleSheet.create({
       gap: 10,
     },
     progressBarBackground: {
-      height: 4,
+      height: 2,
       backgroundColor: '#333',
-      borderRadius: 2,
-      marginBottom: 5,
+      borderRadius: 1,
       flex: 1,
     },
     progressBarFill: {
-      height: 4,
+      height: 2,
       backgroundColor: '#007AFF',
-      borderRadius: 2,
+      borderRadius: 1,
     },
     progressText: {
       color: '#fff',
