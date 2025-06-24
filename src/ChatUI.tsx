@@ -160,7 +160,6 @@ const ChatUI: React.FC<ChatUIProps> = ({ historyId, onMenuPress, MenuIcon, navig
     loadSystemPrompt();
     loadContextSettings();
     initializeContext();
-    loadModel()
     // Add keyboard listeners
     const keyboardWillShow = Keyboard.addListener(
       Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow',

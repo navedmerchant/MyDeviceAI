@@ -15,8 +15,6 @@ import { styles } from '../Styles';
 import { SUGGESTED_PROMPTS } from '../constants/SuggestedPrompts';
 import { shuffleArray } from '../utils/ArrayUtils';
 
-const ITEM_WIDTH = 280; // Width of each item + horizontal margins
-
 // Pre-shuffle the prompts once when the file loads
 const SHUFFLED_PROMPTS = shuffleArray([...SUGGESTED_PROMPTS]);
 
@@ -26,52 +24,38 @@ interface EmptyStateProps {
 
 const EmptyState: React.FC<EmptyStateProps> = ({ onPromptPress }) => {
   const flatListRef = useRef<FlatList>(null);
-  const [visiblePrompts, setVisiblePrompts] = useState([...SHUFFLED_PROMPTS]);
+  // Use the pre-shuffled prompts
+  const visiblePrompts = useRef([...SHUFFLED_PROMPTS]);
   const [isPaused, setIsPaused] = useState(false);
-  const userScrollPos = useRef(0);
-  const scrollPosition = useRef(0);
+  const [userScrollPos, setUserScrollPos] = useState(0);
   const [isKeyboardVisible, setKeyboardVisible] = useState(false);
   const [isLandscape, setIsLandscape] = useState(false);
   const [shouldShowPrompts, setShouldShowPrompts] = useState(true);
   
-  const getItemLayout = (data: any, index: number) => ({
-    length: ITEM_WIDTH,
-    offset: ITEM_WIDTH * index,
-    index,
-  });
-
   // Auto-scrolling logic
   useEffect(() => {
     let scrollInterval: NodeJS.Timeout;
-    const totalWidth = SUGGESTED_PROMPTS.length * ITEM_WIDTH; // Total width of all items
+    let currentScrollPosition = userScrollPos;
+    const itemWidth = 280; // Width of each item + horizontal margins
+    const totalWidth = SUGGESTED_PROMPTS.length * itemWidth; // Total width of all items
     
     // Start auto-scrolling after a short delay
     const timer = setTimeout(() => {
       scrollInterval = setInterval(() => {
         if (!isPaused) {
-          scrollPosition.current += 1; // Slower, smoother scrolling
+          currentScrollPosition += 1; // Slower, smoother scrolling
           
           // Create circular scrolling effect
-          const actualPosition = scrollPosition.current % totalWidth;
+          const actualPosition = currentScrollPosition % totalWidth;
           
           // Check if we need to update the visible window of prompts
           // This creates an illusion of infinite scrolling with better performance
-          if (Math.floor(actualPosition / ITEM_WIDTH) > SUGGESTED_PROMPTS.length - 10) {
+          if (Math.floor(actualPosition / itemWidth) > SUGGESTED_PROMPTS.length - 10) {
             // Approaching the end, append prompts from beginning to create seamless loop
-            setVisiblePrompts(currentPrompts => {
-              if (currentPrompts.length === SHUFFLED_PROMPTS.length) {
-                return [...SHUFFLED_PROMPTS, ...SHUFFLED_PROMPTS.slice(0, 15)];
-              }
-              return currentPrompts;
-            });
-          } else if (actualPosition < 10 * ITEM_WIDTH) {
+            visiblePrompts.current = [...SHUFFLED_PROMPTS, ...SHUFFLED_PROMPTS.slice(0, 15)];
+          } else if (actualPosition < 10 * itemWidth) {
             // Near the beginning, reset to original list
-            setVisiblePrompts(currentPrompts => {
-              if (currentPrompts.length > SHUFFLED_PROMPTS.length) {
-                return [...SHUFFLED_PROMPTS];
-              }
-              return currentPrompts;
-            });
+            visiblePrompts.current = [...SHUFFLED_PROMPTS];
           }
           
           // Smooth scrolling
@@ -95,7 +79,9 @@ const EmptyState: React.FC<EmptyStateProps> = ({ onPromptPress }) => {
   
   // Track scroll position
   const handleScroll = (event: NativeSyntheticEvent<NativeScrollEvent>) => {
-    userScrollPos.current = event.nativeEvent.contentOffset.x;
+    if (isPaused) {
+      setUserScrollPos(event.nativeEvent.contentOffset.x);
+    }
   };
   
   // Handle orientation changes
@@ -156,7 +142,7 @@ const EmptyState: React.FC<EmptyStateProps> = ({ onPromptPress }) => {
       {shouldShowPrompts && (
         <FlatList
           ref={flatListRef}
-          data={visiblePrompts}
+          data={visiblePrompts.current}
           keyExtractor={(item, index) => `prompt-${index}`}
           renderItem={({ item }) => (
             <TouchableOpacity 
@@ -170,7 +156,7 @@ const EmptyState: React.FC<EmptyStateProps> = ({ onPromptPress }) => {
           showsHorizontalScrollIndicator={false}
           decelerationRate="fast"
           snapToAlignment="center"
-          snapToInterval={ITEM_WIDTH} // Match the itemWidth for snap effect
+          snapToInterval={280} // Match the itemWidth for snap effect
           contentContainerStyle={styles.promptsContainer}
           bounces={false}
           scrollEventThrottle={16}
@@ -178,17 +164,15 @@ const EmptyState: React.FC<EmptyStateProps> = ({ onPromptPress }) => {
           onScrollBeginDrag={() => setIsPaused(true)}
           onScrollEndDrag={() => {
             // Small delay before resuming auto-scroll to allow momentum scrolling to settle
-            scrollPosition.current = userScrollPos.current;
             setTimeout(() => setIsPaused(false), 500);
           }}
           onMomentumScrollEnd={(event) => {
-            userScrollPos.current = event.nativeEvent.contentOffset.x;
+            setUserScrollPos(event.nativeEvent.contentOffset.x);
           }}
           windowSize={10} // Optimize rendering for better performance
           removeClippedSubviews={true} // Improve memory usage
           maxToRenderPerBatch={8} // Limit batch rendering for smoother scrolling
           initialNumToRender={6} // Start with fewer rendered items
-          getItemLayout={getItemLayout}
         />
       )}
     </View>
