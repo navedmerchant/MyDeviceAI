@@ -137,6 +137,7 @@ const ChatUI: React.FC<ChatUIProps> = ({ historyId, onMenuPress, MenuIcon, navig
   const currentHistoryIdRef = useRef(currentHistoryId);
   const searchControllerRef = useRef<AbortController | null>(null);
   const isCancelledRef = useRef(false);
+  const modelLoadTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const isFloatingKeyboard = useIsFloatingKeyboard(); // Use the custom hook
 
   // Animated values for progress bar
@@ -432,18 +433,42 @@ want to talk and share about personal feelings.`;
   };
 
   useEffect(() => {
-
     const subscription = AppState.addEventListener('change', nextAppState => {
+      console.log("appState.current", appState.current);
+      console.log("nextAppState", nextAppState);
+      
       if (
         appState.current.match(/inactive|background/) &&
         nextAppState === 'active'
       ) {
-        loadModel();
-        loadEmbeddingModel();
+        // Debounce model loading to avoid rapid state changes during screen lock
+        if (modelLoadTimeoutRef.current) {
+          clearTimeout(modelLoadTimeoutRef.current);
+        }
+        
+        modelLoadTimeoutRef.current = setTimeout(() => {
+          // Double-check app state is still active after delay
+          if (AppState.currentState === 'active') {
+            console.log("Loading models after confirmed active state");
+            if (!contextRef.current) {  
+              loadModel();
+            }
+            if (!embeddingContextRef.current) {
+              loadEmbeddingModel();
+            }
+          }
+        }, 500); // 500ms delay to avoid rapid transitions
+        
       } else if (
         appState.current === 'active' &&
         nextAppState.match(/inactive|background/)
       ) {
+        // Clear any pending model loads
+        if (modelLoadTimeoutRef.current) {
+          clearTimeout(modelLoadTimeoutRef.current);
+          modelLoadTimeoutRef.current = null;
+        }
+        
         if (isTyping) {
           contextRef.current?.stopCompletion();
         }
@@ -455,6 +480,9 @@ want to talk and share about personal feelings.`;
     });
 
     return () => {
+      if (modelLoadTimeoutRef.current) {
+        clearTimeout(modelLoadTimeoutRef.current);
+      }
       subscription.remove();
       unloadModel();
       unloadEmbeddingModel();
@@ -469,7 +497,7 @@ want to talk and share about personal feelings.`;
     try {
       setIsLoadingModel(true);
       setLoadingProgress(0);
-      
+
       const modelParams = await getModelParamsForDevice();
       if (modelParams == null) {
         console.log("Model params null! Unsupported device!");
@@ -501,6 +529,7 @@ want to talk and share about personal feelings.`;
 
   const unloadModel = async () => {
     await releaseAllLlama();
+    contextRef.current = undefined;
   }
 
   const reloadModel = async () => {
