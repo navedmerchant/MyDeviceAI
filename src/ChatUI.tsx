@@ -497,7 +497,6 @@ want to talk and share about personal feelings.`;
       Alert.alert("Failed to load model! please close the app and try again by closing some background apps");
     } finally {
       setIsLoadingModel(false);
-      setLoadingProgress(0);
     }
   }
 

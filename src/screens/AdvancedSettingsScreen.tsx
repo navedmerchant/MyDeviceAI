@@ -50,7 +50,7 @@ interface DownloadedModel {
   filePath: string;
   isActive: boolean;
   parameters?: ModelParameters;
-  downloadStatus?: 'downloading' | 'paused' | 'cancelled' | 'completed' | 'failed';
+  downloadStatus?: 'downloading' | 'cancelled' | 'completed' | 'failed';
   downloadProgress?: number;
   downloadJob?: any; // To store the RNFS download job for pause/cancel
 }
@@ -72,6 +72,7 @@ const AdvancedSettingsScreen: React.FC<Props> = ({ navigation }) => {
   const [isDownloading, setIsDownloading] = useState<string | null>(null);
 
   const [downloadJobs, setDownloadJobs] = useState<{[key: string]: any}>({});
+  const [cancelledDownloads, setCancelledDownloads] = useState<Set<string>>(new Set());
   const [activeTab, setActiveTab] = useState<'search' | 'downloaded'>('downloaded');
   const [showGGUFModal, setShowGGUFModal] = useState(false);
   const [selectedModel, setSelectedModel] = useState<HuggingFaceModel | null>(null);
@@ -349,6 +350,7 @@ const AdvancedSettingsScreen: React.FC<Props> = ({ navigation }) => {
       });
       
       // Store the download job for pause/cancel functionality
+      console.log('Storing download job with jobId:', downloadResult.jobId);
       setDownloadJobs(prev => ({ ...prev, [downloadKey]: downloadResult }));
       
       // Wait for download to complete
@@ -387,7 +389,19 @@ const AdvancedSettingsScreen: React.FC<Props> = ({ navigation }) => {
     } catch (error) {
       console.error('Error downloading model:', error);
       
-      // Update model status to failed
+      // Check if this download was manually cancelled
+      if (cancelledDownloads.has(downloadKey)) {
+        console.log('Download was cancelled by user');
+        // Clean up cancelled downloads set
+        setCancelledDownloads(prev => {
+          const newSet = new Set(prev);
+          newSet.delete(downloadKey);
+          return newSet;
+        });
+        return; // Exit early for cancelled downloads
+      }
+      
+      // Update model status to failed for genuine errors
       setDownloadedModels(prev => prev.map(model => 
         model.id === downloadKey 
           ? { ...model, downloadStatus: 'failed' as const }
@@ -591,21 +605,7 @@ const AdvancedSettingsScreen: React.FC<Props> = ({ navigation }) => {
     setTempParameters(DEFAULT_PARAMETERS);
   };
 
-  const pauseDownload = async (modelId: string) => {
-    const downloadJob = downloadJobs[modelId];
-    if (downloadJob) {
-      try {
-        downloadJob.stop();
-        setDownloadedModels(prev => prev.map(model => 
-          model.id === modelId 
-            ? { ...model, downloadStatus: 'paused' as const }
-            : model
-        ));
-      } catch (error) {
-        console.error('Error pausing download:', error);
-      }
-    }
-  };
+
 
   const cancelDownload = async (modelId: string) => {
     Alert.alert(
@@ -618,34 +618,47 @@ const AdvancedSettingsScreen: React.FC<Props> = ({ navigation }) => {
           style: 'destructive',
           onPress: async () => {
             const downloadJob = downloadJobs[modelId];
-            if (downloadJob) {
-              try {
-                downloadJob.stop();
-                
-                // Remove the model from downloaded list
-                const updatedModels = downloadedModels.filter(m => m.id !== modelId);
-                setDownloadedModels(updatedModels);
-                
-                // Clean up partial download file
-                const modelToDelete = downloadedModels.find(m => m.id === modelId);
-                if (modelToDelete && modelToDelete.filePath) {
-                  const fileExists = await RNFS.exists(modelToDelete.filePath);
-                  if (fileExists) {
-                    await RNFS.unlink(modelToDelete.filePath);
-                  }
-                }
-                
-                // Clean up download job
-                setDownloadJobs(prev => {
-                  const newJobs = { ...prev };
-                  delete newJobs[modelId];
-                  return newJobs;
-                });
-                
-                setIsDownloading(null);
-              } catch (error) {
-                console.error('Error canceling download:', error);
+            console.log('Cancel download - downloadJob:', downloadJob);
+            console.log('Download jobs state:', downloadJobs);
+            
+            try {
+              // Mark this download as cancelled before stopping it
+              setCancelledDownloads(prev => new Set([...prev, modelId]));
+              
+              // Stop the download job if it exists
+              if (downloadJob && downloadJob.jobId) {
+                console.log('Stopping download with jobId:', downloadJob.jobId);
+                RNFS.stopDownload(downloadJob.jobId);
+              } else {
+                console.warn('Download job not found or jobId not available:', downloadJob);
               }
+              
+              // Clean up partial download file immediately
+              const modelToDelete = downloadedModels.find(m => m.id === modelId);
+              if (modelToDelete && modelToDelete.filePath) {
+                const fileExists = await RNFS.exists(modelToDelete.filePath);
+                if (fileExists) {
+                  await RNFS.unlink(modelToDelete.filePath);
+                }
+              }
+              
+              // Remove the model from downloaded list
+              const updatedModels = downloadedModels.filter(m => m.id !== modelId);
+              setDownloadedModels(updatedModels);
+              
+              // Clean up download job
+              setDownloadJobs(prev => {
+                const newJobs = { ...prev };
+                delete newJobs[modelId];
+                return newJobs;
+              });
+              
+              setIsDownloading(null);
+              
+              Alert.alert('Download Cancelled', 'The download has been cancelled successfully.');
+            } catch (error) {
+              console.error('Error canceling download:', error);
+              Alert.alert('Error', `Failed to cancel download properly: ${error instanceof Error ? error.message : 'Unknown error'}`);
             }
           }
         }
@@ -653,46 +666,7 @@ const AdvancedSettingsScreen: React.FC<Props> = ({ navigation }) => {
     );
   };
 
-  const resumeDownload = async (modelId: string) => {
-    const model = downloadedModels.find(m => m.id === modelId);
-    if (!model) return;
-    
-    // Find the original GGUF file info to resume download
-    const [originalModelId, fileName] = modelId.split('/');
-    const ggufFile: GGUFFile = {
-      path: fileName,
-      size: 0, // We'll use the stored size from the model
-    };
-    
-    // Temporarily set the selected model to resume download
-    const originalModel: HuggingFaceModel = {
-      id: originalModelId,
-      modelId: originalModelId,
-      author: model.author,
-      sha: '',
-      downloads: 0,
-      likes: 0,
-      tags: [],
-      createdAt: '',
-      updatedAt: '',
-    };
-    
-    // Remove the paused model first
-    const updatedModels = downloadedModels.filter(m => m.id !== modelId);
-    setDownloadedModels(updatedModels);
-    
-    // Clean up any existing partial file
-    if (model.filePath) {
-      const fileExists = await RNFS.exists(model.filePath);
-      if (fileExists) {
-        await RNFS.unlink(model.filePath);
-      }
-    }
-    
-    // Restart the download
-    setSelectedModel(originalModel);
-    await downloadSelectedGGUF(ggufFile);
-  };
+
 
   const renderSearchResult = ({ item }: { item: HuggingFaceModel }) => {
     const hasActiveDownload = downloadedModels.some(model => 
@@ -750,9 +724,6 @@ const AdvancedSettingsScreen: React.FC<Props> = ({ navigation }) => {
         )}
         
         {/* Status indicators */}
-        {item.downloadStatus === 'paused' && (
-          <Text style={styles.pausedLabel}>PAUSED</Text>
-        )}
         {item.downloadStatus === 'failed' && (
           <Text style={styles.failedLabel}>FAILED</Text>
         )}
@@ -772,54 +743,21 @@ const AdvancedSettingsScreen: React.FC<Props> = ({ navigation }) => {
       <View style={styles.modelActions}>
         {/* Download control buttons */}
         {item.downloadStatus === 'downloading' && (
-          <>
-            <TouchableOpacity
-              style={[styles.actionButton, styles.pauseButton]}
-              onPress={() => pauseDownload(item.id)}
-            >
-              <Text style={styles.actionButtonText}>Pause</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={[styles.actionButton, styles.cancelButton]}
-              onPress={() => cancelDownload(item.id)}
-            >
-              <Text style={styles.actionButtonText}>Cancel</Text>
-            </TouchableOpacity>
-          </>
-        )}
-        
-        {item.downloadStatus === 'paused' && (
-          <>
-            <TouchableOpacity
-              style={[styles.actionButton, styles.resumeButton]}
-              onPress={() => resumeDownload(item.id)}
-            >
-              <Text style={styles.actionButtonText}>Resume</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={[styles.actionButton, styles.cancelButton]}
-              onPress={() => cancelDownload(item.id)}
-            >
-              <Text style={styles.actionButtonText}>Cancel</Text>
-            </TouchableOpacity>
-          </>
+          <TouchableOpacity
+            style={[styles.actionButton, styles.cancelButton]}
+            onPress={() => cancelDownload(item.id)}
+          >
+            <Text style={styles.actionButtonText}>Cancel</Text>
+          </TouchableOpacity>
         )}
         
         {item.downloadStatus === 'failed' && (
-          <>
-            <TouchableOpacity
-              style={[styles.actionButton, styles.retryButton]}
-              onPress={() => resumeDownload(item.id)}
-            >
-              <Text style={styles.actionButtonText}>Retry</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={[styles.actionButton, styles.deleteButton]}
-              onPress={() => deleteModel(item.id)}
-            >
-              <Trash2 color="#ff4444" size={16} />
-            </TouchableOpacity>
-          </>
+          <TouchableOpacity
+            style={[styles.actionButton, styles.deleteButton]}
+            onPress={() => deleteModel(item.id)}
+          >
+            <Trash2 color="#ff4444" size={16} />
+          </TouchableOpacity>
         )}
         
         {/* Normal actions for completed models */}
@@ -1041,7 +979,11 @@ const AdvancedSettingsScreen: React.FC<Props> = ({ navigation }) => {
         presentationStyle="pageSheet"
         onRequestClose={() => setShowParameterModal(false)}
       >
-        <View style={styles.modalContainer}>
+        <KeyboardAvoidingView 
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          keyboardVerticalOffset={Platform.OS === 'ios' ? 50 : 0}
+          style={styles.modalContainer}
+        >
           <View style={styles.modalHeader}>
             <Text style={styles.modalTitle}>
               Configure Model Parameters
@@ -1202,7 +1144,7 @@ const AdvancedSettingsScreen: React.FC<Props> = ({ navigation }) => {
               </TouchableOpacity>
             </View>
           </ScrollView>
-        </View>
+        </KeyboardAvoidingView>
       </Modal>
     </KeyboardAvoidingView>
   );
@@ -1606,26 +1548,12 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
   },
   // Download status labels
-  pausedLabel: {
-    color: '#ff9500',
-    fontSize: 12,
-    fontWeight: 'bold',
-  },
   failedLabel: {
     color: '#ff4444',
     fontSize: 12,
     fontWeight: 'bold',
   },
   // Download control buttons
-  pauseButton: {
-    backgroundColor: '#ff9500',
-  },
-  resumeButton: {
-    backgroundColor: '#34C759',
-  },
-  retryButton: {
-    backgroundColor: '#007AFF',
-  },
   cancelButton: {
     backgroundColor: '#ff4444',
   },
