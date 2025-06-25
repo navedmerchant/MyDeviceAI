@@ -607,7 +607,7 @@ want to talk and share about personal feelings.`;
       setIsWaitingForModel(true);
       // Add loading message
       const loadingMessageId = Date.now();
-      const loadingMessage = { id: loadingMessageId, text: "Waiting for AI model to be ready... This may take a few moments.", isUser: false };
+      const loadingMessage = { id: loadingMessageId, text: "Waiting for AI model to be ready. This may take a few moments. The wait maybe longer if the app is starting up for the first time.", isUser: false };
       setMessages(prevMessages => [...prevMessages, loadingMessage]);
       
       // Wait for the model to be loaded (max 30 seconds)
