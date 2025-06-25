@@ -131,6 +131,7 @@ const ChatUI: React.FC<ChatUIProps> = ({ historyId, onMenuPress, MenuIcon, navig
   const [isLoadingModel, setIsLoadingModel] = useState(false);
   const [loadingProgress, setLoadingProgress] = useState(0);
   const [isSearching, setIsSearching] = useState(false);
+  const [isWaitingForModel, setIsWaitingForModel] = useState(false);
 
   const scrollViewRef = useRef<ScrollView>(null);
   const textInputRef = useRef<TextInput>(null);
@@ -434,8 +435,6 @@ want to talk and share about personal feelings.`;
 
   useEffect(() => {
     const subscription = AppState.addEventListener('change', nextAppState => {
-      console.log("appState.current", appState.current);
-      console.log("nextAppState", nextAppState);
       
       if (
         appState.current.match(/inactive|background/) &&
@@ -605,6 +604,7 @@ want to talk and share about personal feelings.`;
 
     // Check if model needs to be loaded
     if (!contextRef.current) {
+      setIsWaitingForModel(true);
       // Add loading message
       const loadingMessageId = Date.now();
       const loadingMessage = { id: loadingMessageId, text: "Waiting for AI model to be ready... This may take a few moments.", isUser: false };
@@ -628,11 +628,13 @@ want to talk and share about personal feelings.`;
               : msg
           )
         );
+        setIsWaitingForModel(false);
         return;
       }
 
       // Remove loading message after model is ready
       setMessages(prevMessages => prevMessages.filter(msg => msg.id !== loadingMessageId));
+      setIsWaitingForModel(false);
     }
 
     if (inputText.trim()) {
@@ -669,7 +671,6 @@ want to talk and share about personal feelings.`;
         }
       }
       
-      console.log("isCancelledRef.current", isCancelledRef.current);
       // Exit early if user cancelled
       if (isCancelledRef.current) {
         return;
@@ -1161,7 +1162,11 @@ want to talk and share about personal feelings.`;
             >
               <Square color="#fff"></Square>
             </TouchableOpacity>) : 
-            (<TouchableOpacity style={styles.sendButton} onPress={handleSend}>
+            (<TouchableOpacity 
+              style={[styles.sendButton, isWaitingForModel && styles.sendButtonDisabled]} 
+              onPress={handleSend}
+              disabled={isWaitingForModel}
+            >
               <Send color="#fff"></Send>
             </TouchableOpacity>)
           }

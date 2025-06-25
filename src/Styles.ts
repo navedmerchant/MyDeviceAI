@@ -173,6 +173,10 @@ const styles = StyleSheet.create({
       backgroundColor: '#007AFF',
       borderRadius: 20,
     },
+    sendButtonDisabled: {
+      backgroundColor: '#666',
+      opacity: 0.5,
+    },
     searchButton: {
       justifyContent: 'center',
       alignItems: 'center',
