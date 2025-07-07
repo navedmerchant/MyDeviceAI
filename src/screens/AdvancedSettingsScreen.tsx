@@ -84,6 +84,18 @@ const AdvancedSettingsScreen: React.FC<Props> = ({ navigation }) => {
   const [showParameterModal, setShowParameterModal] = useState(false);
   const [selectedModelForConfig, setSelectedModelForConfig] = useState<DownloadedModel | null>(null);
   const [tempParameters, setTempParameters] = useState<ModelParameters>(DEFAULT_PARAMETERS);
+  
+  // Add string inputs for parameters to avoid real-time validation
+  const [parameterInputs, setParameterInputs] = useState({
+    n_ctx: '',
+    n_gpu_layers: '',
+    n_predict: '',
+    temperature: '',
+    top_p: '',
+    top_k: '',
+    min_p: '',
+    stop: ''
+  });
 
   useEffect(() => {
     loadDownloadedModels();
@@ -557,55 +569,150 @@ const AdvancedSettingsScreen: React.FC<Props> = ({ navigation }) => {
 
   const openParameterConfig = (model: DownloadedModel) => {
     setSelectedModelForConfig(model);
-    setTempParameters(model.parameters || DEFAULT_PARAMETERS);
+    const currentParams = model.parameters || DEFAULT_PARAMETERS;
+    setTempParameters(currentParams);
+    
+    // Set string inputs from current parameters
+    setParameterInputs({
+      n_ctx: currentParams.n_ctx.toString(),
+      n_gpu_layers: currentParams.n_gpu_layers.toString(),
+      n_predict: currentParams.n_predict.toString(),
+      temperature: currentParams.temperature.toString(),
+      top_p: currentParams.top_p.toString(),
+      top_k: currentParams.top_k.toString(),
+      min_p: currentParams.min_p.toString(),
+      stop: currentParams.stop.join(', ')
+    });
+    
     setShowParameterModal(true);
   };
 
   const saveModelParameters = async () => {
     if (!selectedModelForConfig) return;
 
-    // Check if initialization parameters changed (requires model reload)
-    const oldParams = selectedModelForConfig.parameters || DEFAULT_PARAMETERS;
-    const initParamsChanged = 
-      oldParams.n_ctx !== tempParameters.n_ctx || 
-      oldParams.n_gpu_layers !== tempParameters.n_gpu_layers;
+    // Validate and parse inputs
+    try {
+      const n_ctx = parseInt(parameterInputs.n_ctx);
+      const n_gpu_layers = parseInt(parameterInputs.n_gpu_layers);
+      const n_predict = parseInt(parameterInputs.n_predict);
+      const temperature = parseFloat(parameterInputs.temperature);
+      const top_p = parseFloat(parameterInputs.top_p);
+      const top_k = parseInt(parameterInputs.top_k);
+      const min_p = parseFloat(parameterInputs.min_p);
+      const stop = parameterInputs.stop.split(',').map(s => s.trim()).filter(s => s.length > 0);
 
-    const updatedModels = downloadedModels.map(model => {
-      if (model.id === selectedModelForConfig.id) {
-        return {
-          ...model,
-          parameters: tempParameters
-        };
+      // Validation checks
+      const errors: string[] = [];
+      
+      if (isNaN(n_ctx) || n_ctx <= 0) {
+        errors.push('Context Length must be a positive integer');
       }
-      return model;
-    });
+      
+      if (isNaN(n_gpu_layers) || n_gpu_layers < 0) {
+        errors.push('GPU Layers must be a non-negative integer');
+      }
+      
+      if (isNaN(n_predict) || n_predict <= 0) {
+        errors.push('Max Tokens must be a positive integer');
+      }
+      
+      if (isNaN(temperature) || temperature <= 0) {
+        errors.push('Temperature must be a positive number');
+      }
+      
+      if (isNaN(top_p) || top_p < 0 || top_p > 1) {
+        errors.push('Top P must be a number between 0 and 1');
+      }
+      
+      if (isNaN(top_k) || top_k <= 0) {
+        errors.push('Top K must be a positive integer');
+      }
+      
+      if (isNaN(min_p) || min_p < 0 || min_p > 1) {
+        errors.push('Min P must be a number between 0 and 1');
+      }
 
-    await saveDownloadedModels(updatedModels);
-    
-    // Set flag to indicate model needs reloading if this is the active model
-    if (selectedModelForConfig.isActive && initParamsChanged) {
-      await AsyncStorage.setItem('modelNeedsReload', 'true');
-    }
-    
-    setShowParameterModal(false);
-    setSelectedModelForConfig(null);
-    
-    if (selectedModelForConfig.isActive && initParamsChanged) {
+      // If there are validation errors, show them and don't save
+      if (errors.length > 0) {
+        Alert.alert(
+          'Invalid Parameters', 
+          'Please fix the following errors:\n\n' + errors.join('\n'),
+          [{ text: 'OK' }]
+        );
+        return;
+      }
+
+      // Create validated parameters object
+      const validatedParameters: ModelParameters = {
+        n_ctx,
+        n_gpu_layers,
+        n_predict,
+        temperature,
+        top_p,
+        top_k,
+        min_p,
+        stop
+      };
+
+      // Check if initialization parameters changed (requires model reload)
+      const oldParams = selectedModelForConfig.parameters || DEFAULT_PARAMETERS;
+      const initParamsChanged = 
+        oldParams.n_ctx !== validatedParameters.n_ctx || 
+        oldParams.n_gpu_layers !== validatedParameters.n_gpu_layers;
+
+      const updatedModels = downloadedModels.map(model => {
+        if (model.id === selectedModelForConfig.id) {
+          return {
+            ...model,
+            parameters: validatedParameters
+          };
+        }
+        return model;
+      });
+
+      await saveDownloadedModels(updatedModels);
+      
+      // Set flag to indicate model needs reloading if this is the active model
+      if (selectedModelForConfig.isActive && initParamsChanged) {
+        await AsyncStorage.setItem('modelNeedsReload', 'true');
+      }
+      
+      setShowParameterModal(false);
+      setSelectedModelForConfig(null);
+      
+      if (selectedModelForConfig.isActive && initParamsChanged) {
+        Alert.alert(
+          'Parameters Updated', 
+          'Context length or GPU layers were changed. The model will reload automatically on your next message.',
+          [{ text: 'OK' }]
+        );
+      } else {
+        Alert.alert('Success', 'Model parameters updated successfully!');
+      }
+    } catch (error) {
       Alert.alert(
-        'Parameters Updated', 
-        'Context length or GPU layers were changed. The model will reload automatically on your next message.',
+        'Invalid Parameters', 
+        'Please enter valid numeric values for all parameters.',
         [{ text: 'OK' }]
       );
-    } else {
-      Alert.alert('Success', 'Model parameters updated successfully!');
     }
   };
 
   const resetParametersToDefault = () => {
     setTempParameters(DEFAULT_PARAMETERS);
+    
+    // Reset string inputs to default values
+    setParameterInputs({
+      n_ctx: DEFAULT_PARAMETERS.n_ctx.toString(),
+      n_gpu_layers: DEFAULT_PARAMETERS.n_gpu_layers.toString(),
+      n_predict: DEFAULT_PARAMETERS.n_predict.toString(),
+      temperature: DEFAULT_PARAMETERS.temperature.toString(),
+      top_p: DEFAULT_PARAMETERS.top_p.toString(),
+      top_k: DEFAULT_PARAMETERS.top_k.toString(),
+      min_p: DEFAULT_PARAMETERS.min_p.toString(),
+      stop: DEFAULT_PARAMETERS.stop.join(', ')
+    });
   };
-
-
 
   const cancelDownload = async (modelId: string) => {
     Alert.alert(
@@ -665,8 +772,6 @@ const AdvancedSettingsScreen: React.FC<Props> = ({ navigation }) => {
       ]
     );
   };
-
-
 
   const renderSearchResult = ({ item }: { item: HuggingFaceModel }) => {
     const hasActiveDownload = downloadedModels.some(model => 
@@ -1011,10 +1116,10 @@ const AdvancedSettingsScreen: React.FC<Props> = ({ navigation }) => {
                 <Text style={styles.parameterLabel}>Context Length (n_ctx)</Text>
                 <TextInput
                   style={styles.parameterInput}
-                  value={tempParameters.n_ctx.toString()}
-                  onChangeText={(text) => setTempParameters(prev => ({
+                  value={parameterInputs.n_ctx}
+                  onChangeText={(text) => setParameterInputs(prev => ({
                     ...prev,
-                    n_ctx: parseInt(text) || 0
+                    n_ctx: text
                   }))}
                   keyboardType="numeric"
                   placeholderTextColor="#666"
@@ -1025,10 +1130,10 @@ const AdvancedSettingsScreen: React.FC<Props> = ({ navigation }) => {
                 <Text style={styles.parameterLabel}>GPU Layers (n_gpu_layers)</Text>
                 <TextInput
                   style={styles.parameterInput}
-                  value={tempParameters.n_gpu_layers.toString()}
-                  onChangeText={(text) => setTempParameters(prev => ({
+                  value={parameterInputs.n_gpu_layers}
+                  onChangeText={(text) => setParameterInputs(prev => ({
                     ...prev,
-                    n_gpu_layers: parseInt(text) || 0
+                    n_gpu_layers: text
                   }))}
                   keyboardType="numeric"
                   placeholderTextColor="#666"
@@ -1039,10 +1144,10 @@ const AdvancedSettingsScreen: React.FC<Props> = ({ navigation }) => {
                 <Text style={styles.parameterLabel}>Max Tokens (n_predict)</Text>
                 <TextInput
                   style={styles.parameterInput}
-                  value={tempParameters.n_predict.toString()}
-                  onChangeText={(text) => setTempParameters(prev => ({
+                  value={parameterInputs.n_predict}
+                  onChangeText={(text) => setParameterInputs(prev => ({
                     ...prev,
-                    n_predict: parseInt(text) || 0
+                    n_predict: text
                   }))}
                   keyboardType="numeric"
                   placeholderTextColor="#666"
@@ -1057,10 +1162,10 @@ const AdvancedSettingsScreen: React.FC<Props> = ({ navigation }) => {
                 <Text style={styles.parameterLabel}>Temperature</Text>
                 <TextInput
                   style={styles.parameterInput}
-                  value={tempParameters.temperature.toString()}
-                  onChangeText={(text) => setTempParameters(prev => ({
+                  value={parameterInputs.temperature}
+                  onChangeText={(text) => setParameterInputs(prev => ({
                     ...prev,
-                    temperature: parseFloat(text) || 0
+                    temperature: text
                   }))}
                   keyboardType="decimal-pad"
                   placeholderTextColor="#666"
@@ -1071,10 +1176,10 @@ const AdvancedSettingsScreen: React.FC<Props> = ({ navigation }) => {
                 <Text style={styles.parameterLabel}>Top P</Text>
                 <TextInput
                   style={styles.parameterInput}
-                  value={tempParameters.top_p.toString()}
-                  onChangeText={(text) => setTempParameters(prev => ({
+                  value={parameterInputs.top_p}
+                  onChangeText={(text) => setParameterInputs(prev => ({
                     ...prev,
-                    top_p: parseFloat(text) || 0
+                    top_p: text
                   }))}
                   keyboardType="decimal-pad"
                   placeholderTextColor="#666"
@@ -1085,10 +1190,10 @@ const AdvancedSettingsScreen: React.FC<Props> = ({ navigation }) => {
                 <Text style={styles.parameterLabel}>Top K</Text>
                 <TextInput
                   style={styles.parameterInput}
-                  value={tempParameters.top_k.toString()}
-                  onChangeText={(text) => setTempParameters(prev => ({
+                  value={parameterInputs.top_k}
+                  onChangeText={(text) => setParameterInputs(prev => ({
                     ...prev,
-                    top_k: parseInt(text) || 0
+                    top_k: text
                   }))}
                   keyboardType="numeric"
                   placeholderTextColor="#666"
@@ -1099,10 +1204,10 @@ const AdvancedSettingsScreen: React.FC<Props> = ({ navigation }) => {
                 <Text style={styles.parameterLabel}>Min P</Text>
                 <TextInput
                   style={styles.parameterInput}
-                  value={tempParameters.min_p.toString()}
-                  onChangeText={(text) => setTempParameters(prev => ({
+                  value={parameterInputs.min_p}
+                  onChangeText={(text) => setParameterInputs(prev => ({
                     ...prev,
-                    min_p: parseFloat(text) || 0
+                    min_p: text
                   }))}
                   keyboardType="decimal-pad"
                   placeholderTextColor="#666"
@@ -1117,10 +1222,10 @@ const AdvancedSettingsScreen: React.FC<Props> = ({ navigation }) => {
               </Text>
               <TextInput
                 style={[styles.parameterInput, styles.stopSequenceInput]}
-                value={tempParameters.stop.join(', ')}
-                onChangeText={(text) => setTempParameters(prev => ({
+                value={parameterInputs.stop}
+                onChangeText={(text) => setParameterInputs(prev => ({
                   ...prev,
-                  stop: text.split(',').map(s => s.trim()).filter(s => s.length > 0)
+                  stop: text
                 }))}
                 multiline
                 placeholderTextColor="#666"
