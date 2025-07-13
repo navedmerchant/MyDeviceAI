@@ -424,6 +424,26 @@ want to talk and share about personal feelings.
   };
 
   useEffect(() => {
+    console.log("Loading model on init on Android")
+    if (Platform.OS === 'android') {
+      RNFS.exists(`${MODEL_DIR}/${MODEL_NAMES.QWEN_MODEL}`).then(modelExists => {
+        RNFS.exists(`${MODEL_DIR}/${MODEL_NAMES.BGE_EMBEDDING_MODEL}`).then(embeddingExists => {
+          if (modelExists && embeddingExists) {
+            loadModel();
+            // Initialize context manager
+            contextManager.current.initialize().catch(error => {
+              console.error('Error initializing context manager:', error);
+            });
+          } else {
+            console.log('Models not downloaded yet, skipping initialization');
+          }
+        });
+      });
+    }
+  }, [])
+
+
+  useEffect(() => {
     const modelParams = getModelParamsForDevice();
     if (modelParams == null) {
       setUnsupportedDevice(true)
