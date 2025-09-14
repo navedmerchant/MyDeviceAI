@@ -15,7 +15,7 @@
     "@react-navigation/drawer": "^7.1.1",
     "@react-navigation/native": "^7.0.14",
     "ios": "^0.0.1",
-    "llama.rn": "0.6.0-rc.5",
+    "llama.rn": "0.6.7",
     "lucide-react-native": "^0.446.0",
     "react": "18.3.1",
     "react-native": "0.75.3",

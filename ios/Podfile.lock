@@ -7,7 +7,7 @@ PODS:
   - hermes-engine (0.75.3):
     - hermes-engine/Pre-built (= 0.75.3)
   - hermes-engine/Pre-built (0.75.3)
-  - llama-rn (0.6.0-rc.5):
+  - llama-rn (0.6.7):
     - React-Core
   - op-sqlite (11.4.7):
     - React
@@ -1888,7 +1888,7 @@ SPEC CHECKSUMS:
   fmt: 4c2741a687cc09f0634a2e2c72a838b99f1ff120
   glog: 69ef571f3de08433d766d614c73a9838a06bf7eb
   hermes-engine: 8d2103d6c0176779aea4e25df6bb1410f9946680
-  llama-rn: 7a319a43e6a92515caca05c954fa670cf2c70d5b
+  llama-rn: 62305137b5f7af4592831247ba37e3eff0952ad4
   op-sqlite: 7163eb33349fc0d58917ca41eb6be026a3dac5dc
   RCT-Folly: 34124ae2e667a0e5f0ea378db071d27548124321
   RCTDeprecation: 4191f6e64b72d9743f6fe1a8a16e89e868f5e9e7
