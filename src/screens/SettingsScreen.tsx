@@ -395,7 +395,7 @@ const SettingsScreen: React.FC<Props> = ({ navigation }) => {
           <Text style={styles.sectionTitle}>About</Text>
           <View style={styles.aboutContent}>
             <Text style={styles.aboutTitle}>MyDeviceAI</Text>
-            <Text style={styles.versionText}>Version 1.5.0</Text>
+            <Text style={styles.versionText}>Version 1.6.0</Text>
 
             <View style={styles.licenseSection}>
               <View style={styles.licenseItem}>
