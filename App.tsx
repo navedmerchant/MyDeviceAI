@@ -11,6 +11,7 @@ import { MenuProvider } from 'react-native-popup-menu';
 import { NavigationContainer } from '@react-navigation/native';
 import { createDrawerNavigator } from '@react-navigation/drawer';
 import { DatabaseProvider } from './src/db/DatabaseContext';
+import { RemoteConnectionProvider } from './src/connection/RemoteConnectionContext';
 import ChatUI from './src/ChatUI';
 import CustomDrawerContent from './src/drawer/CustomDrawerContent';
 import 'react-native-gesture-handler';
@@ -37,10 +38,11 @@ function App(): React.JSX.Element {
   };
 
   return (
-    <DatabaseProvider>
-      <MenuProvider customStyles={menuProviderStyles}>
-        <NavigationContainer>
-          <Drawer.Navigator
+    <RemoteConnectionProvider>
+      <DatabaseProvider>
+        <MenuProvider customStyles={menuProviderStyles}>
+          <NavigationContainer>
+            <Drawer.Navigator
             initialRouteName="Chat"
             drawerContent={(props) => <CustomDrawerContent {...props} />}
             screenOptions={{
@@ -93,6 +95,7 @@ function App(): React.JSX.Element {
         </NavigationContainer>
       </MenuProvider>
     </DatabaseProvider>
+    </RemoteConnectionProvider>
   );
 }
 

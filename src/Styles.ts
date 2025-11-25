@@ -23,6 +23,14 @@ const styles = StyleSheet.create({
       alignItems: 'center',
       gap: 5,
     },
+    headerCenter: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 8,
+      paddingHorizontal: 12,
+      paddingVertical: 6,
+      borderRadius: 8,
+    },
     headerLogo: {
       width: 32,
       height: 32,

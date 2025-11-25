@@ -25,10 +25,13 @@ import {
   FlatList,
   Animated,
 } from 'react-native';
-import { Send, Square, CirclePlus, Search, Settings, ArrowDown, Brain, Copy, Share as ShareIcon } from 'lucide-react-native';
+import { Send, Square, CirclePlus, Search, Settings, ArrowDown, Brain, Copy, Share as ShareIcon, ChevronDown, Menu as MenuIcon } from 'lucide-react-native';
 import { getModelParamsForDevice } from './utils/Utils';
 import { styles, markdownStyles, popoverStyles, menuOptionStyles } from './Styles';
 import { Message } from './model/Message';
+import { useRemoteConnection } from './connection/RemoteConnectionContext';
+import { ConnectionStatusIcon } from './components/ConnectionStatusIcon';
+import { ConnectionDropdownModal } from './components/ConnectionDropdownModal';
 import {
   initDatabase,
   saveNewChatHistory,
@@ -132,6 +135,10 @@ const ChatUI: React.FC<ChatUIProps> = ({ historyId, onMenuPress, MenuIcon, navig
   const [loadingProgress, setLoadingProgress] = useState(0);
   const [isSearching, setIsSearching] = useState(false);
   const [isWaitingForModel, setIsWaitingForModel] = useState(false);
+  const [showConnectionDropdown, setShowConnectionDropdown] = useState(false);
+
+  // Remote connection
+  const { state: remoteState, updateLocalModelStatus, setMode, sendMessage: remoteSendMessage } = useRemoteConnection();
 
   const scrollViewRef = useRef<ScrollView>(null);
   const textInputRef = useRef<TextInput>(null);
@@ -495,22 +502,24 @@ want to talk and share about personal feelings.`;
   const loadModel = async () => {
     try {
       setIsLoadingModel(true);
+      updateLocalModelStatus(true); // Update remote connection status
       setLoadingProgress(0);
 
       const modelParams = await getModelParamsForDevice();
       if (modelParams == null) {
         console.log("Model params null! Unsupported device!");
         setIsLoadingModel(false);
+        updateLocalModelStatus(false);
         return;
       }
-      
+
       const newContext = await initLlama(modelParams, (progress: number) => {
         setLoadingProgress(progress);
       });
-      
+
       contextRef.current = newContext;
       console.log("model loaded successfully");
-      
+
       // Track which model was loaded
       const activeModelId = await AsyncStorage.getItem('activeModelId');
       await AsyncStorage.setItem('lastLoadedModelId', activeModelId || '');
@@ -523,6 +532,7 @@ want to talk and share about personal feelings.`;
       Alert.alert("Failed to load model! please close the app and try again by closing some background apps");
     } finally {
       setIsLoadingModel(false);
+      updateLocalModelStatus(false); // Model loaded, no longer loading
     }
   }
 
@@ -587,14 +597,75 @@ want to talk and share about personal feelings.`;
       showToast("Text too long, please try something shorter");
       return;
     }
-    
+
     scrollToBottom();
 
+    // Check if we should use remote connection
+    const shouldUseRemote = remoteState.mode === 'dynamic' && remoteState.isConnected;
+
+    if (shouldUseRemote && inputText.trim()) {
+      // Handle remote send
+      Keyboard.dismiss();
+      addMessage(inputText, true);
+      const userInput = inputText;
+      setInputText('');
+
+      setIsTyping(true);
+      setCurrentResponse('');
+
+      try {
+        // Convert message history to OpenAI format
+        const openAIMessages = [
+          // Add system prompt
+          {
+            role: 'system',
+            content: systemPrompt.current
+          },
+          // Add conversation history
+          ...messages.map(msg => ({
+            role: msg.isUser ? 'user' : 'assistant',
+            content: stripThinkingContent(msg.text)
+          })),
+          // Add current user input
+          {
+            role: 'user',
+            content: userInput
+          }
+        ];
+
+        // Stream response from desktop
+        for await (const chunk of remoteSendMessage(
+          openAIMessages,
+          searchModeEnabled,
+          thinkingModeEnabled
+        )) {
+          setCurrentResponse(prev => prev + chunk);
+        }
+
+        // Add final response
+        if (currentResponse.trim()) {
+          addMessage(currentResponse, false);
+        }
+      } catch (error) {
+        console.error('Remote send failed:', error);
+        showToast('Failed to send message to desktop. Using local model...');
+        // Fallback - reload input and continue to local processing
+        setInputText(userInput);
+      } finally {
+        setIsTyping(false);
+        setCurrentResponse('');
+      }
+
+      // Return if remote was successful
+      if (!inputText) return;
+    }
+
+    // Local processing - original code
     // Check if active model has changed and reload if necessary
     const currentActiveModelId = await AsyncStorage.getItem('activeModelId');
     const lastLoadedModelId = await AsyncStorage.getItem('lastLoadedModelId');
     const modelNeedsReload = await AsyncStorage.getItem('modelNeedsReload');
-    
+
     if (currentActiveModelId !== lastLoadedModelId || modelNeedsReload === 'true') {
       console.log("Model parameters or active model changed, reloading...");
       await reloadModel();
@@ -790,6 +861,21 @@ want to talk and share about personal feelings.`;
       textInputRef.current?.focus();
     }, 100);
   }, []);
+
+  // Remote connection handlers
+  const handleConnectionModeChange = useCallback(async (mode: 'local' | 'dynamic') => {
+    try {
+      await setMode(mode);
+    } catch (error) {
+      console.error('Failed to change connection mode:', error);
+      Alert.alert('Error', 'Failed to change connection mode');
+    }
+  }, [setMode]);
+
+  const handleSetupConnection = useCallback(() => {
+    setShowConnectionDropdown(false);
+    navigation.navigate('AdvancedSettings');
+  }, [navigation]);
 
   const handleCopyText = (text: string) => {
     const textWithoutThinking = text.replace(/<think>.*?<\/think>/gs, '').trim();
@@ -1031,10 +1117,15 @@ want to talk and share about personal feelings.`;
             <MenuIcon color="#fff" size={24} />
           </TouchableOpacity>
         </View>
-        <Image 
-          source={require('./images/MyDeviceAI-NoBG.png')}
-          style={styles.headerLogo}
-        />
+        <TouchableOpacity
+          style={styles.headerCenter}
+          onPress={() => setShowConnectionDropdown(true)}
+          disabled={isTyping || isSearching}
+        >
+          <Text style={styles.headerTitle}>MyDeviceAI</Text>
+          <ConnectionStatusIcon status={remoteState.status} size={20} />
+          <ChevronDown color="#fff" size={16} />
+        </TouchableOpacity>
         <View style={styles.headerRightButtons}>
           <TouchableOpacity style={styles.headerButton} onPress={handleNewChat} disabled={isTyping || isSearching}>
             <CirclePlus color="#fff" size={24} />
@@ -1172,6 +1263,17 @@ want to talk and share about personal feelings.`;
           }
         </View>
       </View>
+
+      {/* Connection Dropdown Modal */}
+      <ConnectionDropdownModal
+        visible={showConnectionDropdown}
+        onClose={() => setShowConnectionDropdown(false)}
+        currentMode={remoteState.mode}
+        connectionStatus={remoteState.status}
+        isConnected={remoteState.isConnected}
+        onModeChange={handleConnectionModeChange}
+        onSetupPress={handleSetupConnection}
+      />
     </KeyboardAvoidingView>
   );
 };

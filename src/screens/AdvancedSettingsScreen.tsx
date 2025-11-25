@@ -14,12 +14,13 @@ import {
   Modal,
   PermissionsAndroid,
 } from 'react-native';
-import { ChevronLeft, Download, Search, Trash2, Settings, HardDrive, X } from 'lucide-react-native';
+import { ChevronLeft, Download, Search, Trash2, Settings, HardDrive, X, Wifi } from 'lucide-react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { DrawerNavigationProp } from '@react-navigation/drawer';
 import { DrawerParamList } from '../../App';
 import RNFS from 'react-native-fs';
 import { ModelParameters, DEFAULT_PARAMETERS } from '../utils/Utils';
+import { useRemoteConnection } from '../connection/RemoteConnectionContext';
 
 type AdvancedSettingsScreenNavigationProp = DrawerNavigationProp<DrawerParamList, 'AdvancedSettings'>;
 
@@ -73,8 +74,13 @@ const AdvancedSettingsScreen: React.FC<Props> = ({ navigation }) => {
 
   const [downloadJobs, setDownloadJobs] = useState<{[key: string]: any}>({});
   const [cancelledDownloads, setCancelledDownloads] = useState<Set<string>>(new Set());
-  const [activeTab, setActiveTab] = useState<'search' | 'downloaded'>('downloaded');
+  const [activeTab, setActiveTab] = useState<'search' | 'downloaded' | 'remote'>('downloaded');
   const [showGGUFModal, setShowGGUFModal] = useState(false);
+
+  // Remote connection state
+  const { state: remoteState, connect, disconnect } = useRemoteConnection();
+  const [roomCodeInput, setRoomCodeInput] = useState('');
+  const [isConnecting, setIsConnecting] = useState(false);
   const [selectedModel, setSelectedModel] = useState<HuggingFaceModel | null>(null);
   const [availableGGUFFiles, setAvailableGGUFFiles] = useState<GGUFFile[]>([]);
   const [loadingGGUFFiles, setLoadingGGUFFiles] = useState(false);
@@ -165,6 +171,35 @@ const AdvancedSettingsScreen: React.FC<Props> = ({ navigation }) => {
       setDownloadedModels(models);
     } catch (error) {
       console.error('Error saving downloaded models:', error);
+    }
+  };
+
+  // Remote connection handlers
+  const handleConnect = async () => {
+    if (!roomCodeInput.trim() || roomCodeInput.length !== 9) {
+      Alert.alert('Error', 'Please enter a valid 9-digit code');
+      return;
+    }
+
+    setIsConnecting(true);
+    try {
+      await connect(roomCodeInput);
+      Alert.alert('Success', 'Connected to desktop!');
+    } catch (error) {
+      console.error('Failed to connect:', error);
+      Alert.alert('Error', 'Failed to connect to desktop. Please check the code and try again.');
+    } finally {
+      setIsConnecting(false);
+    }
+  };
+
+  const handleDisconnect = async () => {
+    try {
+      await disconnect();
+      setRoomCodeInput('');
+      Alert.alert('Disconnected', 'Disconnected from desktop');
+    } catch (error) {
+      console.error('Failed to disconnect:', error);
     }
   };
 
@@ -943,9 +978,85 @@ const AdvancedSettingsScreen: React.FC<Props> = ({ navigation }) => {
             Search Models
           </Text>
         </TouchableOpacity>
+        <TouchableOpacity
+          style={[styles.tab, activeTab === 'remote' && styles.activeTab]}
+          onPress={() => setActiveTab('remote')}
+        >
+          <Wifi color={activeTab === 'remote' ? '#007AFF' : '#666'} size={20} />
+          <Text style={[styles.tabText, activeTab === 'remote' && styles.activeTabText]}>
+            Remote
+          </Text>
+        </TouchableOpacity>
       </View>
 
-      {activeTab === 'search' ? (
+      {activeTab === 'remote' ? (
+        <ScrollView style={styles.content} contentContainerStyle={styles.remoteContentContainer}>
+          <Text style={styles.sectionTitle}>Remote Connection</Text>
+          <Text style={styles.remoteDescription}>
+            Connect to MyDeviceAI-Desktop to run models on your computer
+          </Text>
+
+          {remoteState.isConnected ? (
+            <View style={styles.connectedContainer}>
+              <View style={styles.connectedBadge}>
+                <Wifi color="#4CAF50" size={24} />
+                <Text style={styles.connectedText}>Connected to Desktop</Text>
+              </View>
+              <Text style={styles.connectedSubtext}>
+                Room Code: {remoteState.config?.roomCode}
+              </Text>
+              <TouchableOpacity
+                style={styles.disconnectButton}
+                onPress={handleDisconnect}
+              >
+                <Text style={styles.disconnectButtonText}>Disconnect</Text>
+              </TouchableOpacity>
+            </View>
+          ) : (
+            <View style={styles.connectionSetup}>
+              <Text style={styles.inputLabel}>Enter 9-Digit Code</Text>
+              <TextInput
+                style={styles.codeInput}
+                placeholder="ABC123XYZ"
+                placeholderTextColor="#666"
+                value={roomCodeInput}
+                onChangeText={setRoomCodeInput}
+                maxLength={9}
+                keyboardType="default"
+                autoCapitalize="characters"
+                autoCorrect={false}
+              />
+              <TouchableOpacity
+                style={[styles.connectButton, isConnecting && styles.connectButtonDisabled]}
+                onPress={handleConnect}
+                disabled={isConnecting}
+              >
+                {isConnecting ? (
+                  <ActivityIndicator size="small" color="#fff" />
+                ) : (
+                  <Text style={styles.connectButtonText}>Connect</Text>
+                )}
+              </TouchableOpacity>
+
+              {remoteState.lastError && (
+                <View style={styles.errorContainer}>
+                  <Text style={styles.errorText}>{remoteState.lastError}</Text>
+                </View>
+              )}
+            </View>
+          )}
+
+          <View style={styles.infoSection}>
+            <Text style={styles.infoTitle}>How it works:</Text>
+            <Text style={styles.infoText}>
+              1. Open MyDeviceAI-Desktop on your computer{'\n'}
+              2. Get the 9-digit alphanumeric code from the desktop app{'\n'}
+              3. Enter the code above and tap Connect{'\n'}
+              4. Your messages will be processed on your desktop
+            </Text>
+          </View>
+        </ScrollView>
+      ) : activeTab === 'search' ? (
         <View style={styles.content}>
           <View style={styles.searchContainer}>
             <TextInput
@@ -1667,6 +1778,116 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontStyle: 'italic',
     marginTop: 4,
+  },
+  // Remote connection styles
+  remoteContentContainer: {
+    padding: 20,
+  },
+  remoteDescription: {
+    color: '#999',
+    fontSize: 14,
+    marginBottom: 24,
+    lineHeight: 20,
+  },
+  connectedContainer: {
+    backgroundColor: '#1a1a1a',
+    borderRadius: 12,
+    padding: 20,
+    marginBottom: 24,
+    alignItems: 'center',
+  },
+  connectedBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    marginBottom: 12,
+  },
+  connectedText: {
+    color: '#4CAF50',
+    fontSize: 18,
+    fontWeight: 'bold',
+  },
+  connectedSubtext: {
+    color: '#999',
+    fontSize: 14,
+    marginBottom: 20,
+  },
+  disconnectButton: {
+    backgroundColor: '#ff4444',
+    paddingVertical: 12,
+    paddingHorizontal: 32,
+    borderRadius: 8,
+  },
+  disconnectButtonText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  connectionSetup: {
+    backgroundColor: '#1a1a1a',
+    borderRadius: 12,
+    padding: 20,
+    marginBottom: 24,
+  },
+  inputLabel: {
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: '600',
+    marginBottom: 8,
+  },
+  codeInput: {
+    backgroundColor: '#000',
+    borderRadius: 8,
+    padding: 16,
+    color: '#fff',
+    fontSize: 24,
+    fontWeight: 'bold',
+    textAlign: 'center',
+    letterSpacing: 8,
+    borderWidth: 1,
+    borderColor: '#333',
+    marginBottom: 16,
+  },
+  connectButton: {
+    backgroundColor: '#007AFF',
+    paddingVertical: 14,
+    borderRadius: 8,
+    alignItems: 'center',
+  },
+  connectButtonDisabled: {
+    opacity: 0.5,
+  },
+  connectButtonText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  errorContainer: {
+    backgroundColor: '#ff444420',
+    borderRadius: 8,
+    padding: 12,
+    marginTop: 16,
+  },
+  errorText: {
+    color: '#ff4444',
+    fontSize: 14,
+    textAlign: 'center',
+  },
+  infoSection: {
+    backgroundColor: '#1a1a1a',
+    borderRadius: 12,
+    padding: 20,
+  },
+  infoTitle: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: 'bold',
+    marginBottom: 12,
+  },
+  infoText: {
+    color: '#999',
+    fontSize: 14,
+    lineHeight: 22,
   },
 });
 
