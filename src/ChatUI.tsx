@@ -613,6 +613,8 @@ want to talk and share about personal feelings.`;
       setIsTyping(true);
       setCurrentResponse('');
 
+      let remoteSucceeded = false;
+
       try {
         // Convert message history to OpenAI format
         const openAIMessages = [
@@ -634,18 +636,21 @@ want to talk and share about personal feelings.`;
         ];
 
         // Stream response from desktop
+        let accumulatedResponse = '';
         for await (const chunk of remoteSendMessage(
           openAIMessages,
           searchModeEnabled,
           thinkingModeEnabled
         )) {
-          setCurrentResponse(prev => prev + chunk);
+          accumulatedResponse += chunk;
+          setCurrentResponse(accumulatedResponse);
         }
 
         // Add final response
-        if (currentResponse.trim()) {
-          addMessage(currentResponse, false);
+        if (accumulatedResponse.trim()) {
+          addMessage(accumulatedResponse, false);
         }
+        remoteSucceeded = true;
       } catch (error) {
         console.error('Remote send failed:', error);
         showToast('Failed to send message to desktop. Using local model...');
@@ -656,8 +661,8 @@ want to talk and share about personal feelings.`;
         setCurrentResponse('');
       }
 
-      // Return if remote was successful
-      if (!inputText) return;
+      // Return if remote was successful (don't continue to local processing)
+      if (remoteSucceeded) return;
     }
 
     // Local processing - original code

@@ -41,6 +41,8 @@ export class RemoteConnectionManager {
     isComplete: boolean;
     hasError: boolean;
     error?: string;
+    hasStartedReasoning: boolean;
+    hasEndedReasoning: boolean;
   }> = new Map();
 
   constructor() {
@@ -191,6 +193,8 @@ export class RemoteConnectionManager {
         reasoningBuffer: '',
         isComplete: false,
         hasError: false,
+        hasStartedReasoning: false,
+        hasEndedReasoning: false,
       });
 
       // Create prompt message in OpenAI-compatible format
@@ -307,6 +311,11 @@ export class RemoteConnectionManager {
           {
             const state = this.activePrompts.get(message.id);
             if (state) {
+              // If we were processing reasoning tokens, close the <think> tag
+              if (state.hasStartedReasoning && !state.hasEndedReasoning) {
+                state.reasoningBuffer += '</think>';
+                state.hasEndedReasoning = true;
+              }
               state.buffer += message.tok;
             }
           }
@@ -317,6 +326,11 @@ export class RemoteConnectionManager {
           {
             const state = this.activePrompts.get(message.id);
             if (state) {
+              // Add opening <think> tag if this is the first reasoning token
+              if (!state.hasStartedReasoning) {
+                state.reasoningBuffer = '<think>';
+                state.hasStartedReasoning = true;
+              }
               state.reasoningBuffer += message.tok;
             }
           }
@@ -327,6 +341,11 @@ export class RemoteConnectionManager {
           {
             const state = this.activePrompts.get(message.id);
             if (state) {
+              // If we were processing reasoning tokens and never got regular tokens, close the <think> tag
+              if (state.hasStartedReasoning && !state.hasEndedReasoning) {
+                state.reasoningBuffer += '</think>';
+                state.hasEndedReasoning = true;
+              }
               state.isComplete = true;
               console.log('Prompt completed:', message.id);
             }
