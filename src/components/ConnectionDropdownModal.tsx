@@ -23,6 +23,7 @@ interface ConnectionDropdownModalProps {
   isConnected: boolean;
   onModeChange: (mode: ConnectionMode) => void;
   onSetupPress: () => void;
+  hasRemoteConfig: boolean;
 }
 
 /**
@@ -55,6 +56,7 @@ export function ConnectionDropdownModal({
   isConnected,
   onModeChange,
   onSetupPress,
+  hasRemoteConfig,
 }: ConnectionDropdownModalProps) {
   const statusText = getStatusText(connectionStatus, isConnected);
 
@@ -98,19 +100,26 @@ export function ConnectionDropdownModal({
             </TouchableOpacity>
 
             <TouchableOpacity
-              style={styles.option}
+              style={[styles.option, !hasRemoteConfig && styles.optionDisabled]}
               onPress={() => {
-                onModeChange('dynamic');
-                onClose();
+                if (hasRemoteConfig) {
+                  onModeChange('dynamic');
+                  onClose();
+                }
               }}
+              disabled={!hasRemoteConfig}
             >
               <View style={styles.optionContent}>
-                <Text style={styles.optionText}>Dynamic</Text>
-                <Text style={styles.optionDescription}>
-                  Prefer desktop when available
+                <Text style={[styles.optionText, !hasRemoteConfig && styles.optionTextDisabled]}>
+                  Dynamic
+                </Text>
+                <Text style={[styles.optionDescription, !hasRemoteConfig && styles.optionDescriptionDisabled]}>
+                  {hasRemoteConfig
+                    ? 'Prefer desktop when available'
+                    : 'Setup connection first'}
                 </Text>
               </View>
-              {currentMode === 'dynamic' && (
+              {currentMode === 'dynamic' && hasRemoteConfig && (
                 <Check color="#4CAF50" size={20} />
               )}
             </TouchableOpacity>
@@ -184,6 +193,9 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     paddingHorizontal: 8,
   },
+  optionDisabled: {
+    opacity: 0.4,
+  },
   optionContent: {
     flex: 1,
   },
@@ -193,9 +205,15 @@ const styles = StyleSheet.create({
     fontWeight: '500',
     marginBottom: 4,
   },
+  optionTextDisabled: {
+    color: '#666',
+  },
   optionDescription: {
     color: '#999',
     fontSize: 13,
+  },
+  optionDescriptionDisabled: {
+    color: '#666',
   },
   setupButton: {
     padding: 16,

@@ -966,7 +966,7 @@ const AdvancedSettingsScreen: React.FC<Props> = ({ navigation }) => {
         >
           <HardDrive color={activeTab === 'downloaded' ? '#007AFF' : '#666'} size={20} />
           <Text style={[styles.tabText, activeTab === 'downloaded' && styles.activeTabText]}>
-            Downloaded ({downloadedModels.length})
+            Available ({downloadedModels.length})
           </Text>
         </TouchableOpacity>
         <TouchableOpacity
@@ -975,7 +975,7 @@ const AdvancedSettingsScreen: React.FC<Props> = ({ navigation }) => {
         >
           <Search color={activeTab === 'search' ? '#007AFF' : '#666'} size={20} />
           <Text style={[styles.tabText, activeTab === 'search' && styles.activeTabText]}>
-            Search Models
+            Search
           </Text>
         </TouchableOpacity>
         <TouchableOpacity

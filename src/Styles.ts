@@ -36,6 +36,11 @@ const styles = StyleSheet.create({
       height: 32,
       resizeMode: 'contain',
     },
+    headerText: {
+      color: '#fff',
+      fontSize: 18,
+      fontWeight: '600',
+    },
     headerTitle: {
       color: '#fff',
       fontSize: 18,

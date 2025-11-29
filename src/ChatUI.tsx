@@ -21,11 +21,10 @@ import {
   StatusBar,
   Alert,
   Dimensions,
-  Image,
   FlatList,
   Animated,
 } from 'react-native';
-import { Send, Square, CirclePlus, Search, Settings, ArrowDown, Brain, Copy, Share as ShareIcon, ChevronDown, Menu as MenuIcon } from 'lucide-react-native';
+import { Send, Square, CirclePlus, Search, Settings, ArrowDown, Brain, Copy, Share as ShareIcon, ChevronRight, Menu as MenuIcon } from 'lucide-react-native';
 import { getModelParamsForDevice } from './utils/Utils';
 import { styles, markdownStyles, popoverStyles, menuOptionStyles } from './Styles';
 import { Message } from './model/Message';
@@ -610,12 +609,54 @@ want to talk and share about personal feelings.`;
       const userInput = inputText;
       setInputText('');
 
+      // Reset cancellation flag
+      isCancelledRef.current = false;
+
+      let searchResults = '';
+      let thumbnails: string[] = [];
+
+      // Perform search if enabled (same as local mode)
+      if (searchModeEnabled) {
+        setIsSearching(true);
+        try {
+          searchControllerRef.current = new AbortController();
+          const searchResponse: SearchResult = await performSearXNGSearch(
+            getUserMessages(userInput, messages),
+            searchControllerRef.current.signal
+          );
+          searchResults = searchResponse.formattedText;
+          thumbnails = searchResponse.thumbnails;
+          setCurrentThumbnails(thumbnails);
+        } catch (error) {
+          console.log('Search error:', error);
+          if (error instanceof Error) {
+            showToast(error.message);
+          }
+        } finally {
+          setIsSearching(false);
+          searchControllerRef.current = null;
+        }
+      }
+
+      // Exit early if user cancelled during search
+      if (isCancelledRef.current) {
+        return;
+      }
+
       setIsTyping(true);
       setCurrentResponse('');
 
       let remoteSucceeded = false;
 
       try {
+        // Build user content with search results if available
+        const searchResultsPrompt = searchResults ? `\nHere are some search results for your query: ${searchResults} \n\n Use these to enhance your response if needed. Provide all the links at the end of your response. Markdown format the links` : '';
+        const searchInstructions = searchModeEnabled ? `\nYou have access to the internet and can use it to search for information.
+                When provided with search results, use them to enhance your responses with current and accurate information.
+                Use these results to provide up-to-date information while maintaining your helpful and professional demeanor.\n` : '';
+
+        const userContent = `${userInput}${searchInstructions}${searchResultsPrompt}`;
+
         // Convert message history to OpenAI format
         const openAIMessages = [
           // Add system prompt
@@ -628,10 +669,10 @@ want to talk and share about personal feelings.`;
             role: msg.isUser ? 'user' : 'assistant',
             content: stripThinkingContent(msg.text)
           })),
-          // Add current user input
+          // Add current user input with search results
           {
             role: 'user',
-            content: userInput
+            content: userContent
           }
         ];
 
@@ -646,9 +687,9 @@ want to talk and share about personal feelings.`;
           setCurrentResponse(accumulatedResponse);
         }
 
-        // Add final response
+        // Add final response with thumbnails
         if (accumulatedResponse.trim()) {
-          addMessage(accumulatedResponse, false);
+          addMessage(accumulatedResponse, false, thumbnails);
         }
         remoteSucceeded = true;
       } catch (error) {
@@ -659,6 +700,7 @@ want to talk and share about personal feelings.`;
       } finally {
         setIsTyping(false);
         setCurrentResponse('');
+        setCurrentThumbnails([]);
       }
 
       // Return if remote was successful (don't continue to local processing)
@@ -1121,46 +1163,22 @@ want to talk and share about personal feelings.`;
           <TouchableOpacity style={styles.headerButton} onPress={handleMenuPress} disabled={isTyping || isSearching}>
             <MenuIcon color="#fff" size={24} />
           </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.headerCenter}
+            onPress={() => setShowConnectionDropdown(true)}
+            disabled={isTyping || isSearching}
+          >
+            <Text style={styles.headerText}>MyDeviceAI</Text>
+            <ConnectionStatusIcon status={remoteState.status} size={16} />
+            <ChevronRight color="#fff" size={14} />
+          </TouchableOpacity>
         </View>
-        <TouchableOpacity
-          style={styles.headerCenter}
-          onPress={() => setShowConnectionDropdown(true)}
-          disabled={isTyping || isSearching}
-        >
-          <Text style={styles.headerTitle}>MyDeviceAI</Text>
-          <ConnectionStatusIcon status={remoteState.status} size={20} />
-          <ChevronDown color="#fff" size={16} />
-        </TouchableOpacity>
         <View style={styles.headerRightButtons}>
           <TouchableOpacity style={styles.headerButton} onPress={handleNewChat} disabled={isTyping || isSearching}>
             <CirclePlus color="#fff" size={24} />
           </TouchableOpacity>
         </View>
       </View>
-
-      {/* Model Loading Progress Bar */}
-      <Animated.View 
-        style={[
-          styles.progressBarContainer,
-          {
-            height: progressBarContainerHeight,
-            opacity: progressBarOpacity,
-            overflow: 'hidden',
-          }
-        ]}
-      >
-        <View style={styles.progressBarBackground}>
-          <Animated.View 
-            style={[
-              styles.progressBarFill, 
-              { width: progressBarWidth.interpolate({
-                inputRange: [0, 100],
-                outputRange: ['0%', '100%']
-              }) }
-            ]} 
-          />
-        </View>
-      </Animated.View>
 
       {messages.length === 0 ? (
         <EmptyState onPromptPress={handlePromptSelect} />
@@ -1218,9 +1236,9 @@ want to talk and share about personal feelings.`;
 
       <View style={styles.inputContainer}>
         <View style={styles.modeToggleContainer}>
-          {isQwen3Model && (
-            <TouchableOpacity 
-              style={[styles.modeToggleButton, thinkingModeEnabled && styles.modeToggleButtonActive]} 
+          {isQwen3Model && remoteState.mode === 'local' && (
+            <TouchableOpacity
+              style={[styles.modeToggleButton, thinkingModeEnabled && styles.modeToggleButtonActive]}
               onPress={handleThinkingToggle}
               disabled={isTyping || isSearching}
             >
@@ -1228,8 +1246,8 @@ want to talk and share about personal feelings.`;
               <Text style={[styles.modeToggleText, thinkingModeEnabled && styles.modeToggleTextActive]}>Think</Text>
             </TouchableOpacity>
           )}
-          <TouchableOpacity 
-            style={[styles.modeToggleButton, searchModeEnabled && styles.modeToggleButtonActive]} 
+          <TouchableOpacity
+            style={[styles.modeToggleButton, searchModeEnabled && styles.modeToggleButtonActive]}
             onPress={handleSearchToggle}
             disabled={isTyping || isSearching}
           >
@@ -1278,6 +1296,7 @@ want to talk and share about personal feelings.`;
         isConnected={remoteState.isConnected}
         onModeChange={handleConnectionModeChange}
         onSetupPress={handleSetupConnection}
+        hasRemoteConfig={remoteState.config !== null}
       />
     </KeyboardAvoidingView>
   );
