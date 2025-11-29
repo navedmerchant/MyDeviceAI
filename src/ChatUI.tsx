@@ -137,7 +137,7 @@ const ChatUI: React.FC<ChatUIProps> = ({ historyId, onMenuPress, MenuIcon, navig
   const [showConnectionDropdown, setShowConnectionDropdown] = useState(false);
 
   // Remote connection
-  const { state: remoteState, updateLocalModelStatus, setMode, sendMessage: remoteSendMessage } = useRemoteConnection();
+  const { state: remoteState, updateLocalModelStatus, setMode, sendMessage: remoteSendMessage, disconnect: remoteDisconnect, connect: remoteConnect } = useRemoteConnection();
 
   const scrollViewRef = useRef<ScrollView>(null);
   const textInputRef = useRef<TextInput>(null);
@@ -441,7 +441,7 @@ want to talk and share about personal feelings.`;
 
   useEffect(() => {
     const subscription = AppState.addEventListener('change', nextAppState => {
-      
+
       if (
         appState.current.match(/inactive|background/) &&
         nextAppState === 'active'
@@ -450,20 +450,29 @@ want to talk and share about personal feelings.`;
         if (modelLoadTimeoutRef.current) {
           clearTimeout(modelLoadTimeoutRef.current);
         }
-        
-        modelLoadTimeoutRef.current = setTimeout(() => {
+
+        modelLoadTimeoutRef.current = setTimeout(async () => {
           // Double-check app state is still active after delay
           if (AppState.currentState === 'active') {
             console.log("Loading models after confirmed active state");
-            if (!contextRef.current) {  
+            if (!contextRef.current) {
               loadModel();
             }
             if (!embeddingContextRef.current) {
               loadEmbeddingModel();
             }
+            // Reconnect to desktop if we were in dynamic mode and have a room code
+            if (remoteState.mode === 'dynamic' && remoteState.config?.roomCode) {
+              console.log("Reconnecting to desktop after foreground");
+              try {
+                await remoteConnect(remoteState.config.roomCode, false);
+              } catch (error) {
+                console.error('Failed to reconnect to desktop:', error);
+              }
+            }
           }
         }, 500); // 500ms delay to avoid rapid transitions
-        
+
       } else if (
         appState.current === 'active' &&
         nextAppState.match(/inactive|background/)
@@ -473,12 +482,17 @@ want to talk and share about personal feelings.`;
           clearTimeout(modelLoadTimeoutRef.current);
           modelLoadTimeoutRef.current = null;
         }
-        
+
         if (isTyping) {
           contextRef.current?.stopCompletion();
         }
         unloadModel();
         unloadEmbeddingModel();
+        // Disconnect from desktop when going to background
+        if (remoteState.isConnected) {
+          console.log("Disconnecting from desktop due to background");
+          remoteDisconnect();
+        }
       }
 
       appState.current = nextAppState;
@@ -492,7 +506,7 @@ want to talk and share about personal feelings.`;
       unloadModel();
       unloadEmbeddingModel();
     };
-  }, []);
+  }, [remoteState.mode, remoteState.config, remoteState.isConnected, remoteConnect, remoteDisconnect]);
 
   useEffect(() => {
     setParentIsTyping(isTyping);
@@ -1169,7 +1183,7 @@ want to talk and share about personal feelings.`;
             disabled={isTyping || isSearching}
           >
             <Text style={styles.headerText}>MyDeviceAI</Text>
-            <ConnectionStatusIcon status={remoteState.status} size={16} />
+            <ConnectionStatusIcon status={remoteState.status} mode={remoteState.mode} size={16} />
             <ChevronRight color="#fff" size={14} />
           </TouchableOpacity>
         </View>

@@ -80,7 +80,6 @@ const AdvancedSettingsScreen: React.FC<Props> = ({ navigation }) => {
   // Remote connection state
   const { state: remoteState, connect, disconnect } = useRemoteConnection();
   const [roomCodeInput, setRoomCodeInput] = useState('');
-  const [isConnecting, setIsConnecting] = useState(false);
   const [selectedModel, setSelectedModel] = useState<HuggingFaceModel | null>(null);
   const [availableGGUFFiles, setAvailableGGUFFiles] = useState<GGUFFile[]>([]);
   const [loadingGGUFFiles, setLoadingGGUFFiles] = useState(false);
@@ -110,6 +109,13 @@ const AdvancedSettingsScreen: React.FC<Props> = ({ navigation }) => {
   useEffect(() => {
     calculateStorageUsage();
   }, [downloadedModels]);
+
+  // Show success alert when remote connection is established
+  useEffect(() => {
+    if (remoteState.status === 'remote_connected' && remoteState.isConnected) {
+      Alert.alert('Success', 'Connected to desktop!');
+    }
+  }, [remoteState.status, remoteState.isConnected]);
 
   const loadDownloadedModels = async () => {
     try {
@@ -181,15 +187,12 @@ const AdvancedSettingsScreen: React.FC<Props> = ({ navigation }) => {
       return;
     }
 
-    setIsConnecting(true);
     try {
       await connect(roomCodeInput);
-      Alert.alert('Success', 'Connected to desktop!');
+      // Don't show alert here - will be shown when status changes to remote_connected
     } catch (error) {
       console.error('Failed to connect:', error);
       Alert.alert('Error', 'Failed to connect to desktop. Please check the code and try again.');
-    } finally {
-      setIsConnecting(false);
     }
   };
 
@@ -1027,12 +1030,15 @@ const AdvancedSettingsScreen: React.FC<Props> = ({ navigation }) => {
                 autoCorrect={false}
               />
               <TouchableOpacity
-                style={[styles.connectButton, isConnecting && styles.connectButtonDisabled]}
+                style={[styles.connectButton, remoteState.status === 'remote_connecting' && styles.connectButtonDisabled]}
                 onPress={handleConnect}
-                disabled={isConnecting}
+                disabled={remoteState.status === 'remote_connecting'}
               >
-                {isConnecting ? (
-                  <ActivityIndicator size="small" color="#fff" />
+                {remoteState.status === 'remote_connecting' ? (
+                  <>
+                    <ActivityIndicator size="small" color="#fff" />
+                    <Text style={[styles.connectButtonText, { marginLeft: 8 }]}>Connecting...</Text>
+                  </>
                 ) : (
                   <Text style={styles.connectButtonText}>Connect</Text>
                 )}
@@ -1853,6 +1859,8 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
     borderRadius: 8,
     alignItems: 'center',
+    flexDirection: 'row',
+    justifyContent: 'center',
   },
   connectButtonDisabled: {
     opacity: 0.5,

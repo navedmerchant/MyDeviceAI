@@ -9,6 +9,7 @@ import type { ConnectionStatus } from '../types/RemoteConnection';
 
 interface ConnectionStatusIconProps {
   status: ConnectionStatus;
+  mode?: 'local' | 'dynamic';
   size?: number;
 }
 
@@ -35,10 +36,16 @@ function getIconColor(status: ConnectionStatus): string {
 }
 
 /**
- * Get icon component based on connection status
- * Phone icon for local, Computer icon for remote
+ * Get icon component based on connection mode and status
+ * Phone icon for local mode, Computer icon for dynamic mode
  */
-function getIconComponent(status: ConnectionStatus): typeof Smartphone | typeof Monitor {
+function getIconComponent(status: ConnectionStatus, mode?: 'local' | 'dynamic'): typeof Smartphone | typeof Monitor {
+  // In local mode, always show phone icon
+  if (mode === 'local') {
+    return Smartphone;
+  }
+
+  // In dynamic mode, show appropriate icon based on status
   switch (status) {
     case 'remote_connecting':
     case 'remote_connected':
@@ -52,8 +59,8 @@ function getIconComponent(status: ConnectionStatus): typeof Smartphone | typeof 
   }
 }
 
-export function ConnectionStatusIcon({ status, size = 20 }: ConnectionStatusIconProps) {
-  const IconComponent = getIconComponent(status);
+export function ConnectionStatusIcon({ status, mode, size = 20 }: ConnectionStatusIconProps) {
+  const IconComponent = getIconComponent(status, mode);
   const color = getIconColor(status);
 
   return <IconComponent color={color} size={size} />;

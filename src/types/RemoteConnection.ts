@@ -75,7 +75,7 @@ export type P2PMessage =
  */
 export interface RemoteConnectionContextType {
   state: RemoteConnectionState;
-  connect: (roomCode: string) => Promise<void>;
+  connect: (roomCode: string, saveConfig?: boolean) => Promise<void>;
   disconnect: () => Promise<void>;
   sendMessage: (
     messages: Array<{ role: string; content: string }>,
