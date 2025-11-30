@@ -507,7 +507,7 @@ want to talk and share about personal feelings.`;
       unloadModel();
       unloadEmbeddingModel();
     };
-  }, []);
+  }, [remoteState.isConnected]);
 
   useEffect(() => {
     setParentIsTyping(isTyping);

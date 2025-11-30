@@ -8,7 +8,7 @@ PODS:
     - hermes-engine/Pre-built (= 0.75.3)
   - hermes-engine/Pre-built (0.75.3)
   - JitsiWebRTC (124.0.2)
-  - llama-rn (0.6.7):
+  - llama-rn (0.8.3):
     - React-Core
   - op-sqlite (11.4.7):
     - React
@@ -1921,7 +1921,7 @@ SPEC CHECKSUMS:
   glog: 69ef571f3de08433d766d614c73a9838a06bf7eb
   hermes-engine: 8d2103d6c0176779aea4e25df6bb1410f9946680
   JitsiWebRTC: b47805ab5668be38e7ee60e2258f49badfe8e1d0
-  llama-rn: 62305137b5f7af4592831247ba37e3eff0952ad4
+  llama-rn: 169bb792dde4e08058209e657e923236983b9f70
   op-sqlite: 7163eb33349fc0d58917ca41eb6be026a3dac5dc
   P2pcfRn: 7a3ef7ae87f39ff5f7113e593da84624366b1b17
   RCT-Folly: 34124ae2e667a0e5f0ea378db071d27548124321
