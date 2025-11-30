@@ -80,6 +80,7 @@ const AdvancedSettingsScreen: React.FC<Props> = ({ navigation }) => {
   // Remote connection state
   const { state: remoteState, connect, disconnect } = useRemoteConnection();
   const [roomCodeInput, setRoomCodeInput] = useState('');
+  const [isEditingCode, setIsEditingCode] = useState(false);
   const [selectedModel, setSelectedModel] = useState<HuggingFaceModel | null>(null);
   const [availableGGUFFiles, setAvailableGGUFFiles] = useState<GGUFFile[]>([]);
   const [loadingGGUFFiles, setLoadingGGUFFiles] = useState(false);
@@ -109,13 +110,6 @@ const AdvancedSettingsScreen: React.FC<Props> = ({ navigation }) => {
   useEffect(() => {
     calculateStorageUsage();
   }, [downloadedModels]);
-
-  // Show success alert when remote connection is established
-  useEffect(() => {
-    if (remoteState.status === 'remote_connected' && remoteState.isConnected) {
-      Alert.alert('Success', 'Connected to desktop!');
-    }
-  }, [remoteState.status, remoteState.isConnected]);
 
   const loadDownloadedModels = async () => {
     try {
@@ -200,10 +194,21 @@ const AdvancedSettingsScreen: React.FC<Props> = ({ navigation }) => {
     try {
       await disconnect();
       setRoomCodeInput('');
+      setIsEditingCode(false);
       Alert.alert('Disconnected', 'Disconnected from desktop');
     } catch (error) {
       console.error('Failed to disconnect:', error);
     }
+  };
+
+  const handleChangeCode = () => {
+    setIsEditingCode(true);
+    setRoomCodeInput('');
+  };
+
+  const handleCancelEdit = () => {
+    setIsEditingCode(false);
+    setRoomCodeInput('');
   };
 
   const searchHuggingFaceModels = async () => {
@@ -1000,6 +1005,7 @@ const AdvancedSettingsScreen: React.FC<Props> = ({ navigation }) => {
           </Text>
 
           {remoteState.isConnected ? (
+            // Connected state - show connected UI
             <View style={styles.connectedContainer}>
               <View style={styles.connectedBadge}>
                 <Wifi color="#4CAF50" size={24} />
@@ -1015,7 +1021,49 @@ const AdvancedSettingsScreen: React.FC<Props> = ({ navigation }) => {
                 <Text style={styles.disconnectButtonText}>Disconnect</Text>
               </TouchableOpacity>
             </View>
+          ) : remoteState.config?.roomCode && !isEditingCode ? (
+            // Have saved code but not connected - show immutable code with change button
+            <View style={styles.connectionSetup}>
+              <Text style={styles.inputLabel}>Saved Connection Code</Text>
+              <View style={styles.savedCodeContainer}>
+                <Text style={styles.savedCodeText}>{remoteState.config.roomCode}</Text>
+              </View>
+
+              {remoteState.status === 'remote_connecting' && (
+                <View style={styles.connectingIndicator}>
+                  <ActivityIndicator size="small" color="#007AFF" />
+                  <Text style={styles.connectingText}>Connecting to desktop...</Text>
+                </View>
+              )}
+
+              {remoteState.lastError && (
+                <View style={styles.errorContainer}>
+                  <Text style={styles.errorText}>{remoteState.lastError}</Text>
+                </View>
+              )}
+
+              <View style={styles.savedCodeActions}>
+                <TouchableOpacity
+                  style={styles.changeCodeButton}
+                  onPress={handleChangeCode}
+                  disabled={remoteState.status === 'remote_connecting'}
+                >
+                  <Text style={styles.changeCodeButtonText}>Change Code</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={[styles.retryConnectButton, remoteState.status === 'remote_connecting' && styles.connectButtonDisabled]}
+                  onPress={() => connect(remoteState.config!.roomCode)}
+                  disabled={remoteState.status === 'remote_connecting'}
+                >
+                  <Text style={styles.retryConnectButtonText}>
+                    {remoteState.status === 'remote_connecting' ? 'Connecting...' : 'Retry Connection'}
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            </View>
           ) : (
+            // No saved code or editing - show input form
             <View style={styles.connectionSetup}>
               <Text style={styles.inputLabel}>Enter 9-Digit Code</Text>
               <TextInput
@@ -1029,20 +1077,33 @@ const AdvancedSettingsScreen: React.FC<Props> = ({ navigation }) => {
                 autoCapitalize="characters"
                 autoCorrect={false}
               />
-              <TouchableOpacity
-                style={[styles.connectButton, remoteState.status === 'remote_connecting' && styles.connectButtonDisabled]}
-                onPress={handleConnect}
-                disabled={remoteState.status === 'remote_connecting'}
-              >
-                {remoteState.status === 'remote_connecting' ? (
-                  <>
-                    <ActivityIndicator size="small" color="#fff" />
-                    <Text style={[styles.connectButtonText, { marginLeft: 8 }]}>Connecting...</Text>
-                  </>
-                ) : (
-                  <Text style={styles.connectButtonText}>Connect</Text>
+              <View style={styles.inputActions}>
+                {isEditingCode && (
+                  <TouchableOpacity
+                    style={styles.cancelEditButton}
+                    onPress={handleCancelEdit}
+                  >
+                    <Text style={styles.cancelEditButtonText}>Cancel</Text>
+                  </TouchableOpacity>
                 )}
-              </TouchableOpacity>
+                <TouchableOpacity
+                  style={[
+                    styles.connectButtonFlex,
+                    remoteState.status === 'remote_connecting' && styles.connectButtonDisabled
+                  ]}
+                  onPress={handleConnect}
+                  disabled={remoteState.status === 'remote_connecting'}
+                >
+                  {remoteState.status === 'remote_connecting' ? (
+                    <>
+                      <ActivityIndicator size="small" color="#fff" />
+                      <Text style={[styles.connectButtonText, { marginLeft: 8 }]}>Connecting...</Text>
+                    </>
+                  ) : (
+                    <Text style={styles.connectButtonText}>Connect</Text>
+                  )}
+                </TouchableOpacity>
+              </View>
 
               {remoteState.lastError && (
                 <View style={styles.errorContainer}>
@@ -1862,6 +1923,15 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'center',
   },
+  connectButtonFlex: {
+    flex: 1,
+    backgroundColor: '#007AFF',
+    paddingVertical: 14,
+    borderRadius: 8,
+    alignItems: 'center',
+    flexDirection: 'row',
+    justifyContent: 'center',
+  },
   connectButtonDisabled: {
     opacity: 0.5,
   },
@@ -1896,6 +1966,85 @@ const styles = StyleSheet.create({
     color: '#999',
     fontSize: 14,
     lineHeight: 22,
+  },
+  // Saved code display styles
+  savedCodeContainer: {
+    backgroundColor: '#000',
+    borderRadius: 8,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: '#333',
+    marginBottom: 16,
+    alignItems: 'center',
+  },
+  savedCodeText: {
+    color: '#fff',
+    fontSize: 24,
+    fontWeight: 'bold',
+    letterSpacing: 8,
+  },
+  connectingIndicator: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    marginBottom: 16,
+    padding: 12,
+    backgroundColor: '#007AFF20',
+    borderRadius: 8,
+  },
+  connectingText: {
+    color: '#007AFF',
+    fontSize: 14,
+  },
+  savedCodeActions: {
+    flexDirection: 'row',
+    gap: 12,
+    width: '100%',
+  },
+  changeCodeButton: {
+    flex: 1,
+    backgroundColor: 'transparent',
+    borderWidth: 1,
+    borderColor: '#666',
+    paddingVertical: 12,
+    borderRadius: 8,
+    alignItems: 'center',
+  },
+  changeCodeButtonText: {
+    color: '#666',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  retryConnectButton: {
+    flex: 1,
+    backgroundColor: '#007AFF',
+    paddingVertical: 12,
+    borderRadius: 8,
+    alignItems: 'center',
+  },
+  retryConnectButtonText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  inputActions: {
+    flexDirection: 'row',
+    gap: 12,
+    width: '100%',
+  },
+  cancelEditButton: {
+    flex: 1,
+    backgroundColor: 'transparent',
+    borderWidth: 1,
+    borderColor: '#666',
+    paddingVertical: 14,
+    borderRadius: 8,
+    alignItems: 'center',
+  },
+  cancelEditButtonText: {
+    color: '#666',
+    fontSize: 16,
+    fontWeight: '600',
   },
 });
 

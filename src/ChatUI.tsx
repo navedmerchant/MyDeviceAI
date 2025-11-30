@@ -446,12 +446,13 @@ want to talk and share about personal feelings.`;
         appState.current.match(/inactive|background/) &&
         nextAppState === 'active'
       ) {
+        console.log("App coming to foreground")
         // Debounce model loading to avoid rapid state changes during screen lock
         if (modelLoadTimeoutRef.current) {
           clearTimeout(modelLoadTimeoutRef.current);
         }
 
-        modelLoadTimeoutRef.current = setTimeout(async () => {
+        modelLoadTimeoutRef.current = setTimeout(() => {
           // Double-check app state is still active after delay
           if (AppState.currentState === 'active') {
             console.log("Loading models after confirmed active state");
@@ -465,7 +466,7 @@ want to talk and share about personal feelings.`;
             if (remoteState.mode === 'dynamic' && remoteState.config?.roomCode) {
               console.log("Reconnecting to desktop after foreground");
               try {
-                await remoteConnect(remoteState.config.roomCode, false);
+                remoteConnect(remoteState.config.roomCode, false);
               } catch (error) {
                 console.error('Failed to reconnect to desktop:', error);
               }
@@ -506,7 +507,7 @@ want to talk and share about personal feelings.`;
       unloadModel();
       unloadEmbeddingModel();
     };
-  }, [remoteState.mode, remoteState.config, remoteState.isConnected, remoteConnect, remoteDisconnect]);
+  }, []);
 
   useEffect(() => {
     setParentIsTyping(isTyping);
@@ -1250,7 +1251,7 @@ want to talk and share about personal feelings.`;
 
       <View style={styles.inputContainer}>
         <View style={styles.modeToggleContainer}>
-          {isQwen3Model && remoteState.mode === 'local' && (
+          {isQwen3Model && !remoteState.isConnected && (
             <TouchableOpacity
               style={[styles.modeToggleButton, thinkingModeEnabled && styles.modeToggleButtonActive]}
               onPress={handleThinkingToggle}

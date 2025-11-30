@@ -6,6 +6,7 @@
 
 import { P2PCF, type Peer } from 'p2pcf.rn';
 import type { P2PMessage } from '../types/RemoteConnection';
+import { TextDecoder } from '../utils/textdecoder';
 
 export type ConnectionStatusCallback = (isConnected: boolean) => void;
 export type MessageCallback = (message: string) => void;
@@ -272,7 +273,8 @@ export class RemoteConnectionManager {
    */
   private handleMessage(data: ArrayBuffer): void {
     try {
-      const text = this.arrayBufferToText(data);
+      const decoder = new TextDecoder('utf-8');
+      const text = decoder.decode(data);
       const message: P2PMessage = JSON.parse(text);
 
       console.log('Received P2P message:', message.t, message);
@@ -388,8 +390,7 @@ export class RemoteConnectionManager {
 
     try {
       const json = JSON.stringify(message);
-      const data = this.textToArrayBuffer(json);
-      this.p2pcf.broadcast(data);
+      this.p2pcf.send(this.desktopPeer, json);
     } catch (error) {
       console.error('Failed to send P2P message:', error);
     }
@@ -447,15 +448,6 @@ export class RemoteConnectionManager {
       uint8Array[i] = text.charCodeAt(i);
     }
     return uint8Array.buffer;
-  }
-
-  /**
-   * Convert ArrayBuffer to text
-   */
-  private arrayBufferToText(buffer: ArrayBuffer): string {
-    // React Native compatible UTF-8 decoding
-    const uint8Array = new Uint8Array(buffer);
-    return String.fromCharCode(...uint8Array);
   }
 }
 
