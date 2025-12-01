@@ -1450,7 +1450,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     padding: 16,
-    marginTop: 50,
+    marginTop: Platform.OS === 'ios' ? 50 : 0,
     borderBottomWidth: 1,
     borderBottomColor: '#333',
   },

@@ -3,8 +3,8 @@ import { StyleSheet, Platform } from "react-native";
 const styles = StyleSheet.create({
     chatScreenContainer: {
       flex: 1,
-      paddingTop: 50,
-      paddingBottom: 20,
+      paddingTop: Platform.OS === 'ios' ? 50 : 0,
+      paddingBottom: Platform.OS === 'ios' ? 20 : 0,
       backgroundColor: '#000',
     },
     container: {
@@ -530,6 +530,77 @@ const styles = StyleSheet.create({
       color: '#fff',
       fontSize: 16,
       fontWeight: 'bold',
+    },
+    // Model download screen styles
+    modelRequirementContainer: {
+      flex: 1,
+      backgroundColor: '#1c1c1c',
+      padding: 20,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    modelRequirementTitle: {
+      color: '#fff',
+      fontSize: 24,
+      fontWeight: 'bold',
+      marginBottom: 16,
+    },
+    modelRequirementText: {
+      color: '#ddd',
+      fontSize: 16,
+      textAlign: 'center',
+      marginBottom: 32,
+    },
+    modelSection: {
+      width: '100%',
+      backgroundColor: '#2c2c2c',
+      borderRadius: 12,
+      padding: 16,
+    },
+    modelTypeTitle: {
+      color: '#fff',
+      fontSize: 18,
+      fontWeight: 'bold',
+      marginBottom: 12,
+    },
+    modelDivider: {
+      height: 1,
+      backgroundColor: '#444',
+      marginVertical: 20,
+    },
+    downloadButton: {
+      backgroundColor: '#007AFF',
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      padding: 12,
+      borderRadius: 8,
+      gap: 8,
+    },
+    downloadButtonText: {
+      color: '#fff',
+      fontSize: 16,
+      fontWeight: '500',
+    },
+    downloadProgress: {
+      alignItems: 'center',
+      gap: 8,
+      marginTop: 12,
+    },
+    downloadProgressText: {
+      color: '#fff',
+      fontSize: 14,
+    },
+    modelInfo: {
+      backgroundColor: '#1a1a1a',
+      padding: 12,
+      borderRadius: 8,
+      borderWidth: 1,
+      borderColor: '#28a745',
+    },
+    modelInfoText: {
+      color: '#28a745',
+      fontSize: 14,
     },
   });
   

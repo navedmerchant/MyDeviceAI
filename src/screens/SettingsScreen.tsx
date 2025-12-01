@@ -11,11 +11,20 @@ import {
   Linking,
   Alert,
 } from 'react-native';
-import { ChevronLeft, ChevronRight, Cog, Settings } from 'lucide-react-native';
+import { ChevronLeft, ChevronRight, Cog, Settings, Download } from 'lucide-react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { DrawerNavigationProp } from '@react-navigation/drawer';
 import { DrawerParamList } from '../../App';
 import { cleanupOldChatHistories } from '../db/DatabaseHelper';
+import RNFS from 'react-native-fs';
+import * as Progress from 'react-native-progress';
+import { MODEL_NAMES, MODEL_URLS } from '../constants/Models';
+
+interface DownloadProgressData {
+  bytesWritten: number;
+  contentLength: number;
+  jobId: number;
+}
 
 type SettingsScreenNavigationProp = DrawerNavigationProp<DrawerParamList, 'Settings'>;
 
@@ -38,12 +47,24 @@ Use these results to provide up-to-date information while maintaining your helpf
 const SettingsScreen: React.FC<Props> = ({ navigation }) => {
   const [systemPrompt, setSystemPrompt] = useState('');
   const [historyDays, setHistoryDays] = useState('30');
-  // const [braveApiKey, setBraveApiKey] = useState(''); // Commented out
-  // const [monthlyQueries, setMonthlyQueries] = useState('0'); // Commented out
+  const [modelDownloadProgress, setModelDownloadProgress] = useState(0);
+  const [embeddingDownloadProgress, setEmbeddingDownloadProgress] = useState(0);
+  const [isDownloadingModel, setIsDownloadingModel] = useState(false);
+  const [isDownloadingEmbedding, setIsDownloadingEmbedding] = useState(false);
+  const [modelExists, setModelExists] = useState(false);
+  const [embeddingExists, setEmbeddingExists] = useState(false);
+
+  const MODEL_DIR = Platform.select({
+    ios: `${RNFS.DocumentDirectoryPath}/model`,
+    android: `${RNFS.DocumentDirectoryPath}/model`,
+  }) as string;
 
   // Load settings when component mounts
   useEffect(() => {
     loadSettings();
+    if (Platform.OS === 'android') {
+      checkModelExistence();
+    }
   }, []);
 
   const loadSettings = async () => {
@@ -91,6 +112,99 @@ const SettingsScreen: React.FC<Props> = ({ navigation }) => {
 
   const handleResetPrompt = () => {
     setSystemPrompt(DEFAULT_SYSTEM_PROMPT);
+  };
+
+  const checkModelExistence = async () => {
+    try {
+      const modelPath = `${MODEL_DIR}/${MODEL_NAMES.QWEN_MODEL}`;
+      const embeddingPath = `${MODEL_DIR}/${MODEL_NAMES.BGE_EMBEDDING_MODEL}`;
+
+      const modelFileExists = await RNFS.exists(modelPath);
+      const embeddingFileExists = await RNFS.exists(embeddingPath);
+
+      setModelExists(modelFileExists);
+      setEmbeddingExists(embeddingFileExists);
+    } catch (error) {
+      console.error('Error checking model existence:', error);
+    }
+  };
+
+  const downloadModel = async () => {
+    try {
+      setIsDownloadingModel(true);
+      setModelDownloadProgress(0);
+
+      // Ensure directory exists
+      const dirExists = await RNFS.exists(MODEL_DIR);
+      if (!dirExists) {
+        await RNFS.mkdir(MODEL_DIR);
+      }
+
+      const downloadDest = `${MODEL_DIR}/${MODEL_NAMES.QWEN_MODEL}`;
+
+      const download = RNFS.downloadFile({
+        fromUrl: MODEL_URLS.QWEN_MODEL,
+        toFile: downloadDest,
+        progress: (res: DownloadProgressData) => {
+          const progress = res.bytesWritten / res.contentLength;
+          setModelDownloadProgress(progress);
+        },
+        progressInterval: 100,
+      });
+
+      const result = await download.promise;
+
+      if (result.statusCode === 200) {
+        setModelExists(true);
+        Alert.alert('Success', 'Model downloaded successfully!');
+      } else {
+        throw new Error(`Download failed with status ${result.statusCode}`);
+      }
+    } catch (error) {
+      console.error('Error downloading model:', error);
+      Alert.alert('Error', 'Failed to download model. Please try again.');
+    } finally {
+      setIsDownloadingModel(false);
+    }
+  };
+
+  const downloadEmbedding = async () => {
+    try {
+      setIsDownloadingEmbedding(true);
+      setEmbeddingDownloadProgress(0);
+
+      // Ensure directory exists
+      const dirExists = await RNFS.exists(MODEL_DIR);
+      if (!dirExists) {
+        await RNFS.mkdir(MODEL_DIR);
+      }
+
+      const downloadDest = `${MODEL_DIR}/${MODEL_NAMES.BGE_EMBEDDING_MODEL}`;
+
+      const download = RNFS.downloadFile({
+        fromUrl: MODEL_URLS.BGE_EMBEDDING_MODEL,
+        toFile: downloadDest,
+        progress: (res: DownloadProgressData) => {
+          const progress = res.bytesWritten / res.contentLength;
+          setEmbeddingDownloadProgress(progress);
+        },
+        progressInterval: 100,
+      });
+
+      const result = await download.promise;
+
+      if (result.statusCode === 200) {
+        setEmbeddingExists(true);
+        Alert.alert('Success', 'Embedding model downloaded successfully!');
+      } else {
+        throw new Error(`Download failed with status ${result.statusCode}`);
+      }
+    } catch (error) {
+      console.error('Error downloading embedding model:', error);
+      Alert.alert('Error', 'Failed to download embedding model. Please try again.');
+    } finally {
+      setIsDownloadingEmbedding(false);
+    }
   };
 
   return (
@@ -167,7 +281,7 @@ const SettingsScreen: React.FC<Props> = ({ navigation }) => {
 
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Advanced Settings</Text>
-          <TouchableOpacity 
+          <TouchableOpacity
             style={styles.navigationButton}
             onPress={() => navigation.navigate('AdvancedSettings')}
           >
@@ -180,6 +294,76 @@ const SettingsScreen: React.FC<Props> = ({ navigation }) => {
             Search, download, and manage GGUF models from Hugging Face.
           </Text>
         </View>
+
+        {/* Android Model Downloads */}
+        {Platform.OS === 'android' && (
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Model Downloads (Android)</Text>
+            <Text style={styles.description}>
+              On Android, models need to be downloaded before first use. Download both models to get started.
+            </Text>
+
+            {/* Main Model Download */}
+            <View style={styles.downloadItem}>
+              <View style={styles.downloadInfo}>
+                <Text style={styles.downloadTitle}>Main Model (Qwen 2.5)</Text>
+                <Text style={styles.downloadSize}>~1.1 GB</Text>
+              </View>
+              {modelExists ? (
+                <Text style={styles.downloadedText}>✓ Downloaded</Text>
+              ) : isDownloadingModel ? (
+                <View style={styles.progressContainer}>
+                  <Progress.Bar
+                    progress={modelDownloadProgress}
+                    width={200}
+                    color="#007AFF"
+                  />
+                  <Text style={styles.progressText}>
+                    {Math.round(modelDownloadProgress * 100)}%
+                  </Text>
+                </View>
+              ) : (
+                <TouchableOpacity
+                  style={styles.downloadButton}
+                  onPress={downloadModel}
+                >
+                  <Download color="#fff" size={18} />
+                  <Text style={styles.downloadButtonText}>Download</Text>
+                </TouchableOpacity>
+              )}
+            </View>
+
+            {/* Embedding Model Download */}
+            <View style={styles.downloadItem}>
+              <View style={styles.downloadInfo}>
+                <Text style={styles.downloadTitle}>Embedding Model (BGE)</Text>
+                <Text style={styles.downloadSize}>~25 MB</Text>
+              </View>
+              {embeddingExists ? (
+                <Text style={styles.downloadedText}>✓ Downloaded</Text>
+              ) : isDownloadingEmbedding ? (
+                <View style={styles.progressContainer}>
+                  <Progress.Bar
+                    progress={embeddingDownloadProgress}
+                    width={200}
+                    color="#007AFF"
+                  />
+                  <Text style={styles.progressText}>
+                    {Math.round(embeddingDownloadProgress * 100)}%
+                  </Text>
+                </View>
+              ) : (
+                <TouchableOpacity
+                  style={styles.downloadButton}
+                  onPress={downloadEmbedding}
+                >
+                  <Download color="#fff" size={18} />
+                  <Text style={styles.downloadButtonText}>Download</Text>
+                </TouchableOpacity>
+              )}
+            </View>
+          </View>
+        )}
 
         {/* <View style={styles.section}>
           <Text style={styles.sectionTitle}>Brave Search API</Text>
@@ -257,7 +441,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     padding: 16,
-    marginTop: 50,
+    marginTop: Platform.OS === 'ios' ? 50 : 0,
     borderBottomWidth: 1,
     borderBottomColor: '#333',
   },
@@ -411,6 +595,55 @@ const styles = StyleSheet.create({
   linkContainer: {
     marginTop: 8,
     marginBottom: 16,
+  },
+  downloadItem: {
+    backgroundColor: '#1a1a1a',
+    borderRadius: 8,
+    padding: 12,
+    marginBottom: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  downloadInfo: {
+    flex: 1,
+  },
+  downloadTitle: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: 'bold',
+    marginBottom: 4,
+  },
+  downloadSize: {
+    color: '#999',
+    fontSize: 14,
+  },
+  downloadButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#007AFF',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 6,
+    gap: 6,
+  },
+  downloadButtonText: {
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: 'bold',
+  },
+  downloadedText: {
+    color: '#28a745',
+    fontSize: 14,
+    fontWeight: 'bold',
+  },
+  progressContainer: {
+    alignItems: 'center',
+  },
+  progressText: {
+    color: '#fff',
+    fontSize: 12,
+    marginTop: 4,
   },
 });
 

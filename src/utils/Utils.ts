@@ -1,5 +1,6 @@
 import DeviceInfo from "react-native-device-info";
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import RNFS from 'react-native-fs';
 import { Platform } from 'react-native';
 
 interface ModelParameters {
@@ -35,6 +36,7 @@ const DEFAULT_PARAMETERS: ModelParameters = {
   top_k: 20,
   min_p: 0,
   stop: ['<|im_end|>', '<|im_start|>', '<|end|>', '<|user|>', '<|assistant|>', 'User:', 'Assistant:', 'Human:', 'AI:', '<|eot_id|>'],
+  batch_size: 512,
 };
 
 async function getModelParamsForDevice() {
@@ -74,6 +76,24 @@ async function getModelParamsForDevice() {
 
       // Fallback to default model if no active model is set or found
       console.log('No active model found, using default model');
+
+      // On Android, check if model is downloaded to document directory
+      if (Platform.OS === 'android') {
+        const androidModelPath = `${RNFS.DocumentDirectoryPath}/model/Qwen3-1.7B-Q4_K_M.gguf`;
+        const exists = await RNFS.exists(androidModelPath);
+        if (exists) {
+          console.log('Using downloaded model on Android');
+          const modelParams = {
+            model: androidModelPath,
+            is_model_asset: false,
+            ...DEFAULT_PARAMETERS,
+          };
+          const deviceId = DeviceInfo.getDeviceId();
+          console.log(`deviceId: ${deviceId}`);
+          return modelParams;
+        }
+      }
+
       const modelParams = {
         model: 'file://Qwen3-1.7B-Q4_K_M.gguf',
         is_model_asset: true,

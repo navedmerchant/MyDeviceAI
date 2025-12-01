@@ -9,7 +9,9 @@ import {
   StyleSheet,
   ActivityIndicator,
   Alert,
+  Platform,
 } from 'react-native';
+import RNFS from 'react-native-fs';
 import { ChevronLeft, Trash2 } from 'lucide-react-native';
 import { DrawerNavigationProp } from '@react-navigation/drawer';
 import { DrawerParamList } from '../../App';
@@ -90,9 +92,27 @@ const ContextSettings: React.FC<Props> = ({ navigation }) => {
 
   const loadEmbeddingModel = async () => {
     try {
+      let modelPath = 'file://bge-small-en-v1.5-q4_k_m.gguf';
+      let isAsset = true;
+
+      // On Android, check if model is downloaded to document directory
+      if (Platform.OS === 'android') {
+        const androidModelPath = `${RNFS.DocumentDirectoryPath}/model/bge-small-en-v1.5-q4_k_m.gguf`;
+        const exists = await RNFS.exists(androidModelPath);
+        if (exists) {
+          modelPath = androidModelPath;
+          isAsset = false;
+          console.log('Using downloaded embedding model on Android');
+        } else {
+          console.log('Embedding model not found, skipping initialization');
+          setError('Embedding model not downloaded. Please download models first.');
+          return;
+        }
+      }
+
       embeddingContextRef.current = await initLlama({
-        model: 'file://bge-small-en-v1.5-q4_k_m.gguf',
-        is_model_asset: true,
+        model: modelPath,
+        is_model_asset: isAsset,
         n_ctx: 512,
         n_gpu_layers: 0,
         embedding: true
@@ -377,7 +397,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     padding: 16,
-    marginTop: 50,
+    marginTop: Platform.OS === 'ios' ? 50 : 0,
     borderBottomWidth: 1,
     borderBottomColor: '#333',
   },

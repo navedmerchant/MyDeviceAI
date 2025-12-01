@@ -28,11 +28,12 @@
     "react-native-gesture-handler": "^2.21.2",
     "react-native-markdown-display": "^7.0.2",
     "react-native-popup-menu": "^0.16.1",
+    "react-native-progress": "^5.0.1",
     "react-native-reanimated": "^3.16.6",
     "react-native-safe-area-context": "^5.0.0",
     "react-native-screens": "^4.4.0",
     "react-native-simple-toast": "^3.3.1",
-    "react-native-svg": "^15.7.1",
+    "react-native-svg": "^15.15.0",
     "react-native-webrtc": "124.0.7"
   },
   "devDependencies": {
