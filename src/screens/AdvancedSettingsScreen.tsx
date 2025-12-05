@@ -176,8 +176,8 @@ const AdvancedSettingsScreen: React.FC<Props> = ({ navigation }) => {
 
   // Remote connection handlers
   const handleConnect = async () => {
-    if (!roomCodeInput.trim() || roomCodeInput.length !== 9) {
-      Alert.alert('Error', 'Please enter a valid 9-digit code');
+    if (!roomCodeInput.trim() || roomCodeInput.length !== 6) {
+      Alert.alert('Error', 'Please enter a valid 6-digit code');
       return;
     }
 
@@ -1065,14 +1065,14 @@ const AdvancedSettingsScreen: React.FC<Props> = ({ navigation }) => {
           ) : (
             // No saved code or editing - show input form
             <View style={styles.connectionSetup}>
-              <Text style={styles.inputLabel}>Enter 9-Digit Code</Text>
+              <Text style={styles.inputLabel}>Enter 6-Digit Code</Text>
               <TextInput
                 style={styles.codeInput}
-                placeholder="ABC123XYZ"
+                placeholder="ABC123"
                 placeholderTextColor="#666"
                 value={roomCodeInput}
                 onChangeText={setRoomCodeInput}
-                maxLength={9}
+                maxLength={6}
                 keyboardType="default"
                 autoCapitalize="characters"
                 autoCorrect={false}
@@ -1117,7 +1117,7 @@ const AdvancedSettingsScreen: React.FC<Props> = ({ navigation }) => {
             <Text style={styles.infoTitle}>How it works:</Text>
             <Text style={styles.infoText}>
               1. Open MyDeviceAI-Desktop on your computer{'\n'}
-              2. Get the 9-digit alphanumeric code from the desktop app{'\n'}
+              2. Get the 6-digit alphanumeric code from the desktop app{'\n'}
               3. Enter the code above and tap Connect{'\n'}
               4. Your messages will be processed on your desktop
             </Text>
