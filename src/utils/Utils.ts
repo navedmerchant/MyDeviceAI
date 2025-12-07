@@ -1,5 +1,6 @@
 import DeviceInfo from "react-native-device-info";
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { Platform } from 'react-native';
 
 interface ModelParameters {
   n_ctx: number;
@@ -10,6 +11,7 @@ interface ModelParameters {
   top_k: number;
   min_p: number;
   stop: string[];
+  batch_size?: number;
 }
 
 interface DownloadedModel {
@@ -39,55 +41,61 @@ async function getModelParamsForDevice() {
     try {
       // Get the active model ID from AsyncStorage
       const activeModelId = await AsyncStorage.getItem('activeModelId');
-      
+
       if (activeModelId) {
         // Get downloaded models from AsyncStorage
         const downloadedModelsJson = await AsyncStorage.getItem('downloadedModels');
         if (downloadedModelsJson) {
           const downloadedModels: DownloadedModel[] = JSON.parse(downloadedModelsJson);
-          
+
           // Find the active model
           const activeModel = downloadedModels.find(model => model.id === activeModelId);
-          
+
           if (activeModel && activeModel.filePath) {
             console.log(`Loading active model: ${activeModel.name} from ${activeModel.filePath}`);
-            
+
             // Use stored parameters or default parameters
             const parameters = activeModel.parameters || DEFAULT_PARAMETERS;
-            
+
             const modelParams = {
               model: activeModel.filePath,
               is_model_asset: false, // Downloaded models are not bundled assets
               ...parameters,
+              // Add batch_size for Android devices
+              ...(Platform.OS === 'android' && { batch_size: 512 }),
             };
-            
+
             const deviceId = DeviceInfo.getDeviceId();
             console.log(`deviceId: ${deviceId}`);
             return modelParams;
           }
         }
       }
-      
+
       // Fallback to default model if no active model is set or found
       console.log('No active model found, using default model');
       const modelParams = {
         model: 'file://Qwen3-1.7B-Q4_K_M.gguf',
         is_model_asset: true,
         ...DEFAULT_PARAMETERS,
+        // Add batch_size for Android devices
+        ...(Platform.OS === 'android' && { batch_size: 512 }),
       };
 
       const deviceId = DeviceInfo.getDeviceId();
       console.log(`deviceId: ${deviceId}`);
       return modelParams;
-      
+
     } catch (error) {
       console.error('Error getting model params:', error);
-      
+
       // Fallback to default model on error
       const modelParams = {
         model: 'file://Qwen3-1.7B-Q4_K_M.gguf',
         is_model_asset: true,
         ...DEFAULT_PARAMETERS,
+        // Add batch_size for Android devices
+        ...(Platform.OS === 'android' && { batch_size: 512 }),
       };
 
       const deviceId = DeviceInfo.getDeviceId();

@@ -7,6 +7,7 @@
 import { P2PCF, type Peer } from 'p2pcf.rn';
 import type { P2PMessage } from '../types/RemoteConnection';
 import { TextDecoder } from '../utils/textdecoder';
+import { P2PCF_WORKER_URL } from '../config/Env';
 
 export type ConnectionStatusCallback = (isConnected: boolean) => void;
 export type MessageCallback = (message: string) => void;
@@ -199,7 +200,7 @@ export class RemoteConnectionManager {
         roomCode,
         {
           isDesktop: false, // Mobile client mode
-          workerUrl: 'https://p2pcf.naved-merchant.workers.dev',
+          workerUrl: P2PCF_WORKER_URL,
           pollingInterval: 3000, // Poll for desktop every 3s
         }
       );

@@ -441,11 +441,12 @@ want to talk and share about personal feelings.`;
 
   useEffect(() => {
     const subscription = AppState.addEventListener('change', nextAppState => {
+      console.log(`AppState change: ${appState.current} -> ${nextAppState}`);
 
-      if (
-        appState.current.match(/inactive|background/) &&
-        nextAppState === 'active'
-      ) {
+      // Moving to foreground (works for both iOS and Android)
+      // On iOS: inactive/background -> active
+      // On Android: background -> active (may skip inactive)
+      if (nextAppState === 'active' && appState.current !== 'active') {
         console.log("App coming to foreground")
         // Debounce model loading to avoid rapid state changes during screen lock
         if (modelLoadTimeoutRef.current) {
@@ -474,10 +475,11 @@ want to talk and share about personal feelings.`;
           }
         }, 500); // 500ms delay to avoid rapid transitions
 
-      } else if (
-        appState.current === 'active' &&
-        nextAppState.match(/inactive|background/)
-      ) {
+      }
+      // Moving to background (works for both iOS and Android)
+      // On iOS: active -> inactive -> background
+      // On Android: active -> background
+      else if (appState.current === 'active' && nextAppState !== 'active') {
         // Clear any pending model loads
         if (modelLoadTimeoutRef.current) {
           clearTimeout(modelLoadTimeoutRef.current);

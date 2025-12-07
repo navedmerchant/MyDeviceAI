@@ -6,11 +6,17 @@
 
 ## 🌟 Overview
 
-MyDeviceAI brings the power of artificial intelligence directly to your iPhone, with a focus on privacy, performance, and personalization. By running AI models directly on your device and integrating with privacy-focused web services, MyDeviceAI offers a unique blend of local processing power and cloud-based knowledge, all while keeping your data private and secure.
+MyDeviceAI brings the power of artificial intelligence directly to your mobile device, with a focus on privacy, performance, and personalization. Run AI models locally on your iOS or Android device, or connect remotely to your desktop computer from anywhere using WebRTC.
+
+**What makes MyDeviceAI unique:** We're the only local AI app that lets you seamlessly run powerful desktop models remotely on your computer via secure peer-to-peer WebRTC connections. Use your mobile device as a gateway to desktop-class AI models through [MyDeviceAI-Desktop](https://github.com/navedmerchant/MyDeviceAI-Desktop), all while maintaining complete privacy and control.
+
+By combining on-device AI processing with optional remote desktop connectivity and privacy-focused web services, MyDeviceAI offers the best of all worlds: the convenience of mobile, the power of desktop, and the privacy of local-first computing.
 
 ## ✨ Key Features
 
 - **Seamless Experience**: The app comes with bundled AI models that load asynchronously in the background, ensuring zero waiting time and a smooth user experience from the moment you launch.
+
+- **Remote Desktop Connection**: Connect your mobile device to MyDeviceAI-Desktop using secure peer-to-peer WebRTC connections. Leverage the power of desktop-class AI models directly from your iOS or Android device with automatic retry and reconnection support.
 
 - **Web Search Integration**: Bridge the knowledge gap between local AI and cloud capabilities with our web search integration, utilizing a self-hosted SearXNG instance for privacy-focused results.
 
@@ -20,7 +26,7 @@ MyDeviceAI brings the power of artificial intelligence directly to your iPhone, 
 
 - **Chat History**: Access up to 30 days of conversation history, making it easy to reference past discussions and maintain context over time.
 
-- **Broad Device Support**: Compatible with all modern iPhones, bringing private AI capabilities to more users than ever before.
+- **Broad Device Support**: Compatible with all modern iPhones and Android devices, bringing private AI capabilities to more users than ever before.
 
 ## 🚀 Getting Started
 
@@ -48,7 +54,18 @@ MyDeviceAI brings the power of artificial intelligence directly to your iPhone, 
    - Create `src/config/Env.ts` with the following content:
      ```typescript
      export const HOSTNAME = 'YOUR_SEARXNG_INSTANCE_URL';
+     export const P2PCF_WORKER_URL = 'YOUR_P2PCF_SIGNALLING_SERVER_URL';
      ```
+
+   **Important Configuration Notes:**
+   - **`HOSTNAME`**: URL of your SearXNG instance for web search functionality (optional, but recommended for web search features)
+   - **`P2PCF_WORKER_URL`**: URL of your P2PCF signalling server (required for remote desktop connections)
+     - This enables secure peer-to-peer WebRTC communication between mobile and desktop clients
+     - Without this, remote desktop features will not work
+     - Example: `https://your-p2pcf-server.com/`
+     - **Deployment Options:**
+       - **Option 1 (Cloudflare Workers)**: Deploy [p2pcf worker.js](https://github.com/gfodor/p2pcf/blob/master/src/worker.js) on Cloudflare Workers (free tier available)
+       - **Option 2 (Railway)**: Deploy [p2pcf-signalling](https://github.com/navedmerchant/p2pcf-signalling) on Railway (easy one-click deployment)
 
 4. Install dependencies:
    ```bash
@@ -69,12 +86,63 @@ MyDeviceAI brings the power of artificial intelligence directly to your iPhone, 
    yarn ios
    ```
 
+## 🔗 Remote Desktop Connection
+
+MyDeviceAI supports secure peer-to-peer connections between mobile devices (iOS/Android) and desktop computers, allowing you to access powerful desktop-class AI models from your phone.
+
+### How It Works
+
+The remote connection feature uses **WebRTC** technology through the **p2pcf.rn** library to establish direct peer-to-peer connections:
+
+- **Cross-Platform Support**: Works seamlessly on both iOS and Android devices
+- **Secure Communication**: End-to-end encrypted WebRTC data channels
+- **6-Digit Room Codes**: Simple room-based pairing system
+- **Automatic Retry**: Built-in connection retry with exponential backoff (up to 3 attempts)
+- **Real-time Streaming**: Supports streaming responses with both regular and reasoning tokens
+
+### Setup Requirements
+
+1. **P2PCF Signalling Server**: You need a P2PCF signalling server for WebRTC coordination. Configure the URL in `src/config/Env.ts`:
+   ```typescript
+   export const P2PCF_WORKER_URL = 'https://your-p2pcf-server.com/';
+   ```
+
+2. **MyDeviceAI-Desktop**: Install and run the [MyDeviceAI-Desktop](https://github.com/navedmerchant/MyDeviceAI-Desktop) companion app on your computer
+
+### Using Remote Connection
+
+1. Start MyDeviceAI-Desktop on your computer and generate a 6-digit room code
+2. Open MyDeviceAI mobile app
+3. Navigate to Remote Connection settings
+4. Enter the 6-digit room code
+5. Once connected, your mobile app will use the desktop's AI models for inference
+
+### Features
+
+- **Protocol Handshake**: Automatic version negotiation ensures compatibility between mobile and desktop clients
+- **Connection Monitoring**: Real-time connection status with retry countdown
+- **Error Handling**: Comprehensive error handling with user-friendly messages
+- **Automatic Reconnection**: Automatically attempts to reconnect on disconnection (up to 3 attempts with exponential backoff)
+- **OpenAI-Compatible API**: Uses standard message format for seamless integration
+
+### Technical Details
+
+- **Protocol Version**: 1.0.0
+- **Transport**: WebRTC Data Channels
+- **Message Format**: JSON-based P2P protocol
+- **Retry Strategy**: Exponential backoff (2s → 3s → 4.5s, max 30s)
+- **Max Retry Attempts**: 3
+- **Polling Interval**: 3 seconds (mobile polls for desktop availability)
+
 ## 🛠️ Technical Stack
 
-- **Framework**: React Native
-- **AI Models**: 
+- **Framework**: React Native (iOS/Android)
+- **AI Models**:
   - Qwen 3 (1.7B Q4) for chat and reasoning
   - BGE Small for embeddings
+- **Remote Connection**:
+  - p2pcf.rn for WebRTC peer-to-peer communication
+  - Custom P2P protocol for desktop-mobile sync
 - **Web Search**: SearXNG Integration
 - **State Management**: Redux + Redux Toolkit
 - **Storage**: AsyncStorage for chat history and user contexts
