@@ -85,6 +85,7 @@ const AdvancedSettingsScreen: React.FC<Props> = ({ navigation }) => {
   const [availableGGUFFiles, setAvailableGGUFFiles] = useState<GGUFFile[]>([]);
   const [loadingGGUFFiles, setLoadingGGUFFiles] = useState(false);
   const [totalStorageUsed, setTotalStorageUsed] = useState<string>('0 B');
+  const [hasPrewarmedNetwork, setHasPrewarmedNetwork] = useState(false);
   
   // Parameter configuration modal state
   const [showParameterModal, setShowParameterModal] = useState(false);
@@ -105,11 +106,46 @@ const AdvancedSettingsScreen: React.FC<Props> = ({ navigation }) => {
 
   useEffect(() => {
     loadDownloadedModels();
+    checkNetworkPrewarmStatus();
   }, []);
+
+  // Reset editing state when retrying
+  useEffect(() => {
+    if (remoteState.isRetrying) {
+      setIsEditingCode(false);
+    }
+  }, [remoteState.isRetrying]);
 
   useEffect(() => {
     calculateStorageUsage();
   }, [downloadedModels]);
+
+  // Check if network permission has been pre-warmed before
+  const checkNetworkPrewarmStatus = async () => {
+    if (Platform.OS === 'ios') {
+      const status = await AsyncStorage.getItem('networkPermissionPrewarmed');
+      setHasPrewarmedNetwork(status === 'true');
+    }
+  };
+
+  // Request network permission on iOS when remote tab is accessed (only once per app installation)
+  useEffect(() => {
+    if (activeTab === 'remote' && Platform.OS === 'ios' && !hasPrewarmedNetwork) {
+      // Pre-warm network permission by making a dummy fetch to the worker URL
+      // This triggers the iOS local network permission dialog before connection attempt
+      fetch('https://p2pcf.naved-merchant.workers.dev', { method: 'HEAD' })
+        .then(async () => {
+          console.log('Network permission pre-warmed');
+          setHasPrewarmedNetwork(true);
+          await AsyncStorage.setItem('networkPermissionPrewarmed', 'true');
+        })
+        .catch(async (err) => {
+          console.log('Pre-warm request completed:', err.message);
+          setHasPrewarmedNetwork(true);
+          await AsyncStorage.setItem('networkPermissionPrewarmed', 'true');
+        });
+    }
+  }, [activeTab, hasPrewarmedNetwork]);
 
   const loadDownloadedModels = async () => {
     try {
@@ -1021,8 +1057,9 @@ const AdvancedSettingsScreen: React.FC<Props> = ({ navigation }) => {
                 <Text style={styles.disconnectButtonText}>Disconnect</Text>
               </TouchableOpacity>
             </View>
-          ) : remoteState.config?.roomCode && !isEditingCode ? (
+          ) : remoteState.config?.roomCode && (!isEditingCode || remoteState.isRetrying) ? (
             // Have saved code but not connected - show immutable code with change button
+            // Also show this view if retrying (even if user was editing code)
             <View style={styles.connectionSetup}>
               <Text style={styles.inputLabel}>Saved Connection Code</Text>
               <View style={styles.savedCodeContainer}>
@@ -1036,7 +1073,16 @@ const AdvancedSettingsScreen: React.FC<Props> = ({ navigation }) => {
                 </View>
               )}
 
-              {remoteState.lastError && (
+              {remoteState.isRetrying && remoteState.nextRetryIn !== null && (
+                <View style={styles.retryingIndicator}>
+                  <ActivityIndicator size="small" color="#FFC107" />
+                  <Text style={styles.retryingText}>
+                    Retrying in {Math.ceil(remoteState.nextRetryIn / 1000)}s (Attempt {remoteState.retryCount})
+                  </Text>
+                </View>
+              )}
+
+              {remoteState.lastError && !remoteState.isRetrying && (
                 <View style={styles.errorContainer}>
                   <Text style={styles.errorText}>{remoteState.lastError}</Text>
                 </View>
@@ -1044,21 +1090,11 @@ const AdvancedSettingsScreen: React.FC<Props> = ({ navigation }) => {
 
               <View style={styles.savedCodeActions}>
                 <TouchableOpacity
-                  style={styles.changeCodeButton}
+                  style={[styles.changeCodeButton, styles.changeCodeButtonFullWidth]}
                   onPress={handleChangeCode}
-                  disabled={remoteState.status === 'remote_connecting'}
+                  disabled={remoteState.status === 'remote_connecting' || remoteState.isRetrying}
                 >
                   <Text style={styles.changeCodeButtonText}>Change Code</Text>
-                </TouchableOpacity>
-
-                <TouchableOpacity
-                  style={[styles.retryConnectButton, remoteState.status === 'remote_connecting' && styles.connectButtonDisabled]}
-                  onPress={() => connect(remoteState.config!.roomCode)}
-                  disabled={remoteState.status === 'remote_connecting'}
-                >
-                  <Text style={styles.retryConnectButtonText}>
-                    {remoteState.status === 'remote_connecting' ? 'Connecting...' : 'Retry Connection'}
-                  </Text>
                 </TouchableOpacity>
               </View>
             </View>
@@ -1996,6 +2032,19 @@ const styles = StyleSheet.create({
     color: '#007AFF',
     fontSize: 14,
   },
+  retryingIndicator: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    marginBottom: 16,
+    padding: 12,
+    backgroundColor: '#FFC10720',
+    borderRadius: 8,
+  },
+  retryingText: {
+    color: '#FFC107',
+    fontSize: 14,
+  },
   savedCodeActions: {
     flexDirection: 'row',
     gap: 12,
@@ -2010,20 +2059,12 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     alignItems: 'center',
   },
+  changeCodeButtonFullWidth: {
+    flex: undefined,
+    width: '100%',
+  },
   changeCodeButtonText: {
     color: '#666',
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  retryConnectButton: {
-    flex: 1,
-    backgroundColor: '#007AFF',
-    paddingVertical: 12,
-    borderRadius: 8,
-    alignItems: 'center',
-  },
-  retryConnectButtonText: {
-    color: '#fff',
     fontSize: 16,
     fontWeight: '600',
   },

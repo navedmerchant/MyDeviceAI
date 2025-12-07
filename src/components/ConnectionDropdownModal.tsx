@@ -24,19 +24,35 @@ interface ConnectionDropdownModalProps {
   onModeChange: (mode: ConnectionMode) => void;
   onSetupPress: () => void;
   hasRemoteConfig: boolean;
+  retryCount?: number;
+  nextRetryIn?: number | null;
+  isRetrying?: boolean;
 }
 
 /**
  * Get status description text
  */
-function getStatusText(status: ConnectionStatus, isConnected: boolean): string {
+function getStatusText(
+  status: ConnectionStatus,
+  isConnected: boolean,
+  isRetrying?: boolean,
+  retryCount?: number,
+  nextRetryIn?: number | null
+): string {
   if (isConnected) {
     return 'Connected to Desktop';
+  }
+
+  if (isRetrying && nextRetryIn !== undefined && nextRetryIn !== null) {
+    const seconds = Math.ceil(nextRetryIn / 1000);
+    return `Retrying in ${seconds}s (Attempt ${retryCount || 0})`;
   }
 
   switch (status) {
     case 'remote_connecting':
       return 'Connecting to Desktop...';
+    case 'remote_retrying':
+      return `Retrying Connection (Attempt ${retryCount || 0})...`;
     case 'remote_error':
       return 'Desktop Offline';
     case 'local_loading':
@@ -57,8 +73,11 @@ export function ConnectionDropdownModal({
   onModeChange,
   onSetupPress,
   hasRemoteConfig,
+  retryCount,
+  nextRetryIn,
+  isRetrying,
 }: ConnectionDropdownModalProps) {
-  const statusText = getStatusText(connectionStatus, isConnected);
+  const statusText = getStatusText(connectionStatus, isConnected, isRetrying, retryCount, nextRetryIn);
 
   return (
     <Modal

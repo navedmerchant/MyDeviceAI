@@ -1312,6 +1312,9 @@ want to talk and share about personal feelings.`;
         onModeChange={handleConnectionModeChange}
         onSetupPress={handleSetupConnection}
         hasRemoteConfig={remoteState.config !== null}
+        retryCount={remoteState.retryCount}
+        nextRetryIn={remoteState.nextRetryIn}
+        isRetrying={remoteState.isRetrying}
       />
     </KeyboardAvoidingView>
   );

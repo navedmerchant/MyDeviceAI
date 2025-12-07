@@ -11,11 +11,18 @@ import { TextDecoder } from '../utils/textdecoder';
 export type ConnectionStatusCallback = (isConnected: boolean) => void;
 export type MessageCallback = (message: string) => void;
 export type ErrorCallback = (error: string) => void;
+export type RetryStatusCallback = (retryCount: number, nextRetryIn: number | null, isRetrying: boolean) => void;
 
 // Protocol constants
 const PROTOCOL_VERSION = '1.0.0';
 const MIN_COMPATIBLE_VERSION = '1.0.0';
 const CLIENT_IMPL = 'mydeviceai-mobile';
+
+// Retry constants
+const INITIAL_RETRY_DELAY = 2000; // 2 seconds
+const MAX_RETRY_DELAY = 30000; // 30 seconds
+const RETRY_BACKOFF_MULTIPLIER = 1.5;
+const MAX_RETRY_ATTEMPTS = 3; // Maximum number of retry attempts
 
 /**
  * Manages remote connection to MyDeviceAI-Desktop
@@ -29,11 +36,19 @@ export class RemoteConnectionManager {
   private onConnectionChange: ConnectionStatusCallback | null = null;
   private onMessage: MessageCallback | null = null;
   private onError: ErrorCallback | null = null;
+  private onRetryStatus: RetryStatusCallback | null = null;
 
   // Protocol state
   private isHandshakeComplete: boolean = false;
   private protocolCompatible: boolean = false;
   private clientId: string = `mobile-${Date.now()}`;
+
+  // Retry state
+  private retryCount: number = 0;
+  private retryTimeoutId: NodeJS.Timeout | null = null;
+  private shouldRetry: boolean = false;
+  private countdownIntervalId: NodeJS.Timeout | null = null;
+  private nextRetryTime: number | null = null;
 
   // Message streaming - Map of prompt ID to streaming state
   private activePrompts: Map<string, {
@@ -51,15 +66,131 @@ export class RemoteConnectionManager {
   }
 
   /**
+   * Enable automatic retry on connection failures
+   */
+  enableRetry(): void {
+    this.shouldRetry = true;
+    this.retryCount = 0;
+  }
+
+  /**
+   * Disable automatic retry
+   */
+  disableRetry(): void {
+    this.shouldRetry = false;
+    this.clearRetryTimers();
+  }
+
+  /**
+   * Clear all retry timers
+   */
+  private clearRetryTimers(): void {
+    if (this.retryTimeoutId) {
+      clearTimeout(this.retryTimeoutId);
+      this.retryTimeoutId = null;
+    }
+    if (this.countdownIntervalId) {
+      clearInterval(this.countdownIntervalId);
+      this.countdownIntervalId = null;
+    }
+    this.nextRetryTime = null;
+  }
+
+  /**
+   * Calculate retry delay with exponential backoff
+   */
+  private calculateRetryDelay(): number {
+    const delay = Math.min(
+      INITIAL_RETRY_DELAY * Math.pow(RETRY_BACKOFF_MULTIPLIER, this.retryCount),
+      MAX_RETRY_DELAY
+    );
+    return Math.floor(delay);
+  }
+
+  /**
+   * Schedule a retry attempt
+   */
+  private scheduleRetry(): void {
+    if (!this.shouldRetry || !this.roomCode) {
+      return;
+    }
+
+    // Check if we've exceeded max retry attempts
+    if (this.retryCount >= MAX_RETRY_ATTEMPTS) {
+      console.log(`Max retry attempts (${MAX_RETRY_ATTEMPTS}) reached. Stopping retries.`);
+      this.shouldRetry = false;
+      this.onRetryStatus?.(this.retryCount, null, false);
+      this.onError?.(`Failed to connect after ${MAX_RETRY_ATTEMPTS} attempts`);
+      return;
+    }
+
+    this.clearRetryTimers();
+
+    const delay = this.calculateRetryDelay();
+    this.nextRetryTime = Date.now() + delay;
+    this.retryCount++;
+
+    console.log(`Scheduling retry #${this.retryCount} in ${delay}ms`);
+
+    // Notify retry status with countdown
+    this.updateRetryCountdown();
+
+    // Start countdown interval (update every second)
+    this.countdownIntervalId = setInterval(() => {
+      this.updateRetryCountdown();
+    }, 1000);
+
+    // Schedule the actual retry
+    this.retryTimeoutId = setTimeout(async () => {
+      this.clearRetryTimers();
+      console.log(`Attempting retry #${this.retryCount}...`);
+
+      try {
+        await this.connect(this.roomCode!, true); // true = is retry
+      } catch (error) {
+        console.error('Retry failed:', error);
+        // scheduleRetry will be called again by the error handler
+      }
+    }, delay);
+  }
+
+  /**
+   * Update retry countdown for UI
+   */
+  private updateRetryCountdown(): void {
+    if (!this.nextRetryTime) {
+      this.onRetryStatus?.(this.retryCount, null, false);
+      return;
+    }
+
+    const remaining = Math.max(0, this.nextRetryTime - Date.now());
+    this.onRetryStatus?.(this.retryCount, remaining, true);
+
+    // Clear interval if countdown is done
+    if (remaining === 0 && this.countdownIntervalId) {
+      clearInterval(this.countdownIntervalId);
+      this.countdownIntervalId = null;
+    }
+  }
+
+  /**
    * Connect to desktop using 6-digit room code
    */
-  async connect(roomCode: string): Promise<void> {
-    if (this.p2pcf) {
+  async connect(roomCode: string, isRetry: boolean = false): Promise<void> {
+    if (this.p2pcf && !isRetry) {
       await this.disconnect();
     }
 
     try {
       this.roomCode = roomCode;
+
+      // Only reset retry count on manual connection
+      if (!isRetry) {
+        this.retryCount = 0;
+        this.clearRetryTimers();
+      }
+
+      // Generate new client ID for each connection attempt
       this.clientId = `mobile-${Date.now()}`;
 
       // Create mobile client instance
@@ -77,6 +208,12 @@ export class RemoteConnectionManager {
       this.p2pcf.on('peerconnect', (peer: Peer) => {
         console.log('Connected to desktop:', peer.clientId);
         this.desktopPeer = peer;
+
+        // Reset retry count on successful connection
+        this.retryCount = 0;
+        this.clearRetryTimers();
+        this.onRetryStatus?.(0, null, false);
+
         this.performHandshake();
       });
 
@@ -87,6 +224,11 @@ export class RemoteConnectionManager {
         this.isHandshakeComplete = false;
         this.protocolCompatible = false;
         this.onConnectionChange?.(false);
+
+        // Schedule retry on disconnection
+        if (this.shouldRetry) {
+          this.scheduleRetry();
+        }
       });
 
       // Listen for messages from desktop
@@ -98,6 +240,11 @@ export class RemoteConnectionManager {
       this.p2pcf.on('error', (error: Error) => {
         console.error('P2PCF error:', error);
         this.onError?.(error.message);
+
+        // Schedule retry on error
+        if (this.shouldRetry) {
+          this.scheduleRetry();
+        }
       });
 
       // Start connection and poll for desktop
@@ -108,6 +255,12 @@ export class RemoteConnectionManager {
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
       console.error('Failed to connect:', errorMessage);
       this.onError?.(errorMessage);
+
+      // Schedule retry on connection failure
+      if (this.shouldRetry) {
+        this.scheduleRetry();
+      }
+
       throw error;
     }
   }
@@ -155,6 +308,10 @@ export class RemoteConnectionManager {
    * Disconnect from desktop
    */
   async disconnect(): Promise<void> {
+    // Disable retry when explicitly disconnecting
+    this.shouldRetry = false;
+    this.clearRetryTimers();
+
     if (this.p2pcf) {
       this.p2pcf.destroy();
       this.p2pcf = null;
@@ -163,8 +320,10 @@ export class RemoteConnectionManager {
     this.roomCode = null;
     this.isHandshakeComplete = false;
     this.protocolCompatible = false;
+    this.retryCount = 0;
     this.activePrompts.clear();
     this.onConnectionChange?.(false);
+    this.onRetryStatus?.(0, null, false);
   }
 
   /**
@@ -429,6 +588,13 @@ export class RemoteConnectionManager {
    */
   setErrorCallback(callback: ErrorCallback): void {
     this.onError = callback;
+  }
+
+  /**
+   * Set retry status callback
+   */
+  setRetryStatusCallback(callback: RetryStatusCallback): void {
+    this.onRetryStatus = callback;
   }
 
   /**

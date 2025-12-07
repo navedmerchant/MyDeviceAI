@@ -35,6 +35,8 @@
 	</dict>
 	<key>NSCameraUsageDescription</key>
 	<string>MyDeviceAI needs access to your camera to capture photos and videos.</string>
+	<key>NSLocalNetworkUsageDescription</key>
+	<string>MyDeviceAI needs access to your local network to connect to MyDeviceAI-Desktop and process AI requests on your computer.</string>
 	<key>NSLocationWhenInUseUsageDescription</key>
 	<string></string>
 	<key>UIDeviceFamily</key>

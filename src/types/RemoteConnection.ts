@@ -11,6 +11,7 @@ export type ConnectionStatus =
   | 'local_ready'        // Local model ready, not connected to remote
   | 'remote_connecting'  // Attempting to connect to remote desktop
   | 'remote_connected'   // Successfully connected to remote desktop
+  | 'remote_retrying'    // Retrying connection after failure
   | 'remote_error';      // Remote connection failed/error
 
 /**
@@ -50,6 +51,9 @@ export interface RemoteConnectionState {
   isConnected: boolean;
   lastError: string | null;
   connectedAt: number | null;
+  retryCount: number;
+  nextRetryIn: number | null; // milliseconds until next retry
+  isRetrying: boolean;
 }
 
 /**

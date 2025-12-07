@@ -27,6 +27,9 @@ const initialState: RemoteConnectionState = {
   isConnected: false,
   lastError: null,
   connectedAt: null,
+  retryCount: 0,
+  nextRetryIn: null,
+  isRetrying: false,
 };
 
 // Create context
@@ -75,18 +78,31 @@ export function RemoteConnectionProvider({ children }: { children: ReactNode }) 
       setState(prev => ({
         ...prev,
         status: isConnected ? 'remote_connected' :
+                prev.isRetrying ? 'remote_retrying' :
                 prev.mode === 'dynamic' ? 'local_ready' : prev.status,
         isConnected,
         connectedAt: isConnected ? Date.now() : null,
-        lastError: null,
+        lastError: isConnected ? null : prev.lastError,
       }));
     });
 
     connectionManager.setErrorCallback((error) => {
       setState(prev => ({
         ...prev,
-        status: 'remote_error',
+        status: prev.isRetrying ? 'remote_retrying' : 'remote_error',
         lastError: error,
+      }));
+    });
+
+    connectionManager.setRetryStatusCallback((retryCount, nextRetryIn, isRetrying) => {
+      setState(prev => ({
+        ...prev,
+        retryCount,
+        nextRetryIn,
+        isRetrying,
+        status: isRetrying ? 'remote_retrying' :
+                prev.isConnected ? 'remote_connected' :
+                prev.mode === 'dynamic' ? 'local_ready' : prev.status,
       }));
     });
 
@@ -110,6 +126,8 @@ export function RemoteConnectionProvider({ children }: { children: ReactNode }) 
         lastError: null,
       }));
 
+      // Enable automatic retry for dynamic mode connections
+      connectionManager.enableRetry();
       await connectionManager.connect(roomCode);
 
       setState(prev => ({
@@ -125,12 +143,15 @@ export function RemoteConnectionProvider({ children }: { children: ReactNode }) 
       const errorMessage = error instanceof Error ? error.message : 'Failed to connect';
       setState(prev => ({
         ...prev,
-        status: 'remote_error',
+        status: prev.isRetrying ? 'remote_retrying' : 'remote_error',
         lastError: errorMessage,
       }));
-      throw error;
+      // Don't throw error if retry is enabled, as it will retry automatically
+      if (!state.isRetrying) {
+        throw error;
+      }
     }
-  }, [connectionManager]);
+  }, [connectionManager, state.isRetrying]);
 
   /**
    * Disconnect from desktop
@@ -145,6 +166,9 @@ export function RemoteConnectionProvider({ children }: { children: ReactNode }) 
         isConnected: false,
         connectedAt: null,
         lastError: null,
+        retryCount: 0,
+        nextRetryIn: null,
+        isRetrying: false,
       }));
     } catch (error) {
       console.error('Failed to disconnect:', error);
@@ -193,15 +217,18 @@ export function RemoteConnectionProvider({ children }: { children: ReactNode }) 
         await connect(state.config.roomCode, false);
       }
 
-      // If switching to local mode, disconnect
-      if (mode === 'local' && state.isConnected) {
-        await disconnect();
+      // If switching to local mode, disconnect and disable retry
+      if (mode === 'local') {
+        connectionManager.disableRetry();
+        if (state.isConnected || state.isRetrying) {
+          await disconnect();
+        }
       }
     } catch (error) {
       console.error('Failed to set mode:', error);
       throw error;
     }
-  }, [state.config, state.isConnected, connect, disconnect]);
+  }, [state.config, state.isConnected, state.isRetrying, connect, disconnect, connectionManager]);
 
   /**
    * Update local model status (loading or ready)

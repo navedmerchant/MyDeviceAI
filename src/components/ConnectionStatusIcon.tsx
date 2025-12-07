@@ -15,7 +15,7 @@ interface ConnectionStatusIconProps {
 
 /**
  * Get icon color based on connection status
- * Red = loading/error, Green = ready/connected
+ * Red = loading/error, Green = ready/connected, Yellow = retrying
  */
 function getIconColor(status: ConnectionStatus): string {
   switch (status) {
@@ -29,6 +29,9 @@ function getIconColor(status: ConnectionStatus): string {
 
     case 'remote_connecting':
       return '#FFA726'; // Orange
+
+    case 'remote_retrying':
+      return '#FFC107'; // Yellow
 
     default:
       return '#999999'; // Gray
@@ -49,6 +52,7 @@ function getIconComponent(status: ConnectionStatus, mode?: 'local' | 'dynamic'):
   switch (status) {
     case 'remote_connecting':
     case 'remote_connected':
+    case 'remote_retrying':
       return Monitor;
 
     case 'local_loading':
