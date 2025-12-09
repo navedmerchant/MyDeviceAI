@@ -50,6 +50,7 @@ import { useDatabase } from './db/DatabaseContext';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { performSearXNGSearch, SearchResult } from './search/SearXNG';
 import { Share } from 'react-native';
+import { checkLocalNetworkAccess, requestLocalNetworkAccess } from '@generac/react-native-local-network-permission';
 
 // Import the components we moved to separate files
 import EmptyState from './components/EmptyState';
@@ -164,10 +165,17 @@ const ChatUI: React.FC<ChatUIProps> = ({ historyId, onMenuPress, MenuIcon, navig
     }, 100);
   }, []);
 
+  // Check and request local network permission on iOS at app startup
+  const checkAndRequestLocalNetworkPermission = useCallback(async () => {
+      await requestLocalNetworkAccess();
+  }, []);
+
   useEffect(() => {
     loadSystemPrompt();
     loadContextSettings();
     initializeContext();
+    checkAndRequestLocalNetworkPermission();
+
     // Add keyboard listeners
     const keyboardWillShow = Keyboard.addListener(
       Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow',

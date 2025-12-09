@@ -10,15 +10,16 @@
     "test": "jest"
   },
   "dependencies": {
+    "@generac/react-native-local-network-permission": "^1.2.0",
     "@op-engineering/op-sqlite": "11.4.7",
     "@react-native-async-storage/async-storage": "^2.0.0",
     "@react-navigation/drawer": "^7.1.1",
     "@react-navigation/native": "^7.0.14",
+    "expo": "~51.0.0",
     "ios": "^0.0.1",
     "llama.rn": "0.8.3",
     "lucide-react-native": "^0.446.0",
     "p2pcf.rn": "0.5.0",
-    "react-native-webrtc":"124.0.7",
     "react": "18.3.1",
     "react-native": "0.75.3",
     "react-native-collapsible": "^1.6.2",
@@ -31,7 +32,8 @@
     "react-native-safe-area-context": "^5.0.0",
     "react-native-screens": "^4.4.0",
     "react-native-simple-toast": "^3.3.1",
-    "react-native-svg": "^15.7.1"
+    "react-native-svg": "^15.7.1",
+    "react-native-webrtc": "124.0.7"
   },
   "devDependencies": {
     "@babel/core": "^7.20.0",

@@ -85,8 +85,7 @@ const AdvancedSettingsScreen: React.FC<Props> = ({ navigation }) => {
   const [availableGGUFFiles, setAvailableGGUFFiles] = useState<GGUFFile[]>([]);
   const [loadingGGUFFiles, setLoadingGGUFFiles] = useState(false);
   const [totalStorageUsed, setTotalStorageUsed] = useState<string>('0 B');
-  const [hasPrewarmedNetwork, setHasPrewarmedNetwork] = useState(false);
-  
+
   // Parameter configuration modal state
   const [showParameterModal, setShowParameterModal] = useState(false);
   const [selectedModelForConfig, setSelectedModelForConfig] = useState<DownloadedModel | null>(null);
@@ -106,7 +105,6 @@ const AdvancedSettingsScreen: React.FC<Props> = ({ navigation }) => {
 
   useEffect(() => {
     loadDownloadedModels();
-    checkNetworkPrewarmStatus();
   }, []);
 
   // Reset editing state when retrying
@@ -119,33 +117,6 @@ const AdvancedSettingsScreen: React.FC<Props> = ({ navigation }) => {
   useEffect(() => {
     calculateStorageUsage();
   }, [downloadedModels]);
-
-  // Check if network permission has been pre-warmed before
-  const checkNetworkPrewarmStatus = async () => {
-    if (Platform.OS === 'ios') {
-      const status = await AsyncStorage.getItem('networkPermissionPrewarmed');
-      setHasPrewarmedNetwork(status === 'true');
-    }
-  };
-
-  // Request network permission on iOS when remote tab is accessed (only once per app installation)
-  useEffect(() => {
-    if (activeTab === 'remote' && Platform.OS === 'ios' && !hasPrewarmedNetwork) {
-      // Pre-warm network permission by making a dummy fetch to the worker URL
-      // This triggers the iOS local network permission dialog before connection attempt
-      fetch('https://p2pcf.naved-merchant.workers.dev', { method: 'HEAD' })
-        .then(async () => {
-          console.log('Network permission pre-warmed');
-          setHasPrewarmedNetwork(true);
-          await AsyncStorage.setItem('networkPermissionPrewarmed', 'true');
-        })
-        .catch(async (err) => {
-          console.log('Pre-warm request completed:', err.message);
-          setHasPrewarmedNetwork(true);
-          await AsyncStorage.setItem('networkPermissionPrewarmed', 'true');
-        });
-    }
-  }, [activeTab, hasPrewarmedNetwork]);
 
   const loadDownloadedModels = async () => {
     try {

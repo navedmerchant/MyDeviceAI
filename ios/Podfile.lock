@@ -1,6 +1,41 @@
 PODS:
   - boost (1.84.0)
   - DoubleConversion (1.1.6)
+  - EXConstants (16.0.2):
+    - ExpoModulesCore
+  - Expo (51.0.39):
+    - ExpoModulesCore
+  - ExpoAsset (10.0.10):
+    - ExpoModulesCore
+  - ExpoFileSystem (17.0.1):
+    - ExpoModulesCore
+  - ExpoFont (12.0.10):
+    - ExpoModulesCore
+  - ExpoKeepAwake (13.0.2):
+    - ExpoModulesCore
+  - ExpoModulesCore (1.12.26):
+    - DoubleConversion
+    - glog
+    - hermes-engine
+    - RCT-Folly (= 2024.01.01.00)
+    - RCTRequired
+    - RCTTypeSafety
+    - React-Core
+    - React-debug
+    - React-Fabric
+    - React-featureflags
+    - React-graphics
+    - React-ImageManager
+    - React-jsinspector
+    - React-NativeModulesApple
+    - React-RCTAppDelegate
+    - React-RCTFabric
+    - React-rendererdebug
+    - React-utils
+    - ReactCodegen
+    - ReactCommon/turbomodule/bridging
+    - ReactCommon/turbomodule/core
+    - Yoga
   - FBLazyVector (0.75.3)
   - fmt (9.1.0)
   - glog (0.3.5)
@@ -1533,6 +1568,8 @@ PODS:
     - React-logger (= 0.75.3)
     - React-perflogger (= 0.75.3)
     - React-utils (= 0.75.3)
+  - ReactNativeLocalNetworkPermission (1.2.0):
+    - ExpoModulesCore
   - RNCAsyncStorage (2.0.0):
     - React-Core
   - RNDeviceInfo (13.1.0):
@@ -1678,6 +1715,13 @@ PODS:
 DEPENDENCIES:
   - boost (from `../node_modules/react-native/third-party-podspecs/boost.podspec`)
   - DoubleConversion (from `../node_modules/react-native/third-party-podspecs/DoubleConversion.podspec`)
+  - EXConstants (from `../node_modules/expo-constants/ios`)
+  - Expo (from `../node_modules/expo`)
+  - ExpoAsset (from `../node_modules/expo-asset/ios`)
+  - ExpoFileSystem (from `../node_modules/expo-file-system/ios`)
+  - ExpoFont (from `../node_modules/expo-font/ios`)
+  - ExpoKeepAwake (from `../node_modules/expo-keep-awake/ios`)
+  - ExpoModulesCore (from `../node_modules/expo-modules-core`)
   - FBLazyVector (from `../node_modules/react-native/Libraries/FBLazyVector`)
   - fmt (from `../node_modules/react-native/third-party-podspecs/fmt.podspec`)
   - glog (from `../node_modules/react-native/third-party-podspecs/glog.podspec`)
@@ -1745,6 +1789,7 @@ DEPENDENCIES:
   - React-utils (from `../node_modules/react-native/ReactCommon/react/utils`)
   - ReactCodegen (from `build/generated/ios`)
   - ReactCommon/turbomodule/core (from `../node_modules/react-native/ReactCommon`)
+  - "ReactNativeLocalNetworkPermission (from `../node_modules/@generac/react-native-local-network-permission/ios`)"
   - "RNCAsyncStorage (from `../node_modules/@react-native-async-storage/async-storage`)"
   - RNDeviceInfo (from `../node_modules/react-native-device-info`)
   - RNFS (from `../node_modules/react-native-fs`)
@@ -1765,6 +1810,20 @@ EXTERNAL SOURCES:
     :podspec: "../node_modules/react-native/third-party-podspecs/boost.podspec"
   DoubleConversion:
     :podspec: "../node_modules/react-native/third-party-podspecs/DoubleConversion.podspec"
+  EXConstants:
+    :path: "../node_modules/expo-constants/ios"
+  Expo:
+    :path: "../node_modules/expo"
+  ExpoAsset:
+    :path: "../node_modules/expo-asset/ios"
+  ExpoFileSystem:
+    :path: "../node_modules/expo-file-system/ios"
+  ExpoFont:
+    :path: "../node_modules/expo-font/ios"
+  ExpoKeepAwake:
+    :path: "../node_modules/expo-keep-awake/ios"
+  ExpoModulesCore:
+    :path: "../node_modules/expo-modules-core"
   FBLazyVector:
     :path: "../node_modules/react-native/Libraries/FBLazyVector"
   fmt:
@@ -1896,6 +1955,8 @@ EXTERNAL SOURCES:
     :path: build/generated/ios
   ReactCommon:
     :path: "../node_modules/react-native/ReactCommon"
+  ReactNativeLocalNetworkPermission:
+    :path: "../node_modules/@generac/react-native-local-network-permission/ios"
   RNCAsyncStorage:
     :path: "../node_modules/@react-native-async-storage/async-storage"
   RNDeviceInfo:
@@ -1916,6 +1977,13 @@ EXTERNAL SOURCES:
 SPEC CHECKSUMS:
   boost: 4cb898d0bf20404aab1850c656dcea009429d6c1
   DoubleConversion: 76ab83afb40bddeeee456813d9c04f67f78771b5
+  EXConstants: 89d35611505a8ce02550e64e43cd05565da35f9a
+  Expo: ed0a748eb6be0efd2c3df7f6de3f3158a14464c9
+  ExpoAsset: 286fee7ba711ce66bf20b315e68106b13b8629fc
+  ExpoFileSystem: 2988caaf68b7cb706e36d382829d99811d9d76a5
+  ExpoFont: 38dddf823e32740c2a9f37c926a33aeca736b5c4
+  ExpoKeepAwake: dd02e65d49f1cfd9194640028ae2857e536eb1c9
+  ExpoModulesCore: d300c94764c3d7ea27d8e894fbfff6d334b84d80
   FBLazyVector: 7b438dceb9f904bd85ca3c31d64cce32a035472b
   fmt: 4c2741a687cc09f0634a2e2c72a838b99f1ff120
   glog: 69ef571f3de08433d766d614c73a9838a06bf7eb
@@ -1982,6 +2050,7 @@ SPEC CHECKSUMS:
   React-utils: 3c815e7d3abb801930a3df2db870c92855429fea
   ReactCodegen: 3d11bcf0cac47a77042a3476a1c2f7058bfd6880
   ReactCommon: c65f7049a542669dcc7bff6b7a8071a039c7d0dd
+  ReactNativeLocalNetworkPermission: 7fdc917413f7d4791614e604e3ab5ca1df5c4215
   RNCAsyncStorage: 40367e8d25522dca9c3513c7b9815a184669bd97
   RNDeviceInfo: 014029374ada3164b6c40fe74041dca2f98b42d6
   RNFS: 89de7d7f4c0f6bafa05343c578f61118c8282ed8
@@ -1993,6 +2062,6 @@ SPEC CHECKSUMS:
   Toast: 1f5ea13423a1e6674c4abdac5be53587ae481c4e
   Yoga: 4ef80d96a5534f0e01b3055f17d1e19a9fc61b63
 
-PODFILE CHECKSUM: ebefb7b1226693998630865946afe41e22362cc3
+PODFILE CHECKSUM: 232b47760a9fc11557bf12fb5d1ffa21e3123a92
 
 COCOAPODS: 1.16.2
