@@ -175,6 +175,7 @@ const ChatUI: React.FC<ChatUIProps> = ({ historyId, onMenuPress, MenuIcon, navig
     loadContextSettings();
     initializeContext();
     checkAndRequestLocalNetworkPermission();
+    loadModel(); // Load the model at startup
 
     // Add keyboard listeners
     const keyboardWillShow = Keyboard.addListener(
