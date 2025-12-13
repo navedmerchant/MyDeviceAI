@@ -191,7 +191,9 @@ const ChatUI: React.FC<ChatUIProps> = ({ historyId, onMenuPress, MenuIcon, navig
 
   // Check and request local network permission on iOS at app startup
   const checkAndRequestLocalNetworkPermission = useCallback(async () => {
+    if (Platform.OS === 'ios') {
       await requestLocalNetworkAccess();
+    }
   }, []);
   // Check Android model status
   const checkAndroidModelStatus = async () => {
