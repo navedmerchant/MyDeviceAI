@@ -116,6 +116,12 @@ export class RemoteConnectionManager {
       return;
     }
 
+    // Check if desktop is still available - don't retry if desktop is present
+    if (this.p2pcf && this.p2pcf.hasDesktopPeer()) {
+      console.log('Desktop peer is still available, skipping retry');
+      return;
+    }
+
     // Check if we've exceeded max retry attempts
     if (this.retryCount >= MAX_RETRY_ATTEMPTS) {
       console.log(`Max retry attempts (${MAX_RETRY_ATTEMPTS}) reached. Stopping retries.`);
@@ -178,7 +184,15 @@ export class RemoteConnectionManager {
    * Connect to desktop using 6-digit room code
    */
   async connect(roomCode: string, isRetry: boolean = false): Promise<void> {
-    if (this.p2pcf && !isRetry) {
+    // Check if we already have a desktop connection - don't create duplicate
+    if (this.p2pcf && this.p2pcf.hasDesktopPeer()) {
+      console.log('Already connected to desktop, skipping duplicate connection');
+      return;
+    }
+
+    // Always disconnect old connection before creating new one
+    if (this.p2pcf) {
+      console.log('Disconnecting old connection before creating new one');
       await this.disconnect();
     }
 
@@ -242,10 +256,9 @@ export class RemoteConnectionManager {
         console.error('P2PCF error:', error);
         this.onError?.(error.message);
 
-        // Schedule retry on error
-        if (this.shouldRetry) {
-          this.scheduleRetry();
-        }
+        // Don't retry on every error - P2PCF handles polling errors internally
+        // Only retry if we had a desktop connection and lost it (handled by peerclose)
+        // Polling errors while searching for desktop should not trigger retries
       });
 
       // Start connection and poll for desktop
@@ -257,7 +270,8 @@ export class RemoteConnectionManager {
       console.error('Failed to connect:', errorMessage);
       this.onError?.(errorMessage);
 
-      // Schedule retry on connection failure
+      // Schedule retry on initialization failure (e.g., network detection timeout)
+      // This is different from polling errors which P2PCF handles internally
       if (this.shouldRetry) {
         this.scheduleRetry();
       }

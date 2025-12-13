@@ -501,8 +501,9 @@ want to talk and share about personal feelings.`;
         unloadModel();
         unloadEmbeddingModel();
         // Disconnect from desktop when going to background
-        if (remoteState.isConnected) {
-          console.log("Disconnecting from desktop due to background");
+        // This cleans up both connected peers and peers that are still searching
+        if (remoteState.isConnected || remoteState.isRetrying || remoteState.status === 'remote_connecting') {
+          console.log("Disconnecting from desktop due to background (cleaning up peer connection)");
           remoteDisconnect();
         }
       }
@@ -518,7 +519,7 @@ want to talk and share about personal feelings.`;
       unloadModel();
       unloadEmbeddingModel();
     };
-  }, [remoteState.isConnected]);
+  }, [remoteState.isConnected, remoteState.isRetrying]);
 
   useEffect(() => {
     setParentIsTyping(isTyping);
@@ -557,6 +558,7 @@ want to talk and share about personal feelings.`;
       Alert.alert("Failed to load model! please close the app and try again by closing some background apps");
     } finally {
       setIsLoadingModel(false);
+      setIsWaitingForModel(false); // Reset waiting state when model is loaded or fails
       updateLocalModelStatus(false); // Model loaded, no longer loading
     }
   }
