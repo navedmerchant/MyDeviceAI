@@ -175,7 +175,6 @@ const ChatUI: React.FC<ChatUIProps> = ({ historyId, onMenuPress, MenuIcon, navig
     loadContextSettings();
     initializeContext();
     checkAndRequestLocalNetworkPermission();
-    loadModel(); // Load the model at startup
 
     // Add keyboard listeners
     const keyboardWillShow = Keyboard.addListener(
@@ -473,7 +472,7 @@ want to talk and share about personal feelings.`;
               loadEmbeddingModel();
             }
             // Reconnect to desktop if we were in dynamic mode and have a room code
-            if (remoteState.mode === 'dynamic' && remoteState.config?.roomCode) {
+            if (remoteState.mode === 'dynamic' && remoteState.config?.roomCode && !remoteState.isConnected) {
               console.log("Reconnecting to desktop after foreground");
               try {
                 remoteConnect(remoteState.config.roomCode, false);
@@ -500,12 +499,6 @@ want to talk and share about personal feelings.`;
         }
         unloadModel();
         unloadEmbeddingModel();
-        // Disconnect from desktop when going to background
-        // This cleans up both connected peers and peers that are still searching
-        if (remoteState.isConnected || remoteState.isRetrying || remoteState.status === 'remote_connecting') {
-          console.log("Disconnecting from desktop due to background (cleaning up peer connection)");
-          remoteDisconnect();
-        }
       }
 
       appState.current = nextAppState;
