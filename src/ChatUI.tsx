@@ -244,7 +244,9 @@ const ChatUI: React.FC<ChatUIProps> = ({ historyId, onMenuPress, MenuIcon, navig
       // Check if both models are downloaded
       const embeddingExists = await RNFS.exists(`${MODEL_DIR}/${MODEL_NAMES.BGE_EMBEDDING_MODEL}`);
       if (embeddingExists) {
-        console.log('Both models downloaded, ready to use');
+        console.log('Both models downloaded, loading them now...');
+        loadModel();
+        loadEmbeddingModel();
       }
     } catch (error) {
       console.error('Error downloading model:', error);
@@ -285,7 +287,9 @@ const ChatUI: React.FC<ChatUIProps> = ({ historyId, onMenuPress, MenuIcon, navig
       // Check if both models are downloaded
       const modelExists = await RNFS.exists(`${MODEL_DIR}/${MODEL_NAMES.QWEN_MODEL}`);
       if (modelExists) {
-        console.log('Both models downloaded, ready to use');
+        console.log('Both models downloaded, loading them now...');
+        loadModel();
+        loadEmbeddingModel();
       }
     } catch (error) {
       console.error('Error downloading embedding model:', error);
@@ -426,7 +430,6 @@ const ChatUI: React.FC<ChatUIProps> = ({ historyId, onMenuPress, MenuIcon, navig
   const initializeContext = async () => {
     try {
       await initDatabase();
-      await loadEmbeddingModel();
       await initializeReferenceEmbeddings();
     } catch (error) {
       console.error('Error initializing context:', error);
@@ -676,6 +679,7 @@ want to talk and share about personal feelings.`;
           if (modelExists && embeddingExists) {
             console.log("Models found, loading...");
             loadModel();
+            loadEmbeddingModel();
           } else {
             console.log('Models not downloaded yet, skipping initialization');
           }

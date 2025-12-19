@@ -29,14 +29,13 @@ interface DownloadedModel {
 // Default parameters
 const DEFAULT_PARAMETERS: ModelParameters = {
   n_ctx: 4096,
-  n_gpu_layers: 28,
+  n_gpu_layers: Platform.OS === 'android' ? 0 : 28,
   n_predict: 4096,
   temperature: 0.7,
   top_p: 0.8,
   top_k: 20,
   min_p: 0,
   stop: ['<|im_end|>', '<|im_start|>', '<|end|>', '<|user|>', '<|assistant|>', 'User:', 'Assistant:', 'Human:', 'AI:', '<|eot_id|>'],
-  batch_size: 512,
 };
 
 async function getModelParamsForDevice() {
@@ -98,8 +97,6 @@ async function getModelParamsForDevice() {
         model: 'file://Qwen3-1.7B-Q4_K_M.gguf',
         is_model_asset: true,
         ...DEFAULT_PARAMETERS,
-        // Add batch_size for Android devices
-        ...(Platform.OS === 'android' && { batch_size: 512 }),
       };
 
       const deviceId = DeviceInfo.getDeviceId();
@@ -114,8 +111,6 @@ async function getModelParamsForDevice() {
         model: 'file://Qwen3-1.7B-Q4_K_M.gguf',
         is_model_asset: true,
         ...DEFAULT_PARAMETERS,
-        // Add batch_size for Android devices
-        ...(Platform.OS === 'android' && { batch_size: 512 }),
       };
 
       const deviceId = DeviceInfo.getDeviceId();
