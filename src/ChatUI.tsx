@@ -1,4 +1,4 @@
-import { LlamaContext, initLlama, releaseAllLlama } from 'llama.rn';
+import { LlamaContext, initLlama } from 'llama.rn';
 import React, { useState, useCallback, useRef, useEffect } from 'react';
 import Markdown from 'react-native-markdown-display';
 import { showToast } from './utils/ToastUtils';
@@ -179,6 +179,7 @@ const ChatUI: React.FC<ChatUIProps> = ({ historyId, onMenuPress, MenuIcon, navig
 
   const systemPrompt = useRef('');
   const appState = useRef(AppState.currentState);
+  const isModelLoadingRef = useRef(false); // Guard against concurrent load/unload
 
   // Handle when a suggested prompt is selected
   const handlePromptSelect = useCallback((prompt: string) => {
@@ -674,8 +675,26 @@ want to talk and share about personal feelings.`;
   useEffect(() => {
     console.log("Loading model on init on Android");
     if (Platform.OS === 'android') {
-      RNFS.exists(`${MODEL_DIR}/${MODEL_NAMES.QWEN_MODEL}`).then(modelExists => {
-        RNFS.exists(`${MODEL_DIR}/${MODEL_NAMES.BGE_EMBEDDING_MODEL}`).then(embeddingExists => {
+      (async () => {
+        // Check what the active model is
+        const activeModelId = await AsyncStorage.getItem('activeModelId');
+
+        // Check if embedding model exists (required for all cases)
+        const embeddingExists = await RNFS.exists(`${MODEL_DIR}/${MODEL_NAMES.BGE_EMBEDDING_MODEL}`);
+
+        if (activeModelId && activeModelId !== 'built-in-default') {
+          // Custom model is active - load it directly via loadModel()
+          // which uses getModelParamsForDevice() to get the correct model
+          console.log("Custom model active, loading...");
+          if (embeddingExists) {
+            loadEmbeddingModel();
+          }
+          loadModel();
+          // Set lastLoadedModelId to prevent navigation focus listener from reloading
+          await AsyncStorage.setItem('lastLoadedModelId', activeModelId);
+        } else {
+          // Built-in default - check if it exists and load
+          const modelExists = await RNFS.exists(`${MODEL_DIR}/${MODEL_NAMES.QWEN_MODEL}`);
           if (modelExists && embeddingExists) {
             console.log("Models found, loading...");
             loadModel();
@@ -683,8 +702,8 @@ want to talk and share about personal feelings.`;
           } else {
             console.log('Models not downloaded yet, skipping initialization');
           }
-        });
-      });
+        }
+      })();
     }
   }, []);
 
@@ -793,7 +812,13 @@ want to talk and share about personal feelings.`;
   }, [isTyping]);
 
   const loadModel = async () => {
+    // Guard against concurrent loading
+    if (isModelLoadingRef.current) {
+      return;
+    }
+
     try {
+      isModelLoadingRef.current = true;
       setIsLoadingModel(true);
       updateLocalModelStatus(true); // Update remote connection status
       setLoadingProgress(0);
@@ -811,7 +836,6 @@ want to talk and share about personal feelings.`;
       });
 
       contextRef.current = newContext;
-      console.log("model loaded successfully");
 
       // Track which model was loaded
       const activeModelId = await AsyncStorage.getItem('activeModelId');
@@ -824,6 +848,7 @@ want to talk and share about personal feelings.`;
       console.log("Error loading model" + error);
       Alert.alert("Failed to load model! please close the app and try again by closing some background apps");
     } finally {
+      isModelLoadingRef.current = false;
       setIsLoadingModel(false);
       setIsWaitingForModel(false); // Reset waiting state when model is loaded or fails
       updateLocalModelStatus(false); // Model loaded, no longer loading
@@ -831,24 +856,38 @@ want to talk and share about personal feelings.`;
   }
 
   const unloadModel = async () => {
-    await releaseAllLlama();
+    // Wait for any in-progress loading to complete before unloading
+    if (isModelLoadingRef.current) {
+      let waitCount = 0;
+      while (isModelLoadingRef.current && waitCount < 30) {
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        waitCount++;
+      }
+    }
+    try {
+      // Release the specific context instead of all contexts
+      // This avoids potential deadlock in releaseAllLlama
+      if (contextRef.current) {
+        await contextRef.current.release();
+      }
+    } catch (error) {
+      console.error('Error releasing model context:', error);
+    }
     contextRef.current = undefined;
   }
 
   const reloadModel = async () => {
-    console.log("Reloading model due to active model change...");
-    
     // Stop any ongoing completion
     if (isTyping) {
       await contextRef.current?.stopCompletion();
       setIsTyping(false);
       setCurrentResponse('');
     }
-    
-    // Unload current model
+
+    // Unload current model (will wait if loading is in progress)
     await unloadModel();
     contextRef.current = undefined;
-    
+
     // Load new model with progress tracking
     await loadModel();
   };

@@ -62,8 +62,6 @@ async function getModelParamsForDevice() {
               model: activeModel.filePath,
               is_model_asset: false, // Downloaded models are not bundled assets
               ...parameters,
-              // Add batch_size for Android devices
-              ...(Platform.OS === 'android' && { batch_size: 512 }),
             };
 
             const deviceId = DeviceInfo.getDeviceId();
