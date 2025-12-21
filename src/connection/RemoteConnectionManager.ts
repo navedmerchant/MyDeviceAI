@@ -4,7 +4,7 @@
  * Implements the P2PCF protocol for communication
  */
 
-import { P2PCF, type Peer } from '../p2pcf';
+import { P2PCF, type Peer } from 'p2pcf.rn';
 import type { P2PMessage } from '../types/RemoteConnection';
 import { TextDecoder } from '../utils/textdecoder';
 import { P2PCF_WORKER_URL } from '../config/Env';

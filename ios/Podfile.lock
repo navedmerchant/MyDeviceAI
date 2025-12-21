@@ -49,7 +49,7 @@ PODS:
     - React
     - React-callinvoker
     - React-Core
-  - P2pcfRn (0.6.1):
+  - P2pcfRn (0.7.0):
     - DoubleConversion
     - glog
     - hermes-engine
@@ -1991,7 +1991,7 @@ SPEC CHECKSUMS:
   JitsiWebRTC: b47805ab5668be38e7ee60e2258f49badfe8e1d0
   llama-rn: 169bb792dde4e08058209e657e923236983b9f70
   op-sqlite: 7163eb33349fc0d58917ca41eb6be026a3dac5dc
-  P2pcfRn: cebbde0f5ab05b8f467ff3c56e7ceffee692ab22
+  P2pcfRn: b035cb56ac31cec04f13f74dbd5696a7b9fc45c6
   RCT-Folly: 34124ae2e667a0e5f0ea378db071d27548124321
   RCTDeprecation: 4191f6e64b72d9743f6fe1a8a16e89e868f5e9e7
   RCTRequired: 9bb589570f2bb3abc6518761e3fd1ad9b7f7f06c
