@@ -1195,7 +1195,7 @@ want to talk and share about personal feelings.`;
         setCurrentThumbnails([]);
       }
     }
-  }, [inputText, addMessage, searchModeEnabled, thinkingModeEnabled]);
+  }, [inputText, addMessage, searchModeEnabled, thinkingModeEnabled, remoteState.isConnected, remoteState.mode]);
 
   async function handleStop(event: GestureResponderEvent): Promise<void> {
     
