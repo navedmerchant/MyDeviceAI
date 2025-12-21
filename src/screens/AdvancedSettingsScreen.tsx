@@ -12,7 +12,6 @@ import {
   Platform,
   FlatList,
   Modal,
-  PermissionsAndroid,
 } from 'react-native';
 import { ChevronLeft, Download, Search, Trash2, Settings, HardDrive, X, Wifi } from 'lucide-react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -277,24 +276,8 @@ const AdvancedSettingsScreen: React.FC<Props> = ({ navigation }) => {
   };
 
   const requestStoragePermission = async () => {
-    if (Platform.OS === 'android') {
-      try {
-        const granted = await PermissionsAndroid.request(
-          PermissionsAndroid.PERMISSIONS.WRITE_EXTERNAL_STORAGE,
-          {
-            title: 'Storage Permission',
-            message: 'This app needs access to storage to download models',
-            buttonNeutral: 'Ask Me Later',
-            buttonNegative: 'Cancel',
-            buttonPositive: 'OK',
-          },
-        );
-        return granted === PermissionsAndroid.RESULTS.GRANTED;
-      } catch (err) {
-        console.warn(err);
-        return false;
-      }
-    }
+    // No storage permission needed on modern Android (API 33+)
+    // App-specific external storage (RNFS.ExternalDirectoryPath) is accessible without permissions
     return true;
   };
 
