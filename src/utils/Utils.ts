@@ -76,7 +76,7 @@ async function getModelParamsForDevice() {
 
       // On Android, check if model is downloaded to document directory
       if (Platform.OS === 'android') {
-        const androidModelPath = `${RNFS.DocumentDirectoryPath}/model/Qwen3-1.7B-Q4_K_M.gguf`;
+        const androidModelPath = `${RNFS.DocumentDirectoryPath}/model/Qwen3.5-2B-UD-Q4_K_XL.gguf`;
         const exists = await RNFS.exists(androidModelPath);
         if (exists) {
           console.log('Using downloaded model on Android');
@@ -92,7 +92,7 @@ async function getModelParamsForDevice() {
       }
 
       const modelParams = {
-        model: 'file://Qwen3-1.7B-Q4_K_M.gguf',
+        model: 'file://Qwen3.5-2B-UD-Q4_K_XL.gguf',
         is_model_asset: true,
         ...DEFAULT_PARAMETERS,
       };
@@ -106,7 +106,7 @@ async function getModelParamsForDevice() {
 
       // Fallback to default model on error
       const modelParams = {
-        model: 'file://Qwen3-1.7B-Q4_K_M.gguf',
+        model: 'file://Qwen3.5-2B-UD-Q4_K_XL.gguf',
         is_model_asset: true,
         ...DEFAULT_PARAMETERS,
       };

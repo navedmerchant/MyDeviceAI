@@ -43,8 +43,29 @@ PODS:
     - hermes-engine/Pre-built (= 0.75.3)
   - hermes-engine/Pre-built (0.75.3)
   - JitsiWebRTC (124.0.2)
-  - llama-rn (0.8.3):
+  - llama-rn (0.11.2):
+    - DoubleConversion
+    - glog
+    - hermes-engine
+    - RCT-Folly (= 2024.01.01.00)
+    - RCTRequired
+    - RCTTypeSafety
+    - React
+    - React-callinvoker
     - React-Core
+    - React-debug
+    - React-Fabric
+    - React-featureflags
+    - React-graphics
+    - React-ImageManager
+    - React-NativeModulesApple
+    - React-RCTFabric
+    - React-rendererdebug
+    - React-utils
+    - ReactCodegen
+    - ReactCommon/turbomodule/bridging
+    - ReactCommon/turbomodule/core
+    - Yoga
   - op-sqlite (11.4.7):
     - React
     - React-callinvoker
@@ -1989,7 +2010,7 @@ SPEC CHECKSUMS:
   glog: 69ef571f3de08433d766d614c73a9838a06bf7eb
   hermes-engine: 8d2103d6c0176779aea4e25df6bb1410f9946680
   JitsiWebRTC: b47805ab5668be38e7ee60e2258f49badfe8e1d0
-  llama-rn: 169bb792dde4e08058209e657e923236983b9f70
+  llama-rn: 2af337ad9f61c6f516a99ed92bc17211b97faad6
   op-sqlite: 7163eb33349fc0d58917ca41eb6be026a3dac5dc
   P2pcfRn: b035cb56ac31cec04f13f74dbd5696a7b9fc45c6
   RCT-Folly: 34124ae2e667a0e5f0ea378db071d27548124321

@@ -134,7 +134,7 @@ const AdvancedSettingsScreen: React.FC<Props> = ({ navigation }) => {
       const builtInModel: DownloadedModel = {
         id: 'built-in-default',
         name: 'Built-in Default Model',
-        author: 'Qwen3 1.7B',
+        author: 'Qwen3.5 2B',
         size: 'Built-in',
         downloadDate: new Date().toISOString(),
         filePath: '', // No file path for built-in model

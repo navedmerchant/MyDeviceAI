@@ -20,7 +20,7 @@ By combining on-device AI processing with optional remote desktop connectivity a
 
 - **Web Search Integration**: Bridge the knowledge gap between local AI and cloud capabilities with our web search integration, utilizing a self-hosted SearXNG instance for privacy-focused results.
 
-- **Thinking Mode**: Powered by Qwen 3, our Thinking Mode helps you tackle complex problems and brainstorming sessions with advanced reasoning capabilities.
+- **Thinking Mode**: Powered by Qwen 3.5, our Thinking Mode helps you tackle complex problems and brainstorming sessions with advanced reasoning capabilities.
 
 - **Personalization (Beta)**: Create a truly personalized AI experience by loading saved user contexts. Tailor conversations to your preferences and needs (Currently in Beta).
 
@@ -47,7 +47,7 @@ By combining on-device AI processing with optional remote desktop connectivity a
    ```
 
 2. Download required AI models:
-   - Download [Qwen3 1.7B Q4](https://huggingface.co/bartowski/Qwen_Qwen3-1.7B-GGUF) and place it in the `ios/` directory
+   - Download [Qwen3.5 2B Q4](https://huggingface.co/unsloth/Qwen3.5-2B-GGUF) and place it in the `ios/` directory
    - Download [BGE Small](https://huggingface.co/CompendiumLabs/bge-small-en-v1.5-gguf) and place it in the `ios/` directory
 
 3. Create configuration file:

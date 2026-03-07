@@ -77,3 +77,4 @@ yarn-error.log
 .bundle
 
 Env.ts
+.vscode

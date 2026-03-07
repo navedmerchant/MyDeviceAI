@@ -16,7 +16,7 @@
 		ABD72F0B1060EE335EEFC749 /* ExpoModulesProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1AD7540CFAF2F677D32CB00A /* ExpoModulesProvider.swift */; };
 		AF470C8A2D90783B002C274D /* bge-small-en-v1.5-q4_k_m.gguf in Resources */ = {isa = PBXBuildFile; fileRef = AF470C892D90783B002C274D /* bge-small-en-v1.5-q4_k_m.gguf */; };
 		AF8D37D4CAD8B1BEF527561B /* libPods-MyDeviceAI-MyDeviceAITests.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 3C3544CB1756B520276E67B6 /* libPods-MyDeviceAI-MyDeviceAITests.a */; };
-		AF8F74A82DD58E3B00CA3CCA /* Qwen3-1.7B-Q4_K_M.gguf in Resources */ = {isa = PBXBuildFile; fileRef = AF8F74A72DD58E3B00CA3CCA /* Qwen3-1.7B-Q4_K_M.gguf */; };
+		AF9B62802F5CD2F000A0B240 /* Qwen3.5-2B-UD-Q4_K_XL.gguf in Resources */ = {isa = PBXBuildFile; fileRef = AF9B627F2F5CD2F000A0B240 /* Qwen3.5-2B-UD-Q4_K_XL.gguf */; };
 		B2870A1607FD5D4252BA9976 /* ExpoModulesProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = A9613C640AFEEA6FA6C97595 /* ExpoModulesProvider.swift */; };
 		F936FF749EBDBC0D082934DF /* libPods-MyDeviceAI.a in Frameworks */ = {isa = PBXBuildFile; fileRef = AD4BBB21602A7268DA166C8A /* libPods-MyDeviceAI.a */; };
 /* End PBXBuildFile section */
@@ -52,7 +52,7 @@
 		A9613C640AFEEA6FA6C97595 /* ExpoModulesProvider.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = ExpoModulesProvider.swift; path = "Pods/Target Support Files/Pods-MyDeviceAI-MyDeviceAITests/ExpoModulesProvider.swift"; sourceTree = "<group>"; };
 		AD4BBB21602A7268DA166C8A /* libPods-MyDeviceAI.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = "libPods-MyDeviceAI.a"; sourceTree = BUILT_PRODUCTS_DIR; };
 		AF470C892D90783B002C274D /* bge-small-en-v1.5-q4_k_m.gguf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "bge-small-en-v1.5-q4_k_m.gguf"; sourceTree = "<group>"; };
-		AF8F74A72DD58E3B00CA3CCA /* Qwen3-1.7B-Q4_K_M.gguf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "Qwen3-1.7B-Q4_K_M.gguf"; sourceTree = "<group>"; };
+		AF9B627F2F5CD2F000A0B240 /* Qwen3.5-2B-UD-Q4_K_XL.gguf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "Qwen3.5-2B-UD-Q4_K_XL.gguf"; sourceTree = "<group>"; };
 		BD52693102F79C8748C80C9D /* Pods-MyDeviceAI.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-MyDeviceAI.release.xcconfig"; path = "Target Support Files/Pods-MyDeviceAI/Pods-MyDeviceAI.release.xcconfig"; sourceTree = "<group>"; };
 		ED297162215061F000B7C4FE /* JavaScriptCore.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = JavaScriptCore.framework; path = System/Library/Frameworks/JavaScriptCore.framework; sourceTree = SDKROOT; };
 /* End PBXFileReference section */
@@ -106,6 +106,7 @@
 		13B07FAE1A68108700A75B9A /* MyDeviceAI */ = {
 			isa = PBXGroup;
 			children = (
+				AF9B627F2F5CD2F000A0B240 /* Qwen3.5-2B-UD-Q4_K_XL.gguf */,
 				13B07FAF1A68108700A75B9A /* AppDelegate.h */,
 				13B07FB01A68108700A75B9A /* AppDelegate.mm */,
 				13B07FB51A68108700A75B9A /* Images.xcassets */,
@@ -113,7 +114,6 @@
 				81AB9BB72411601600AC10FF /* LaunchScreen.storyboard */,
 				13B07FB71A68108700A75B9A /* main.m */,
 				AF470C892D90783B002C274D /* bge-small-en-v1.5-q4_k_m.gguf */,
-				AF8F74A72DD58E3B00CA3CCA /* Qwen3-1.7B-Q4_K_M.gguf */,
 				13B07FB81A68108700A75B9A /* PrivacyInfo.xcprivacy */,
 				197B32EDAFFB1874ECEB57EB /* PrivacyInfo.xcprivacy */,
 			);
@@ -284,11 +284,11 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				AF8F74A82DD58E3B00CA3CCA /* Qwen3-1.7B-Q4_K_M.gguf in Resources */,
 				81AB9BB82411601600AC10FF /* LaunchScreen.storyboard in Resources */,
 				13B07FBF1A68108700A75B9A /* Images.xcassets in Resources */,
 				AF470C8A2D90783B002C274D /* bge-small-en-v1.5-q4_k_m.gguf in Resources */,
 				101F9BCBF74A0ED21E9B7A3A /* PrivacyInfo.xcprivacy in Resources */,
+				AF9B62802F5CD2F000A0B240 /* Qwen3.5-2B-UD-Q4_K_XL.gguf in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -379,9 +379,13 @@
 			inputFileListPaths = (
 				"${PODS_ROOT}/Target Support Files/Pods-MyDeviceAI-MyDeviceAITests/Pods-MyDeviceAI-MyDeviceAITests-resources-${CONFIGURATION}-input-files.xcfilelist",
 			);
+			inputPaths = (
+			);
 			name = "[CP] Copy Pods Resources";
 			outputFileListPaths = (
 				"${PODS_ROOT}/Target Support Files/Pods-MyDeviceAI-MyDeviceAITests/Pods-MyDeviceAI-MyDeviceAITests-resources-${CONFIGURATION}-output-files.xcfilelist",
+			);
+			outputPaths = (
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
@@ -396,9 +400,13 @@
 			inputFileListPaths = (
 				"${PODS_ROOT}/Target Support Files/Pods-MyDeviceAI-MyDeviceAITests/Pods-MyDeviceAI-MyDeviceAITests-frameworks-${CONFIGURATION}-input-files.xcfilelist",
 			);
+			inputPaths = (
+			);
 			name = "[CP] Embed Pods Frameworks";
 			outputFileListPaths = (
 				"${PODS_ROOT}/Target Support Files/Pods-MyDeviceAI-MyDeviceAITests/Pods-MyDeviceAI-MyDeviceAITests-frameworks-${CONFIGURATION}-output-files.xcfilelist",
+			);
+			outputPaths = (
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
@@ -413,9 +421,13 @@
 			inputFileListPaths = (
 				"${PODS_ROOT}/Target Support Files/Pods-MyDeviceAI/Pods-MyDeviceAI-frameworks-${CONFIGURATION}-input-files.xcfilelist",
 			);
+			inputPaths = (
+			);
 			name = "[CP] Embed Pods Frameworks";
 			outputFileListPaths = (
 				"${PODS_ROOT}/Target Support Files/Pods-MyDeviceAI/Pods-MyDeviceAI-frameworks-${CONFIGURATION}-output-files.xcfilelist",
+			);
+			outputPaths = (
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
@@ -430,9 +442,13 @@
 			inputFileListPaths = (
 				"${PODS_ROOT}/Target Support Files/Pods-MyDeviceAI/Pods-MyDeviceAI-resources-${CONFIGURATION}-input-files.xcfilelist",
 			);
+			inputPaths = (
+			);
 			name = "[CP] Copy Pods Resources";
 			outputFileListPaths = (
 				"${PODS_ROOT}/Target Support Files/Pods-MyDeviceAI/Pods-MyDeviceAI-resources-${CONFIGURATION}-output-files.xcfilelist",
+			);
+			outputPaths = (
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
@@ -694,10 +710,7 @@
 					"-DFOLLY_CFG_NO_COROUTINES=1",
 					"-DFOLLY_HAVE_CLOCK_GETTIME=1",
 				);
-				OTHER_LDFLAGS = (
-					"$(inherited)",
-					" ",
-				);
+				OTHER_LDFLAGS = "$(inherited)  ";
 				REACT_NATIVE_PATH = "${PODS_ROOT}/../../node_modules/react-native";
 				SDKROOT = iphoneos;
 				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "$(inherited) DEBUG";
@@ -771,10 +784,7 @@
 					"-DFOLLY_CFG_NO_COROUTINES=1",
 					"-DFOLLY_HAVE_CLOCK_GETTIME=1",
 				);
-				OTHER_LDFLAGS = (
-					"$(inherited)",
-					" ",
-				);
+				OTHER_LDFLAGS = "$(inherited)  ";
 				REACT_NATIVE_PATH = "${PODS_ROOT}/../../node_modules/react-native";
 				SDKROOT = iphoneos;
 				SWIFT_VERSION = 5.0;

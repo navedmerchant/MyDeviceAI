@@ -140,7 +140,7 @@ const ChatUI: React.FC<ChatUIProps> = ({ historyId, onMenuPress, MenuIcon, navig
   const [currentHistoryId, setCurrentHistoryId] = useState<number | null>(null);
   const [searchModeEnabled, setSearchModeEnabled] = useState(false);
   const [thinkingModeEnabled, setThinkingModeEnabled] = useState(false);
-  const [isQwen3Model, setIsQwen3Model] = useState(true);
+  const [supportsThinking, setSupportsThinking] = useState(true); // whether loaded model's chat template supports thinking (enable_thinking)
   const [contextEnabled, setContextEnabled] = useState(true);
   const { setGlobalHistoryId, loadHistories } = useDatabase();
   const [showScrollButton, setShowScrollButton] = useState(false);
@@ -841,9 +841,9 @@ want to talk and share about personal feelings.`;
       const activeModelId = await AsyncStorage.getItem('activeModelId');
       await AsyncStorage.setItem('lastLoadedModelId', activeModelId || '');
 
-      // Check if the model is qwen3
-      const modelDescription = newContext.model.desc || '';
-      setIsQwen3Model(modelDescription.toLowerCase().includes('qwen3'));
+      // Check if the model supports thinking via its chat template metadata
+      const chatTemplate = (newContext.model.metadata as any)?.['tokenizer.chat_template'] || '';
+      setSupportsThinking(chatTemplate.includes('enable_thinking'));
     } catch (error) {
       console.log("Error loading model" + error);
       Alert.alert("Failed to load model! please close the app and try again by closing some background apps");
@@ -1156,7 +1156,7 @@ want to talk and share about personal feelings.`;
             messages: [
               {
                 role: 'system',
-                content: `${isQwen3Model ? (thinkingModeEnabled ? './think' : './no_think') + '\n' : ''}${systemPrompt.current}`
+                content: `${systemPrompt.current}`
               },
               ...messages.map(msg => ({
                 role: msg.isUser ? 'user' : 'assistant',
@@ -1178,6 +1178,7 @@ want to talk and share about personal feelings.`;
             top_k: modelParams.top_k,
             min_p: modelParams.min_p,
             stop: modelParams.stop,
+            ...(supportsThinking ? { enable_thinking: thinkingModeEnabled } : {}),
           },
           (data: { token: string }) => {
             // Add token to current response
@@ -1575,7 +1576,7 @@ want to talk and share about personal feelings.`;
 
       <View style={styles.inputContainer}>
         <View style={styles.modeToggleContainer}>
-          {isQwen3Model && !remoteState.isConnected && (
+          {supportsThinking && !remoteState.isConnected && (
             <TouchableOpacity
               style={[styles.modeToggleButton, thinkingModeEnabled && styles.modeToggleButtonActive]}
               onPress={handleThinkingToggle}
