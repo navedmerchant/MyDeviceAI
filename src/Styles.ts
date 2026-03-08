@@ -37,12 +37,12 @@ const styles = StyleSheet.create({
       resizeMode: 'contain',
     },
     headerText: {
-      color: '#fff',
+      color: '#d1d1d6',
       fontSize: 18,
       fontWeight: '600',
     },
     headerTitle: {
-      color: '#fff',
+      color: '#d1d1d6',
       fontSize: 18,
       fontWeight: 'bold',
     },
@@ -86,7 +86,7 @@ const styles = StyleSheet.create({
       borderRadius: 1,
     },
     progressText: {
-      color: '#fff',
+      color: '#d1d1d6',
       fontSize: 12,
       minWidth: 35,
       textAlign: 'right',
@@ -141,7 +141,7 @@ const styles = StyleSheet.create({
       color: '#FFFFFF',
     },
     aiMessageText: {
-      color: '#fff',
+      color: '#d1d1d6',
     },
     inputContainer: {
       flexDirection: 'column',
@@ -176,7 +176,7 @@ const styles = StyleSheet.create({
       flex: 1,
       paddingHorizontal: 15,
       paddingVertical: 10,
-      color: '#fff',
+      color: '#d1d1d6',
     },
     inputWithIcon: {
       paddingLeft: 5,
@@ -249,12 +249,12 @@ const styles = StyleSheet.create({
       alignItems: 'center',
     },
     backButtonText: {
-      color: '#fff',
+      color: '#d1d1d6',
       fontSize: 16,
       marginLeft: 5,
     },
     infoTitle: {
-      color: '#fff',
+      color: '#d1d1d6',
       fontSize: 20,
       fontWeight: 'bold',
       marginLeft: 85,
@@ -267,7 +267,7 @@ const styles = StyleSheet.create({
       marginBottom: 30,
     },
     infoSectionTitle: {
-      color: '#fff',
+      color: '#d1d1d6',
       fontSize: 24,
       fontWeight: 'bold',
       marginBottom: 5,
@@ -278,7 +278,7 @@ const styles = StyleSheet.create({
       marginBottom: 10,
     },
     infoDescription: {
-      color: '#fff',
+      color: '#d1d1d6',
       fontSize: 16,
       lineHeight: 22,
     },
@@ -286,7 +286,7 @@ const styles = StyleSheet.create({
       marginBottom: 30,
     },
     licenseSectionTitle: {
-      color: '#fff',
+      color: '#d1d1d6',
       fontSize: 20,
       fontWeight: 'bold',
       marginBottom: 15,
@@ -295,7 +295,7 @@ const styles = StyleSheet.create({
       marginBottom: 20,
     },
     licenseTitle: {
-      color: '#fff',
+      color: '#d1d1d6',
       fontSize: 18,
       fontWeight: 'bold',
       marginBottom: 5,
@@ -331,7 +331,7 @@ const styles = StyleSheet.create({
     },
     unsupportedText: {
       fontSize: 18,
-      color: '#fff',
+      color: '#d1d1d6',
       textAlign: 'center'
     },
     scrollToBottomButton: {
@@ -366,7 +366,7 @@ const styles = StyleSheet.create({
       backgroundColor: 'rgba(53, 53, 53, 0.3)',
     },
     thinkingHeaderText: {
-      color: '#fff',
+      color: '#d1d1d6',
       fontSize: 14,
       fontWeight: '600',
     },
@@ -395,7 +395,7 @@ const styles = StyleSheet.create({
       marginBottom: 20,
     },
     emptyStateTitle: {
-      color: '#fff',
+      color: '#d1d1d6',
       fontSize: 24,
       fontWeight: 'bold',
       marginBottom: 8,
@@ -430,7 +430,7 @@ const styles = StyleSheet.create({
     },
     promptText: {
       fontSize: 14,
-      color: '#fff',
+      color: '#d1d1d6',
     },
     modeToggleContainer: {
       flexDirection: 'row',
@@ -540,7 +540,7 @@ const styles = StyleSheet.create({
       justifyContent: 'center',
     },
     modelRequirementTitle: {
-      color: '#fff',
+      color: '#d1d1d6',
       fontSize: 24,
       fontWeight: 'bold',
       marginBottom: 16,
@@ -558,7 +558,7 @@ const styles = StyleSheet.create({
       padding: 16,
     },
     modelTypeTitle: {
-      color: '#fff',
+      color: '#d1d1d6',
       fontSize: 18,
       fontWeight: 'bold',
       marginBottom: 12,
@@ -588,7 +588,7 @@ const styles = StyleSheet.create({
       marginTop: 12,
     },
     downloadProgressText: {
-      color: '#fff',
+      color: '#d1d1d6',
       fontSize: 14,
     },
     modelInfo: {
@@ -606,34 +606,34 @@ const styles = StyleSheet.create({
   
   const markdownStyles = {
     text: {
-      color: '#fff', // White text
+      color: '#d1d1d6',
       fontSize: 16,
       lineHeight: 22,
     },
     heading1: {
-      color: '#fff', // White heading
+      color: '#d1d1d6',
       fontSize: 24,
       marginTop: 10,
       marginBottom: 8,
     },
     heading2: {
-      color: '#fff',
+      color: '#d1d1d6',
       fontSize: 20,
       marginTop: 8,
       marginBottom: 6,
     },
     heading3: {
-      color: '#fff',
+      color: '#d1d1d6',
       fontSize: 18,
       marginTop: 6,
       marginBottom: 4,
     },
     strong: {
-      color: '#fff', // White bold text
+      color: '#d1d1d6',
       fontWeight: 'bold' as const,
     },
     em: {
-      color: '#fff', // White italic text
+      color: '#d1d1d6',
       fontStyle: 'italic' as const,
     },
     link: {
@@ -641,7 +641,7 @@ const styles = StyleSheet.create({
       textDecorationLine: 'underline' as const,
     },
     list_item: {
-      color: '#fff', // White list items
+      color: '#d1d1d6',
       marginBottom: 4,
     },
     bullet_list: {
@@ -700,6 +700,17 @@ const styles = StyleSheet.create({
       padding: 6,
     }
   }
+
+  const userMarkdownStyles = {
+    ...markdownStyles,
+    text: { ...markdownStyles.text, color: '#fff' },
+    heading1: { ...markdownStyles.heading1, color: '#fff' },
+    heading2: { ...markdownStyles.heading2, color: '#fff' },
+    heading3: { ...markdownStyles.heading3, color: '#fff' },
+    strong: { ...markdownStyles.strong, color: '#fff' },
+    em: { ...markdownStyles.em, color: '#fff' },
+    list_item: { ...markdownStyles.list_item, color: '#fff' },
+  }
   
   const popoverStyles = (isUser: boolean) => ({
     optionsContainer: {
@@ -724,9 +735,9 @@ const styles = StyleSheet.create({
       backgroundColor: '#2c2c2c',
     },
     optionText: {
-      color: '#fff',
+      color: '#d1d1d6',
       fontSize: 16,
     },
   };
 
-export {styles, markdownStyles, popoverStyles, menuOptionStyles}
+export {styles, markdownStyles, userMarkdownStyles, popoverStyles, menuOptionStyles}

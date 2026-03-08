@@ -16,7 +16,7 @@ const SearchingIndicator: React.FC = () => {
   }, []);
   
   return (
-    <Text style={{ color: '#fff', opacity: 0.7 }}>
+    <Text style={{ color: '#d1d1d6', opacity: 0.7 }}>
       Searching the web{dots}
     </Text>
   );

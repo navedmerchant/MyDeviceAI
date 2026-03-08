@@ -28,22 +28,22 @@ type DrawerNavigation = CompositeNavigationProp<
 
 const markdownStyles = {
   body: {
-    color: '#fff',
+    color: '#d1d1d6',
     fontSize: 16,
     fontWeight: '500' as const,
   },
   heading1: {
-    color: '#fff',
+    color: '#d1d1d6',
     fontSize: 16,
     fontWeight: '500' as const,
   },
   heading2: {
-    color: '#fff',
+    color: '#d1d1d6',
     fontSize: 16,
     fontWeight: '500' as const,
   },
   paragraph: {
-    color: '#fff',
+    color: '#d1d1d6',
     fontSize: 16,
     fontWeight: '500' as const,
     marginTop: 0,
@@ -53,16 +53,16 @@ const markdownStyles = {
     color: '#3498db',
   },
   list: {
-    color: '#fff',
+    color: '#d1d1d6',
   },
   listItem: {
-    color: '#fff',
+    color: '#d1d1d6',
   },
   strong: {
-    color: '#fff',
+    color: '#d1d1d6',
   },
   em: {
-    color: '#fff',
+    color: '#d1d1d6',
   },
 };
 
@@ -83,7 +83,7 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 20,
     fontWeight: 'bold',
-    color: '#fff',
+    color: '#d1d1d6',
   },
   historiesList: {
     flex: 1,
@@ -104,7 +104,7 @@ const styles = StyleSheet.create({
   historyTitle: {
     fontSize: 16,
     fontWeight: '500',
-    color: '#fff',
+    color: '#d1d1d6',
   },
   historyLastMessage: {
     fontSize: 14,

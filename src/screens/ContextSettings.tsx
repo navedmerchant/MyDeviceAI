@@ -383,7 +383,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#000000',
   },
   loadingText: {
-    color: '#fff',
+    color: '#d1d1d6',
     marginTop: 16,
     fontSize: 16,
   },
@@ -406,7 +406,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   backButtonText: {
-    color: '#fff',
+    color: '#d1d1d6',
     fontSize: 16,
     marginLeft: 5,
   },
@@ -421,7 +421,7 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   sectionTitle: {
-    color: '#fff',
+    color: '#d1d1d6',
     fontSize: 18,
     fontWeight: 'bold',
     marginBottom: 16,
@@ -438,7 +438,7 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   label: {
-    color: '#fff',
+    color: '#d1d1d6',
     fontSize: 16,
     flex: 1,
   },
@@ -446,7 +446,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#2a2a2a',
     borderRadius: 4,
     padding: 12,
-    color: '#fff',
+    color: '#d1d1d6',
   },
   memoryInput: {
     flex: 1,
@@ -480,7 +480,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   memoryText: {
-    color: '#fff',
+    color: '#d1d1d6',
     fontSize: 14,
     marginBottom: 4,
   },

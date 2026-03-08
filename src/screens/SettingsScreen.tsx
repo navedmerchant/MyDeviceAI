@@ -286,12 +286,13 @@ const SettingsScreen: React.FC<Props> = ({ navigation }) => {
             onPress={() => navigation.navigate('AdvancedSettings')}
           >
             <View style={styles.navigationButtonContent}>
-              <Text style={styles.navigationButtonText}>Manage Models</Text>
+              <Text style={styles.navigationButtonText}>Manage Models and Connections</Text>
               <ChevronRight color="#fff" size={20} />
             </View>
           </TouchableOpacity>
           <Text style={styles.description}>
-            Search, download, and manage GGUF models from Hugging Face.
+            Search, download, and manage GGUF models from Hugging Face, configure Remote models 
+            with MyDeviceAI-desktop.
           </Text>
         </View>
 
@@ -458,12 +459,12 @@ const styles = StyleSheet.create({
     width: 80, // Same width as backButton to maintain balance
   },
   backButtonText: {
-    color: '#fff',
+    color: '#d1d1d6',
     fontSize: 16,
     marginLeft: 5,
   },
   title: {
-    color: '#fff',
+    color: '#d1d1d6',
     fontSize: 20,
     fontWeight: 'bold',
     textAlign: 'center',
@@ -477,7 +478,7 @@ const styles = StyleSheet.create({
     marginBottom: 24,
   },
   sectionTitle: {
-    color: '#fff',
+    color: '#d1d1d6',
     fontSize: 18,
     fontWeight: 'bold',
     marginBottom: 8,
@@ -491,7 +492,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#1a1a1a',
     borderRadius: 8,
     padding: 12,
-    color: '#fff',
+    color: '#d1d1d6',
     borderWidth: 1,
     borderColor: '#333',
     minHeight: 40,
@@ -528,7 +529,7 @@ const styles = StyleSheet.create({
     borderRadius: 8,
   },
   aboutTitle: {
-    color: '#fff',
+    color: '#d1d1d6',
     fontSize: 24,
     fontWeight: 'bold',
     marginBottom: 5,
@@ -539,7 +540,7 @@ const styles = StyleSheet.create({
     marginBottom: 10,
   },
   aboutDescription: {
-    color: '#fff',
+    color: '#d1d1d6',
     fontSize: 16,
     lineHeight: 22,
   },
@@ -547,7 +548,7 @@ const styles = StyleSheet.create({
     marginBottom: 24,
   },
   licenseSectionTitle: {
-    color: '#fff',
+    color: '#d1d1d6',
     fontSize: 18,
     fontWeight: 'bold',
     marginBottom: 8,
@@ -556,7 +557,7 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   licenseTitle: {
-    color: '#fff',
+    color: '#d1d1d6',
     fontSize: 16,
     fontWeight: 'bold',
     marginBottom: 5,
@@ -589,7 +590,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
   },
   navigationButtonText: {
-    color: '#fff',
+    color: '#d1d1d6',
     fontSize: 16,
   },
   linkContainer: {
@@ -609,7 +610,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   downloadTitle: {
-    color: '#fff',
+    color: '#d1d1d6',
     fontSize: 16,
     fontWeight: 'bold',
     marginBottom: 4,
@@ -641,7 +642,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   progressText: {
-    color: '#fff',
+    color: '#d1d1d6',
     fontSize: 12,
     marginTop: 4,
   },

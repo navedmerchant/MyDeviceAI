@@ -1020,8 +1020,7 @@ const AdvancedSettingsScreen: React.FC<Props> = ({ navigation }) => {
           <Text style={styles.backButtonText}>Back</Text>
         </TouchableOpacity>
         <View style={styles.titleContainer}>
-          <HardDrive color="#fff" size={24} />
-          <Text style={styles.title}>Advanced</Text>
+          <Text style={styles.title}>Models & Connections</Text>
         </View>
         <View style={styles.placeholder} />
       </View>
@@ -1040,9 +1039,9 @@ const AdvancedSettingsScreen: React.FC<Props> = ({ navigation }) => {
           style={[styles.tab, activeTab === 'search' && styles.activeTab]}
           onPress={() => setActiveTab('search')}
         >
-          <Search color={activeTab === 'search' ? '#007AFF' : '#666'} size={20} />
+          <Download color={activeTab === 'search' ? '#007AFF' : '#666'} size={20} />
           <Text style={[styles.tabText, activeTab === 'search' && styles.activeTabText]}>
-            Search
+            Download
           </Text>
         </TouchableOpacity>
         <TouchableOpacity
@@ -1060,7 +1059,7 @@ const AdvancedSettingsScreen: React.FC<Props> = ({ navigation }) => {
         <ScrollView style={styles.content} contentContainerStyle={styles.remoteContentContainer}>
           <Text style={styles.sectionTitle}>Remote Connection</Text>
           <Text style={styles.remoteDescription}>
-            Connect to MyDeviceAI-Desktop to run models on your computer
+            {`\u2022 Run models on your desktop remotely from anywhere\n\u2022 End-to-end encrypted connection\n\u2022 Falls back to local models if unavailable`}
           </Text>
 
           {remoteState.isConnected ? (
@@ -1176,9 +1175,10 @@ const AdvancedSettingsScreen: React.FC<Props> = ({ navigation }) => {
             <Text style={styles.infoTitle}>How it works:</Text>
             <Text style={styles.infoText}>
               1. Open MyDeviceAI-Desktop on your computer{'\n'}
-              2. Get the 6-digit alphanumeric code from the desktop app{'\n'}
+              2. Get the unique 6-digit alphanumeric code from the desktop app{'\n'}
               3. Enter the code above and tap Connect{'\n'}
-              4. Your messages will be processed on your desktop
+              4. Your phone will form an end to end encrypted connection with your desktop app {'\n'}
+              5. Your messages will be processed on your desktop when available{'\n'}
             </Text>
           </View>
         </ScrollView>
@@ -1654,7 +1654,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   title: {
-    color: '#fff',
+    color: '#d1d1d6',
     fontSize: 18,
     fontWeight: 'bold',
     marginLeft: 8,
@@ -1663,7 +1663,7 @@ const styles = StyleSheet.create({
     width: 80,
   },
   backButtonText: {
-    color: '#fff',
+    color: '#d1d1d6',
     fontSize: 16,
     marginLeft: 5,
   },
@@ -1705,7 +1705,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#1a1a1a',
     borderRadius: 8,
     padding: 12,
-    color: '#fff',
+    color: '#d1d1d6',
     borderWidth: 1,
     borderColor: '#333',
   },
@@ -1718,7 +1718,7 @@ const styles = StyleSheet.create({
     width: 48,
   },
   sectionTitle: {
-    color: '#fff',
+    color: '#d1d1d6',
     fontSize: 18,
     fontWeight: 'bold',
     marginBottom: 16,
@@ -1746,7 +1746,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   modelName: {
-    color: '#fff',
+    color: '#d1d1d6',
     fontSize: 16,
     fontWeight: 'bold',
     marginBottom: 4,
@@ -1861,7 +1861,7 @@ const styles = StyleSheet.create({
     borderBottomColor: '#333',
   },
   modalTitle: {
-    color: '#fff',
+    color: '#d1d1d6',
     fontSize: 20,
     fontWeight: 'bold',
     flex: 1,
@@ -1876,7 +1876,7 @@ const styles = StyleSheet.create({
     borderBottomColor: '#333',
   },
   modalModelName: {
-    color: '#fff',
+    color: '#d1d1d6',
     fontSize: 18,
     fontWeight: 'bold',
     marginBottom: 4,
@@ -1891,7 +1891,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   modalLoadingText: {
-    color: '#fff',
+    color: '#d1d1d6',
     fontSize: 16,
     marginTop: 16,
   },
@@ -1912,7 +1912,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   ggufFileName: {
-    color: '#fff',
+    color: '#d1d1d6',
     fontSize: 16,
     fontWeight: 'bold',
     marginBottom: 4,
@@ -1959,7 +1959,7 @@ const styles = StyleSheet.create({
     marginBottom: 24,
   },
   parameterSectionTitle: {
-    color: '#fff',
+    color: '#d1d1d6',
     fontSize: 18,
     fontWeight: 'bold',
     marginBottom: 16,
@@ -1968,7 +1968,7 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   parameterLabel: {
-    color: '#fff',
+    color: '#d1d1d6',
     fontSize: 14,
     fontWeight: '600',
     marginBottom: 8,
@@ -1982,7 +1982,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#1a1a1a',
     borderRadius: 8,
     padding: 12,
-    color: '#fff',
+    color: '#d1d1d6',
     borderWidth: 1,
     borderColor: '#333',
     fontSize: 14,
@@ -2091,7 +2091,7 @@ const styles = StyleSheet.create({
     marginBottom: 24,
   },
   inputLabel: {
-    color: '#fff',
+    color: '#d1d1d6',
     fontSize: 14,
     fontWeight: '600',
     marginBottom: 8,
@@ -2100,7 +2100,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#000',
     borderRadius: 8,
     padding: 16,
-    color: '#fff',
+    color: '#d1d1d6',
     fontSize: 24,
     fontWeight: 'bold',
     textAlign: 'center',
@@ -2151,7 +2151,7 @@ const styles = StyleSheet.create({
     padding: 20,
   },
   infoTitle: {
-    color: '#fff',
+    color: '#d1d1d6',
     fontSize: 16,
     fontWeight: 'bold',
     marginBottom: 12,
@@ -2172,7 +2172,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   savedCodeText: {
-    color: '#fff',
+    color: '#d1d1d6',
     fontSize: 24,
     fontWeight: 'bold',
     letterSpacing: 8,

@@ -25,10 +25,11 @@ import {
   FlatList,
   Animated,
   Image,
+  ImageBackground,
 } from 'react-native';
 import { Send, Square, CirclePlus, Search, Settings, ArrowDown, Brain, Copy, Share as ShareIcon, ChevronRight, Menu as MenuIcon, Download } from 'lucide-react-native';
 import { getModelParamsForDevice } from './utils/Utils';
-import { styles, markdownStyles, popoverStyles, menuOptionStyles } from './Styles';
+import { styles, markdownStyles, userMarkdownStyles, popoverStyles, menuOptionStyles } from './Styles';
 import { Message } from './model/Message';
 import { useRemoteConnection } from './connection/RemoteConnectionContext';
 import { ConnectionStatusIcon } from './components/ConnectionStatusIcon';
@@ -62,6 +63,7 @@ import ThinkingContent from './components/ThinkingContent';
 import StreamingThinkingIndicator from './components/StreamingThinkingIndicator';
 import ThumbnailGallery from './components/ThumbnailGallery';
 import * as Progress from 'react-native-progress';
+const chatWallpaper = require('./images/white-grey-15-pct.png');
 import { MODEL_NAMES, MODEL_URLS } from './constants/Models';
 
 type ChatScreenNavigationProp = DrawerNavigationProp<DrawerParamList, 'Chat'>;
@@ -671,9 +673,9 @@ want to talk and share about personal feelings.`;
     Keyboard.dismiss();
   };
 
-  // Android-specific: Load model on init (only if models are downloaded)
+  // Load model on init
   useEffect(() => {
-    console.log("Loading model on init on Android");
+    console.log("Loading model on init");
     if (Platform.OS === 'android') {
       (async () => {
         // Check what the active model is
@@ -704,6 +706,11 @@ want to talk and share about personal feelings.`;
           }
         }
       })();
+    } else {
+      // iOS: load models on mount since AppState won't fire a foreground transition on first launch
+      console.log("iOS: Loading models on mount");
+      loadModel();
+      loadEmbeddingModel();
     }
   }, []);
 
@@ -1066,13 +1073,19 @@ want to talk and share about personal feelings.`;
 
     // Check if model needs to be loaded
     if (!contextRef.current) {
+      // If the model isn't currently loading, kick off a load
+      if (!isModelLoadingRef.current) {
+        console.log("Model not loaded and not loading, triggering loadModel()");
+        loadModel();
+      }
+
       setIsWaitingForModel(true);
       // Add loading message
       const loadingMessageId = Date.now();
       const loadingMessage = { id: loadingMessageId, text: "Waiting for AI model to be ready. This may take a few moments. The wait maybe longer if the app is starting up for the first time.", isUser: false };
       setMessages(prevMessages => [...prevMessages, loadingMessage]);
       
-      // Wait for the model to be loaded (max 30 seconds)
+      // Wait for the model to be loaded (max 60 seconds to account for cold start)
       let attempts = 0;
       const maxAttempts = 30;
       while (!contextRef.current && attempts < maxAttempts) {
@@ -1295,12 +1308,12 @@ want to talk and share about personal feelings.`;
   };
 
   // Move processThinkingContent outside of renderMessage
-  const processThinkingContent = (text: string, isCurrentlyThinking: boolean = false) => {
+  const processThinkingContent = (text: string, isCurrentlyThinking: boolean = false, mdStyles: any = markdownStyles) => {
     // Find the first <think> tag
     const startIndex = text.indexOf("<think>");
     if (startIndex === -1) {
       // No thinking content
-      return <Markdown style={markdownStyles}>{text}</Markdown>;
+      return <Markdown style={mdStyles}>{text}</Markdown>;
     }
 
     // Find the last </think> tag
@@ -1311,7 +1324,7 @@ want to talk and share about personal feelings.`;
     // Add text before thinking section
     if (startIndex > 0) {
       parts.push(
-        <Markdown key="pre-think" style={markdownStyles}>
+        <Markdown key="pre-think" style={mdStyles}>
           {text.slice(0, startIndex)}
         </Markdown>
       );
@@ -1336,20 +1349,20 @@ want to talk and share about personal feelings.`;
       const afterText = text.slice(endIndex + 8);
       if (!trimmedThinkingContent) {
         parts.push(
-          <Markdown key="combined" style={markdownStyles}>
+          <Markdown key="combined" style={mdStyles}>
             {afterText}
           </Markdown>
         );
       } else {
         parts.push(
-          <Markdown key="post-think" style={markdownStyles}>
+          <Markdown key="post-think" style={mdStyles}>
             {afterText}
           </Markdown>
         );
       }
     }
     
-    return parts.length > 0 ? parts : <Markdown style={markdownStyles}>{text}</Markdown>;
+    return parts.length > 0 ? parts : <Markdown style={mdStyles}>{text}</Markdown>;
   };
 
   const handleImagePress = (url: string, allImages: string[]) => {
@@ -1388,7 +1401,7 @@ want to talk and share about personal feelings.`;
             />
           )}
           
-          {processThinkingContent(message.text, false)}
+          {processThinkingContent(message.text, false, message.isUser ? userMarkdownStyles : markdownStyles)}
         </View>
         {/* For AI messages, show copy and share buttons on the right/below */} 
         {isAIMessage && (
@@ -1535,47 +1548,49 @@ want to talk and share about personal feelings.`;
         </View>
       </View>
 
-      {messages.length === 0 ? (
-        <EmptyState onPromptPress={handlePromptSelect} />
-      ) : (
-        <ScrollView 
-          ref={scrollViewRef}
-          style={styles.messagesContainer}
-          contentContainerStyle={styles.scrollViewContent}
-          onScroll={handleScrollEvent}
-          scrollEventThrottle={16}
-        >
-          {messages.map(renderMessage)}
-          {(isTyping || isSearching) && (
-            <View style={[
-              styles.messageBubble,
-              styles.aiMessage,
-              { maxWidth: '100%' }
-            ]}>
-              {currentThumbnails.length > 0 && (
-                <ThumbnailGallery 
-                  thumbnails={currentThumbnails} 
-                  onImagePress={(url) => handleImagePress(url, currentThumbnails)} 
-                />
-              )}
-              
-              {isSearching ? (
-                <SearchingIndicator />
-              ) : currentResponse ? (
-                <>
-                  {processThinkingContent(currentResponse, true)}
-                  {(currentResponse.match(/<think>/g) || []).length > 
-                   (currentResponse.match(/<\/think>/g) || []).length && (
-                    <StreamingThinkingIndicator />
-                  )}
-                </>
-              ) : (
-                <TypingIndicator />
-              )}
-            </View>
-          )}
-        </ScrollView>
-      )}
+      <ImageBackground source={chatWallpaper} style={{flex: 1}} resizeMode="cover">
+        {messages.length === 0 ? (
+          <EmptyState />
+        ) : (
+          <ScrollView 
+            ref={scrollViewRef}
+            style={styles.messagesContainer}
+            contentContainerStyle={styles.scrollViewContent}
+            onScroll={handleScrollEvent}
+            scrollEventThrottle={16}
+          >
+            {messages.map(renderMessage)}
+            {(isTyping || isSearching) && (
+              <View style={[
+                styles.messageBubble,
+                styles.aiMessage,
+                { maxWidth: '100%' }
+              ]}>
+                {currentThumbnails.length > 0 && (
+                  <ThumbnailGallery 
+                    thumbnails={currentThumbnails} 
+                    onImagePress={(url) => handleImagePress(url, currentThumbnails)} 
+                  />
+                )}
+                
+                {isSearching ? (
+                  <SearchingIndicator />
+                ) : currentResponse ? (
+                  <>
+                    {processThinkingContent(currentResponse, true)}
+                    {(currentResponse.match(/<think>/g) || []).length > 
+                     (currentResponse.match(/<\/think>/g) || []).length && (
+                      <StreamingThinkingIndicator />
+                    )}
+                  </>
+                ) : (
+                  <TypingIndicator />
+                )}
+              </View>
+            )}
+          </ScrollView>
+        )}
+      </ImageBackground>
 
       {showScrollButton && messages.length > 0 && (
         <TouchableOpacity 

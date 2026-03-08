@@ -155,7 +155,7 @@ export function ConnectionDropdownModal({
               onClose();
             }}
           >
-            <Text style={styles.setupButtonText}>Models and Connections</Text>
+            <Text style={styles.setupButtonText}>Models & Connections</Text>
           </TouchableOpacity>
         </View>
       </Pressable>
@@ -187,7 +187,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   statusText: {
-    color: '#fff',
+    color: '#d1d1d6',
     fontSize: 14,
     fontWeight: '500',
   },
@@ -219,7 +219,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   optionText: {
-    color: '#fff',
+    color: '#d1d1d6',
     fontSize: 16,
     fontWeight: '500',
     marginBottom: 4,

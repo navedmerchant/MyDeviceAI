@@ -148,11 +148,11 @@ const styles = StyleSheet.create({
     padding: 8,
   },
   backButtonText: {
-    color: '#fff',
+    color: '#d1d1d6',
     fontSize: 16,
   },
   pageIndicator: {
-    color: '#fff',
+    color: '#d1d1d6',
     fontSize: 16,
   },
   placeholder: {
