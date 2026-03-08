@@ -100,12 +100,16 @@ const AdvancedSettingsScreen: React.FC<Props> = ({ navigation }) => {
     thinking_top_p: '',
     thinking_top_k: '',
     thinking_min_p: '',
+    thinking_presence_penalty: '',
+    thinking_repetition_penalty: '',
     // Non-thinking mode sampling
     non_thinking_n_predict: '',
     non_thinking_temperature: '',
     non_thinking_top_p: '',
     non_thinking_top_k: '',
     non_thinking_min_p: '',
+    non_thinking_presence_penalty: '',
+    non_thinking_repetition_penalty: '',
     stop: ''
   });
 
@@ -624,11 +628,15 @@ const AdvancedSettingsScreen: React.FC<Props> = ({ navigation }) => {
       thinking_top_p: thinking.top_p.toString(),
       thinking_top_k: thinking.top_k.toString(),
       thinking_min_p: thinking.min_p.toString(),
+      thinking_presence_penalty: thinking.penalty_present.toString(),
+      thinking_repetition_penalty: thinking.penalty_repeat.toString(),
       non_thinking_n_predict: nonThinking.n_predict.toString(),
       non_thinking_temperature: nonThinking.temperature.toString(),
       non_thinking_top_p: nonThinking.top_p.toString(),
       non_thinking_top_k: nonThinking.top_k.toString(),
       non_thinking_min_p: nonThinking.min_p.toString(),
+      non_thinking_presence_penalty: nonThinking.penalty_present.toString(),
+      non_thinking_repetition_penalty: nonThinking.penalty_repeat.toString(),
       stop: currentParams.stop.join(', ')
     });
     
@@ -649,6 +657,8 @@ const AdvancedSettingsScreen: React.FC<Props> = ({ navigation }) => {
       const t_top_p = parseFloat(parameterInputs.thinking_top_p);
       const t_top_k = parseInt(parameterInputs.thinking_top_k);
       const t_min_p = parseFloat(parameterInputs.thinking_min_p);
+      const t_presence_penalty = parseFloat(parameterInputs.thinking_presence_penalty);
+      const t_repetition_penalty = parseFloat(parameterInputs.thinking_repetition_penalty);
       
       // Non-thinking sampling params
       const nt_n_predict = parseInt(parameterInputs.non_thinking_n_predict);
@@ -656,6 +666,8 @@ const AdvancedSettingsScreen: React.FC<Props> = ({ navigation }) => {
       const nt_top_p = parseFloat(parameterInputs.non_thinking_top_p);
       const nt_top_k = parseInt(parameterInputs.non_thinking_top_k);
       const nt_min_p = parseFloat(parameterInputs.non_thinking_min_p);
+      const nt_presence_penalty = parseFloat(parameterInputs.non_thinking_presence_penalty);
+      const nt_repetition_penalty = parseFloat(parameterInputs.non_thinking_repetition_penalty);
       
       const stop = parameterInputs.stop.split(',').map(s => s.trim()).filter(s => s.length > 0);
 
@@ -676,6 +688,8 @@ const AdvancedSettingsScreen: React.FC<Props> = ({ navigation }) => {
       if (isNaN(t_top_p) || t_top_p < 0 || t_top_p > 1) errors.push('Thinking: Top P must be between 0 and 1');
       if (isNaN(t_top_k) || t_top_k <= 0) errors.push('Thinking: Top K must be a positive integer');
       if (isNaN(t_min_p) || t_min_p < 0 || t_min_p > 1) errors.push('Thinking: Min P must be between 0 and 1');
+      if (isNaN(t_presence_penalty)) errors.push('Thinking: Presence Penalty must be a number');
+      if (isNaN(t_repetition_penalty)) errors.push('Thinking: Repetition Penalty must be a number');
 
       // Validate non-thinking params
       if (isNaN(nt_n_predict) || nt_n_predict <= 0) errors.push('Non-Thinking: Max Tokens must be a positive integer');
@@ -683,6 +697,8 @@ const AdvancedSettingsScreen: React.FC<Props> = ({ navigation }) => {
       if (isNaN(nt_top_p) || nt_top_p < 0 || nt_top_p > 1) errors.push('Non-Thinking: Top P must be between 0 and 1');
       if (isNaN(nt_top_k) || nt_top_k <= 0) errors.push('Non-Thinking: Top K must be a positive integer');
       if (isNaN(nt_min_p) || nt_min_p < 0 || nt_min_p > 1) errors.push('Non-Thinking: Min P must be between 0 and 1');
+      if (isNaN(nt_presence_penalty)) errors.push('Non-Thinking: Presence Penalty must be a number');
+      if (isNaN(nt_repetition_penalty)) errors.push('Non-Thinking: Repetition Penalty must be a number');
 
       // If there are validation errors, show them and don't save
       if (errors.length > 0) {
@@ -700,6 +716,8 @@ const AdvancedSettingsScreen: React.FC<Props> = ({ navigation }) => {
         top_p: t_top_p,
         top_k: t_top_k,
         min_p: t_min_p,
+        penalty_present: t_presence_penalty,
+        penalty_repeat: t_repetition_penalty,
       };
 
       const nonThinkingSampling: SamplingParameters = {
@@ -708,6 +726,8 @@ const AdvancedSettingsScreen: React.FC<Props> = ({ navigation }) => {
         top_p: nt_top_p,
         top_k: nt_top_k,
         min_p: nt_min_p,
+        penalty_present: nt_presence_penalty,
+        penalty_repeat: nt_repetition_penalty,
       };
 
       // Create validated parameters object
@@ -720,6 +740,8 @@ const AdvancedSettingsScreen: React.FC<Props> = ({ navigation }) => {
         top_p: nt_top_p,
         top_k: nt_top_k,
         min_p: nt_min_p,
+        penalty_present: nt_presence_penalty,
+        penalty_repeat: nt_repetition_penalty,
         stop,
         thinkingSampling,
         nonThinkingSampling,
@@ -781,11 +803,15 @@ const AdvancedSettingsScreen: React.FC<Props> = ({ navigation }) => {
       thinking_top_p: DEFAULT_THINKING_SAMPLING.top_p.toString(),
       thinking_top_k: DEFAULT_THINKING_SAMPLING.top_k.toString(),
       thinking_min_p: DEFAULT_THINKING_SAMPLING.min_p.toString(),
+      thinking_presence_penalty: DEFAULT_THINKING_SAMPLING.penalty_present.toString(),
+      thinking_repetition_penalty: DEFAULT_THINKING_SAMPLING.penalty_repeat.toString(),
       non_thinking_n_predict: DEFAULT_NON_THINKING_SAMPLING.n_predict.toString(),
       non_thinking_temperature: DEFAULT_NON_THINKING_SAMPLING.temperature.toString(),
       non_thinking_top_p: DEFAULT_NON_THINKING_SAMPLING.top_p.toString(),
       non_thinking_top_k: DEFAULT_NON_THINKING_SAMPLING.top_k.toString(),
       non_thinking_min_p: DEFAULT_NON_THINKING_SAMPLING.min_p.toString(),
+      non_thinking_presence_penalty: DEFAULT_NON_THINKING_SAMPLING.penalty_present.toString(),
+      non_thinking_repetition_penalty: DEFAULT_NON_THINKING_SAMPLING.penalty_repeat.toString(),
       stop: DEFAULT_PARAMETERS.stop.join(', ')
     });
   };
@@ -1427,6 +1453,34 @@ const AdvancedSettingsScreen: React.FC<Props> = ({ navigation }) => {
                   placeholderTextColor="#666"
                 />
               </View>
+
+              <View style={styles.parameterRow}>
+                <Text style={styles.parameterLabel}>Presence Penalty</Text>
+                <TextInput
+                  style={styles.parameterInput}
+                  value={parameterInputs.thinking_presence_penalty}
+                  onChangeText={(text) => setParameterInputs(prev => ({
+                    ...prev,
+                    thinking_presence_penalty: text
+                  }))}
+                  keyboardType="decimal-pad"
+                  placeholderTextColor="#666"
+                />
+              </View>
+
+              <View style={styles.parameterRow}>
+                <Text style={styles.parameterLabel}>Repetition Penalty</Text>
+                <TextInput
+                  style={styles.parameterInput}
+                  value={parameterInputs.thinking_repetition_penalty}
+                  onChangeText={(text) => setParameterInputs(prev => ({
+                    ...prev,
+                    thinking_repetition_penalty: text
+                  }))}
+                  keyboardType="decimal-pad"
+                  placeholderTextColor="#666"
+                />
+              </View>
             </View>
 
             <View style={styles.parameterSection}>
@@ -1499,6 +1553,34 @@ const AdvancedSettingsScreen: React.FC<Props> = ({ navigation }) => {
                   onChangeText={(text) => setParameterInputs(prev => ({
                     ...prev,
                     non_thinking_min_p: text
+                  }))}
+                  keyboardType="decimal-pad"
+                  placeholderTextColor="#666"
+                />
+              </View>
+
+              <View style={styles.parameterRow}>
+                <Text style={styles.parameterLabel}>Presence Penalty</Text>
+                <TextInput
+                  style={styles.parameterInput}
+                  value={parameterInputs.non_thinking_presence_penalty}
+                  onChangeText={(text) => setParameterInputs(prev => ({
+                    ...prev,
+                    non_thinking_presence_penalty: text
+                  }))}
+                  keyboardType="decimal-pad"
+                  placeholderTextColor="#666"
+                />
+              </View>
+
+              <View style={styles.parameterRow}>
+                <Text style={styles.parameterLabel}>Repetition Penalty</Text>
+                <TextInput
+                  style={styles.parameterInput}
+                  value={parameterInputs.non_thinking_repetition_penalty}
+                  onChangeText={(text) => setParameterInputs(prev => ({
+                    ...prev,
+                    non_thinking_repetition_penalty: text
                   }))}
                   keyboardType="decimal-pad"
                   placeholderTextColor="#666"

@@ -9,6 +9,8 @@ interface SamplingParameters {
   top_p: number;
   top_k: number;
   min_p: number;
+  penalty_present: number;
+  penalty_repeat: number;
 }
 
 interface ModelParameters {
@@ -19,6 +21,8 @@ interface ModelParameters {
   top_p: number;
   top_k: number;
   min_p: number;
+  penalty_present: number;
+  penalty_repeat: number;
   stop: string[];
   batch_size?: number;
   // Thinking / non-thinking sampling overrides
@@ -44,6 +48,8 @@ const DEFAULT_THINKING_SAMPLING: SamplingParameters = {
   top_p: 0.95,
   top_k: 20,
   min_p: 0.0,
+  penalty_present: 1.5,
+  penalty_repeat: 1.0,
 };
 
 // Default sampling parameters for non-thinking mode
@@ -53,6 +59,8 @@ const DEFAULT_NON_THINKING_SAMPLING: SamplingParameters = {
   top_p: 1.0,
   top_k: 20,
   min_p: 0.0,
+  penalty_present: 2.0,
+  penalty_repeat: 1.0,
 };
 
 // Default parameters (legacy flat defaults kept for backward compat)
@@ -64,6 +72,8 @@ const DEFAULT_PARAMETERS: ModelParameters = {
   top_p: 0.8,
   top_k: 20,
   min_p: 0,
+  penalty_present: 2.0,
+  penalty_repeat: 1.0,
   stop: ['<|im_end|>', '<|im_start|>', '<|end|>', '<|user|>', '<|assistant|>', 'User:', 'Assistant:', 'Human:', 'AI:', '<|eot_id|>'],
   thinkingSampling: DEFAULT_THINKING_SAMPLING,
   nonThinkingSampling: DEFAULT_NON_THINKING_SAMPLING,
@@ -73,7 +83,7 @@ const DEFAULT_PARAMETERS: ModelParameters = {
  * Resolves the effective sampling parameters based on thinking mode.
  * If thinking-specific overrides exist, uses those; otherwise falls back to the flat params.
  */
-function resolveSamplingParams(params: ModelParameters, thinking: boolean): Pick<ModelParameters, 'n_predict' | 'temperature' | 'top_p' | 'top_k' | 'min_p'> {
+function resolveSamplingParams(params: ModelParameters, thinking: boolean): Pick<ModelParameters, 'n_predict' | 'temperature' | 'top_p' | 'top_k' | 'min_p' | 'penalty_present' | 'penalty_repeat'> {
   const sampling = thinking
     ? params.thinkingSampling
     : params.nonThinkingSampling;
@@ -85,6 +95,8 @@ function resolveSamplingParams(params: ModelParameters, thinking: boolean): Pick
       top_p: sampling.top_p,
       top_k: sampling.top_k,
       min_p: sampling.min_p,
+      penalty_present: sampling.penalty_present ?? 2.0,
+      penalty_repeat: sampling.penalty_repeat ?? 1.0,
     };
   }
 
@@ -95,6 +107,8 @@ function resolveSamplingParams(params: ModelParameters, thinking: boolean): Pick
     top_p: params.top_p,
     top_k: params.top_k,
     min_p: params.min_p,
+    penalty_present: params.penalty_present ?? 2.0,
+    penalty_repeat: params.penalty_repeat ?? 1.0,
   };
 }
 
@@ -141,7 +155,7 @@ async function getModelParamsForDevice(thinking: boolean = false) {
 
       // On Android, check if model is downloaded to document directory
       if (Platform.OS === 'android') {
-        const androidModelPath = `${RNFS.DocumentDirectoryPath}/model/Qwen3.5-2B-UD-Q4_K_XL.gguf`;
+        const androidModelPath = `${RNFS.DocumentDirectoryPath}/model/Qwen_Qwen3.5-2B-Q4_K_M.gguf`;
         const exists = await RNFS.exists(androidModelPath);
         if (exists) {
           console.log('Using downloaded model on Android');
@@ -160,7 +174,7 @@ async function getModelParamsForDevice(thinking: boolean = false) {
       }
 
       const modelParams = {
-        model: 'file://Qwen3.5-2B-UD-Q4_K_XL.gguf',
+        model: 'file://Qwen_Qwen3.5-2B-Q4_K_M.gguf',
         is_model_asset: true,
         n_ctx: DEFAULT_PARAMETERS.n_ctx,
         n_gpu_layers: DEFAULT_PARAMETERS.n_gpu_layers,
@@ -177,7 +191,7 @@ async function getModelParamsForDevice(thinking: boolean = false) {
 
       const fallbackSampling = resolveSamplingParams(DEFAULT_PARAMETERS, thinking);
       const modelParams = {
-        model: 'file://Qwen3.5-2B-UD-Q4_K_XL.gguf',
+        model: 'file://Qwen_Qwen3.5-2B-Q4_K_M.gguf',
         is_model_asset: true,
         n_ctx: DEFAULT_PARAMETERS.n_ctx,
         n_gpu_layers: DEFAULT_PARAMETERS.n_gpu_layers,

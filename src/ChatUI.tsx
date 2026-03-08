@@ -1177,6 +1177,8 @@ want to talk and share about personal feelings.`;
             top_p: modelParams.top_p,
             top_k: modelParams.top_k,
             min_p: modelParams.min_p,
+            penalty_present: modelParams.penalty_present,
+            penalty_repeat: modelParams.penalty_repeat,
             stop: modelParams.stop,
             ...(supportsThinking ? { enable_thinking: thinkingModeEnabled } : {}),
           },
