@@ -18,7 +18,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { DrawerNavigationProp } from '@react-navigation/drawer';
 import { DrawerParamList } from '../../App';
 import RNFS from 'react-native-fs';
-import { ModelParameters, DEFAULT_PARAMETERS } from '../utils/Utils';
+import { ModelParameters, SamplingParameters, DEFAULT_PARAMETERS, DEFAULT_THINKING_SAMPLING, DEFAULT_NON_THINKING_SAMPLING } from '../utils/Utils';
 import { useRemoteConnection } from '../connection/RemoteConnectionContext';
 
 type AdvancedSettingsScreenNavigationProp = DrawerNavigationProp<DrawerParamList, 'AdvancedSettings'>;
@@ -94,11 +94,18 @@ const AdvancedSettingsScreen: React.FC<Props> = ({ navigation }) => {
   const [parameterInputs, setParameterInputs] = useState({
     n_ctx: '',
     n_gpu_layers: '',
-    n_predict: '',
-    temperature: '',
-    top_p: '',
-    top_k: '',
-    min_p: '',
+    // Thinking mode sampling
+    thinking_n_predict: '',
+    thinking_temperature: '',
+    thinking_top_p: '',
+    thinking_top_k: '',
+    thinking_min_p: '',
+    // Non-thinking mode sampling
+    non_thinking_n_predict: '',
+    non_thinking_temperature: '',
+    non_thinking_top_p: '',
+    non_thinking_top_k: '',
+    non_thinking_min_p: '',
     stop: ''
   });
 
@@ -605,15 +612,23 @@ const AdvancedSettingsScreen: React.FC<Props> = ({ navigation }) => {
     const currentParams = model.parameters || DEFAULT_PARAMETERS;
     setTempParameters(currentParams);
     
+    const thinking = currentParams.thinkingSampling || DEFAULT_THINKING_SAMPLING;
+    const nonThinking = currentParams.nonThinkingSampling || DEFAULT_NON_THINKING_SAMPLING;
+    
     // Set string inputs from current parameters
     setParameterInputs({
       n_ctx: currentParams.n_ctx.toString(),
       n_gpu_layers: currentParams.n_gpu_layers.toString(),
-      n_predict: currentParams.n_predict.toString(),
-      temperature: currentParams.temperature.toString(),
-      top_p: currentParams.top_p.toString(),
-      top_k: currentParams.top_k.toString(),
-      min_p: currentParams.min_p.toString(),
+      thinking_n_predict: thinking.n_predict.toString(),
+      thinking_temperature: thinking.temperature.toString(),
+      thinking_top_p: thinking.top_p.toString(),
+      thinking_top_k: thinking.top_k.toString(),
+      thinking_min_p: thinking.min_p.toString(),
+      non_thinking_n_predict: nonThinking.n_predict.toString(),
+      non_thinking_temperature: nonThinking.temperature.toString(),
+      non_thinking_top_p: nonThinking.top_p.toString(),
+      non_thinking_top_k: nonThinking.top_k.toString(),
+      non_thinking_min_p: nonThinking.min_p.toString(),
       stop: currentParams.stop.join(', ')
     });
     
@@ -627,11 +642,21 @@ const AdvancedSettingsScreen: React.FC<Props> = ({ navigation }) => {
     try {
       const n_ctx = parseInt(parameterInputs.n_ctx);
       const n_gpu_layers = parseInt(parameterInputs.n_gpu_layers);
-      const n_predict = parseInt(parameterInputs.n_predict);
-      const temperature = parseFloat(parameterInputs.temperature);
-      const top_p = parseFloat(parameterInputs.top_p);
-      const top_k = parseInt(parameterInputs.top_k);
-      const min_p = parseFloat(parameterInputs.min_p);
+      
+      // Thinking sampling params
+      const t_n_predict = parseInt(parameterInputs.thinking_n_predict);
+      const t_temperature = parseFloat(parameterInputs.thinking_temperature);
+      const t_top_p = parseFloat(parameterInputs.thinking_top_p);
+      const t_top_k = parseInt(parameterInputs.thinking_top_k);
+      const t_min_p = parseFloat(parameterInputs.thinking_min_p);
+      
+      // Non-thinking sampling params
+      const nt_n_predict = parseInt(parameterInputs.non_thinking_n_predict);
+      const nt_temperature = parseFloat(parameterInputs.non_thinking_temperature);
+      const nt_top_p = parseFloat(parameterInputs.non_thinking_top_p);
+      const nt_top_k = parseInt(parameterInputs.non_thinking_top_k);
+      const nt_min_p = parseFloat(parameterInputs.non_thinking_min_p);
+      
       const stop = parameterInputs.stop.split(',').map(s => s.trim()).filter(s => s.length > 0);
 
       // Validation checks
@@ -644,26 +669,20 @@ const AdvancedSettingsScreen: React.FC<Props> = ({ navigation }) => {
       if (isNaN(n_gpu_layers) || n_gpu_layers < 0) {
         errors.push('GPU Layers must be a non-negative integer');
       }
-      
-      if (isNaN(n_predict) || n_predict <= 0) {
-        errors.push('Max Tokens must be a positive integer');
-      }
-      
-      if (isNaN(temperature) || temperature <= 0) {
-        errors.push('Temperature must be a positive number');
-      }
-      
-      if (isNaN(top_p) || top_p < 0 || top_p > 1) {
-        errors.push('Top P must be a number between 0 and 1');
-      }
-      
-      if (isNaN(top_k) || top_k <= 0) {
-        errors.push('Top K must be a positive integer');
-      }
-      
-      if (isNaN(min_p) || min_p < 0 || min_p > 1) {
-        errors.push('Min P must be a number between 0 and 1');
-      }
+
+      // Validate thinking params
+      if (isNaN(t_n_predict) || t_n_predict <= 0) errors.push('Thinking: Max Tokens must be a positive integer');
+      if (isNaN(t_temperature) || t_temperature <= 0) errors.push('Thinking: Temperature must be a positive number');
+      if (isNaN(t_top_p) || t_top_p < 0 || t_top_p > 1) errors.push('Thinking: Top P must be between 0 and 1');
+      if (isNaN(t_top_k) || t_top_k <= 0) errors.push('Thinking: Top K must be a positive integer');
+      if (isNaN(t_min_p) || t_min_p < 0 || t_min_p > 1) errors.push('Thinking: Min P must be between 0 and 1');
+
+      // Validate non-thinking params
+      if (isNaN(nt_n_predict) || nt_n_predict <= 0) errors.push('Non-Thinking: Max Tokens must be a positive integer');
+      if (isNaN(nt_temperature) || nt_temperature <= 0) errors.push('Non-Thinking: Temperature must be a positive number');
+      if (isNaN(nt_top_p) || nt_top_p < 0 || nt_top_p > 1) errors.push('Non-Thinking: Top P must be between 0 and 1');
+      if (isNaN(nt_top_k) || nt_top_k <= 0) errors.push('Non-Thinking: Top K must be a positive integer');
+      if (isNaN(nt_min_p) || nt_min_p < 0 || nt_min_p > 1) errors.push('Non-Thinking: Min P must be between 0 and 1');
 
       // If there are validation errors, show them and don't save
       if (errors.length > 0) {
@@ -675,16 +694,35 @@ const AdvancedSettingsScreen: React.FC<Props> = ({ navigation }) => {
         return;
       }
 
+      const thinkingSampling: SamplingParameters = {
+        n_predict: t_n_predict,
+        temperature: t_temperature,
+        top_p: t_top_p,
+        top_k: t_top_k,
+        min_p: t_min_p,
+      };
+
+      const nonThinkingSampling: SamplingParameters = {
+        n_predict: nt_n_predict,
+        temperature: nt_temperature,
+        top_p: nt_top_p,
+        top_k: nt_top_k,
+        min_p: nt_min_p,
+      };
+
       // Create validated parameters object
       const validatedParameters: ModelParameters = {
         n_ctx,
         n_gpu_layers,
-        n_predict,
-        temperature,
-        top_p,
-        top_k,
-        min_p,
-        stop
+        // Keep flat defaults for backward compat
+        n_predict: nt_n_predict,
+        temperature: nt_temperature,
+        top_p: nt_top_p,
+        top_k: nt_top_k,
+        min_p: nt_min_p,
+        stop,
+        thinkingSampling,
+        nonThinkingSampling,
       };
 
       // Check if initialization parameters changed (requires model reload)
@@ -738,11 +776,16 @@ const AdvancedSettingsScreen: React.FC<Props> = ({ navigation }) => {
     setParameterInputs({
       n_ctx: DEFAULT_PARAMETERS.n_ctx.toString(),
       n_gpu_layers: DEFAULT_PARAMETERS.n_gpu_layers.toString(),
-      n_predict: DEFAULT_PARAMETERS.n_predict.toString(),
-      temperature: DEFAULT_PARAMETERS.temperature.toString(),
-      top_p: DEFAULT_PARAMETERS.top_p.toString(),
-      top_k: DEFAULT_PARAMETERS.top_k.toString(),
-      min_p: DEFAULT_PARAMETERS.min_p.toString(),
+      thinking_n_predict: DEFAULT_THINKING_SAMPLING.n_predict.toString(),
+      thinking_temperature: DEFAULT_THINKING_SAMPLING.temperature.toString(),
+      thinking_top_p: DEFAULT_THINKING_SAMPLING.top_p.toString(),
+      thinking_top_k: DEFAULT_THINKING_SAMPLING.top_k.toString(),
+      thinking_min_p: DEFAULT_THINKING_SAMPLING.min_p.toString(),
+      non_thinking_n_predict: DEFAULT_NON_THINKING_SAMPLING.n_predict.toString(),
+      non_thinking_temperature: DEFAULT_NON_THINKING_SAMPLING.temperature.toString(),
+      non_thinking_top_p: DEFAULT_NON_THINKING_SAMPLING.top_p.toString(),
+      non_thinking_top_k: DEFAULT_NON_THINKING_SAMPLING.top_k.toString(),
+      non_thinking_min_p: DEFAULT_NON_THINKING_SAMPLING.min_p.toString(),
       stop: DEFAULT_PARAMETERS.stop.join(', ')
     });
   };
@@ -1307,33 +1350,36 @@ const AdvancedSettingsScreen: React.FC<Props> = ({ navigation }) => {
                   placeholderTextColor="#666"
                 />
               </View>
+            </View>
 
+            <View style={styles.parameterSection}>
+              <Text style={styles.parameterSectionTitle}>Thinking Mode Sampling</Text>
+              <Text style={styles.parameterDescription}>
+                Parameters used when thinking mode is enabled
+              </Text>
+              
               <View style={styles.parameterRow}>
                 <Text style={styles.parameterLabel}>Max Tokens (n_predict)</Text>
                 <TextInput
                   style={styles.parameterInput}
-                  value={parameterInputs.n_predict}
+                  value={parameterInputs.thinking_n_predict}
                   onChangeText={(text) => setParameterInputs(prev => ({
                     ...prev,
-                    n_predict: text
+                    thinking_n_predict: text
                   }))}
                   keyboardType="numeric"
                   placeholderTextColor="#666"
                 />
               </View>
-            </View>
 
-            <View style={styles.parameterSection}>
-              <Text style={styles.parameterSectionTitle}>Sampling Parameters</Text>
-              
               <View style={styles.parameterRow}>
                 <Text style={styles.parameterLabel}>Temperature</Text>
                 <TextInput
                   style={styles.parameterInput}
-                  value={parameterInputs.temperature}
+                  value={parameterInputs.thinking_temperature}
                   onChangeText={(text) => setParameterInputs(prev => ({
                     ...prev,
-                    temperature: text
+                    thinking_temperature: text
                   }))}
                   keyboardType="decimal-pad"
                   placeholderTextColor="#666"
@@ -1344,10 +1390,10 @@ const AdvancedSettingsScreen: React.FC<Props> = ({ navigation }) => {
                 <Text style={styles.parameterLabel}>Top P</Text>
                 <TextInput
                   style={styles.parameterInput}
-                  value={parameterInputs.top_p}
+                  value={parameterInputs.thinking_top_p}
                   onChangeText={(text) => setParameterInputs(prev => ({
                     ...prev,
-                    top_p: text
+                    thinking_top_p: text
                   }))}
                   keyboardType="decimal-pad"
                   placeholderTextColor="#666"
@@ -1358,10 +1404,10 @@ const AdvancedSettingsScreen: React.FC<Props> = ({ navigation }) => {
                 <Text style={styles.parameterLabel}>Top K</Text>
                 <TextInput
                   style={styles.parameterInput}
-                  value={parameterInputs.top_k}
+                  value={parameterInputs.thinking_top_k}
                   onChangeText={(text) => setParameterInputs(prev => ({
                     ...prev,
-                    top_k: text
+                    thinking_top_k: text
                   }))}
                   keyboardType="numeric"
                   placeholderTextColor="#666"
@@ -1372,10 +1418,87 @@ const AdvancedSettingsScreen: React.FC<Props> = ({ navigation }) => {
                 <Text style={styles.parameterLabel}>Min P</Text>
                 <TextInput
                   style={styles.parameterInput}
-                  value={parameterInputs.min_p}
+                  value={parameterInputs.thinking_min_p}
                   onChangeText={(text) => setParameterInputs(prev => ({
                     ...prev,
-                    min_p: text
+                    thinking_min_p: text
+                  }))}
+                  keyboardType="decimal-pad"
+                  placeholderTextColor="#666"
+                />
+              </View>
+            </View>
+
+            <View style={styles.parameterSection}>
+              <Text style={styles.parameterSectionTitle}>Non-Thinking Mode Sampling</Text>
+              <Text style={styles.parameterDescription}>
+                Parameters used when thinking mode is disabled
+              </Text>
+              
+              <View style={styles.parameterRow}>
+                <Text style={styles.parameterLabel}>Max Tokens (n_predict)</Text>
+                <TextInput
+                  style={styles.parameterInput}
+                  value={parameterInputs.non_thinking_n_predict}
+                  onChangeText={(text) => setParameterInputs(prev => ({
+                    ...prev,
+                    non_thinking_n_predict: text
+                  }))}
+                  keyboardType="numeric"
+                  placeholderTextColor="#666"
+                />
+              </View>
+
+              <View style={styles.parameterRow}>
+                <Text style={styles.parameterLabel}>Temperature</Text>
+                <TextInput
+                  style={styles.parameterInput}
+                  value={parameterInputs.non_thinking_temperature}
+                  onChangeText={(text) => setParameterInputs(prev => ({
+                    ...prev,
+                    non_thinking_temperature: text
+                  }))}
+                  keyboardType="decimal-pad"
+                  placeholderTextColor="#666"
+                />
+              </View>
+
+              <View style={styles.parameterRow}>
+                <Text style={styles.parameterLabel}>Top P</Text>
+                <TextInput
+                  style={styles.parameterInput}
+                  value={parameterInputs.non_thinking_top_p}
+                  onChangeText={(text) => setParameterInputs(prev => ({
+                    ...prev,
+                    non_thinking_top_p: text
+                  }))}
+                  keyboardType="decimal-pad"
+                  placeholderTextColor="#666"
+                />
+              </View>
+
+              <View style={styles.parameterRow}>
+                <Text style={styles.parameterLabel}>Top K</Text>
+                <TextInput
+                  style={styles.parameterInput}
+                  value={parameterInputs.non_thinking_top_k}
+                  onChangeText={(text) => setParameterInputs(prev => ({
+                    ...prev,
+                    non_thinking_top_k: text
+                  }))}
+                  keyboardType="numeric"
+                  placeholderTextColor="#666"
+                />
+              </View>
+
+              <View style={styles.parameterRow}>
+                <Text style={styles.parameterLabel}>Min P</Text>
+                <TextInput
+                  style={styles.parameterInput}
+                  value={parameterInputs.non_thinking_min_p}
+                  onChangeText={(text) => setParameterInputs(prev => ({
+                    ...prev,
+                    non_thinking_min_p: text
                   }))}
                   keyboardType="decimal-pad"
                   placeholderTextColor="#666"
@@ -1652,7 +1775,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     padding: 16,
-    marginTop: 50,
     borderBottomWidth: 1,
     borderBottomColor: '#333',
   },

@@ -1147,8 +1147,8 @@ want to talk and share about personal feelings.`;
       }
 
       try {
-        // Get model parameters from Utils
-        const modelParams = await getModelParamsForDevice();
+        // Get model parameters from Utils (resolved for thinking mode)
+        const modelParams = await getModelParamsForDevice(thinkingModeEnabled);
         
         // Do completion using the configured parameters
         const { text, timings } = await contextRef.current.completion(
@@ -1174,7 +1174,7 @@ want to talk and share about personal feelings.`;
             ],
             n_predict: modelParams.n_predict,
             temperature: modelParams.temperature,
-            top_p: thinkingModeEnabled ? 0.95 : modelParams.top_p,
+            top_p: modelParams.top_p,
             top_k: modelParams.top_k,
             min_p: modelParams.min_p,
             stop: modelParams.stop,
