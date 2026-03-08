@@ -155,7 +155,7 @@ export function ConnectionDropdownModal({
               onClose();
             }}
           >
-            <Text style={styles.setupButtonText}>Models & Connection</Text>
+            <Text style={styles.setupButtonText}>Models and Connections</Text>
           </TouchableOpacity>
         </View>
       </Pressable>

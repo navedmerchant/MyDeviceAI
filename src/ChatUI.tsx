@@ -897,6 +897,15 @@ want to talk and share about personal feelings.`;
     return text.replace(/<think>.*?<\/think>/gs, '').trim();
   };
 
+  // When thinking is enabled, the model may omit the opening <think> tag.
+  // Prepend it so the UI can parse thinking content correctly.
+  // During streaming, we can't wait for </think> — if the text doesn't
+  // already start with <think>, we prepend it immediately.
+  const ensureThinkTag = (text: string): string => {
+    if (!text || text.trimStart().startsWith('<think>')) return text;
+    return '<think>' + text;
+  };
+
   const scrollToBottom = () => {
     scrollViewRef.current?.scrollToEnd({ animated: true });
   };
@@ -1018,12 +1027,13 @@ want to talk and share about personal feelings.`;
           thinkingModeEnabled
         )) {
           accumulatedResponse += chunk;
-          setCurrentResponse(accumulatedResponse);
+          setCurrentResponse(thinkingModeEnabled ? ensureThinkTag(accumulatedResponse) : accumulatedResponse);
         }
 
         // Add final response with thumbnails
         if (accumulatedResponse.trim()) {
-          addMessage(accumulatedResponse, false, thumbnails);
+          const finalText = thinkingModeEnabled ? ensureThinkTag(accumulatedResponse) : accumulatedResponse;
+          addMessage(finalText, false, thumbnails);
         }
         remoteSucceeded = true;
       } catch (error) {
@@ -1183,11 +1193,14 @@ want to talk and share about personal feelings.`;
             ...(supportsThinking ? { enable_thinking: thinkingModeEnabled } : {}),
           },
           (data: { token: string }) => {
-            // Add token to current response
-            setCurrentResponse(prev => prev + data.token);
+            // Add token to current response, prepending <think> if thinking mode is on
+            setCurrentResponse(prev => {
+              const updated = prev + data.token;
+              return thinkingModeEnabled ? ensureThinkTag(updated) : updated;
+            });
           },
         )
-        const displayText = text.trim();
+        const displayText = thinkingModeEnabled ? ensureThinkTag(text.trim()) : text.trim();
         addMessage(displayText, false, thumbnails);
       } catch (error) {
         console.error('Error generating AI response:', error);
