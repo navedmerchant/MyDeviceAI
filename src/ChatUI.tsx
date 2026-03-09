@@ -28,7 +28,7 @@ import {
   ImageBackground,
 } from 'react-native';
 import { Send, Square, CirclePlus, Search, Settings, ArrowDown, Brain, Copy, Share as ShareIcon, ChevronRight, Menu as MenuIcon, Download } from 'lucide-react-native';
-import { getModelParamsForDevice } from './utils/Utils';
+import { getModelParamsForDevice, DEFAULT_SYSTEM_PROMPT } from './utils/Utils';
 import { styles, markdownStyles, userMarkdownStyles, popoverStyles, menuOptionStyles } from './Styles';
 import { Message } from './model/Message';
 import { useRemoteConnection } from './connection/RemoteConnectionContext';
@@ -583,11 +583,7 @@ const ChatUI: React.FC<ChatUIProps> = ({ historyId, onMenuPress, MenuIcon, navig
         systemPrompt.current = savedPrompt;
       } else {
         // Set default prompt only if no saved prompt exists
-        systemPrompt.current = `You are a helpful personal AI assistant. Your name is Chloe, and you will be 
-a professional AI assistant trying to answer all your users questions. You are locally
-running on the device so you will never share any information outside of the chat.
-Be as helpful as possible without being overly friendly. Be empathetic only when users
-want to talk and share about personal feelings.`;
+        systemPrompt.current = DEFAULT_SYSTEM_PROMPT;
       }
     } catch (error) {
       console.error('Error loading system prompt:', error);
@@ -1162,7 +1158,7 @@ want to talk and share about personal feelings.`;
           similarContexts.map(context => context.text).join("\n") + "\n\n";
       }
 
-      const searchResultsPrompt = searchResults ? `\nHere are some search results for your query: ${searchResults} \n\n Use these to enhance your response if needed. Provide all the links at the end of your response. Markdown format the links` : '';
+      const searchResultsPrompt = searchResults ? `\nHere are some search results for your query: ${searchResults} \n\n Use these to enhance your response if needed. Provide all the links at the end of your response. Markdown format the links with link name and address in separate lines` : '';
 
       if (!contextRef.current) {
         console.log("context is undefined!")
@@ -1189,8 +1185,8 @@ want to talk and share about personal feelings.`;
                 role: 'user',
                 content: `${inputText}
                 ${searchModeEnabled ? `\nYou have access to the internet and can use it to search for information.
-                When provided with search results, use them to enhance your responses with current and accurate information.
-                Use these results to provide up-to-date information while maintaining your helpful and professional demeanor.\n` : ''}
+                When provided with search results, use them to enhance your responses with current and accurate information. 
+                At the end of the \n` : ''}
                 ${searchResultsPrompt}
                 ${userContext}`
               }
@@ -1622,7 +1618,7 @@ want to talk and share about personal feelings.`;
             disabled={isTyping || isSearching}
           >
             <Search color={searchModeEnabled ? "#28a745" : "#666"} size={20} />
-            <Text style={[styles.modeToggleText, searchModeEnabled && styles.modeToggleTextActive]}>Search</Text>
+            <Text style={[styles.modeToggleText, searchModeEnabled && styles.modeToggleTextActive]}>Web Search</Text>
           </TouchableOpacity>
         </View>
         <View style={styles.searchInputContainer}>

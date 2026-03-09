@@ -129,9 +129,14 @@ export function ConnectionDropdownModal({
               disabled={!hasRemoteConfig}
             >
               <View style={styles.optionContent}>
-                <Text style={[styles.optionText, !hasRemoteConfig && styles.optionTextDisabled]}>
-                  Dynamic
-                </Text>
+                <View style={styles.optionTextRow}>
+                  <Text style={[styles.optionText, !hasRemoteConfig && styles.optionTextDisabled]}>
+                    Dynamic
+                  </Text>
+                  <View style={styles.betaBadge}>
+                    <Text style={styles.betaBadgeText}>Beta</Text>
+                  </View>
+                </View>
                 <Text style={[styles.optionDescription, !hasRemoteConfig && styles.optionDescriptionDisabled]}>
                   {hasRemoteConfig
                     ? 'Prefer desktop when available'
@@ -242,5 +247,23 @@ const styles = StyleSheet.create({
     color: '#4CAF50',
     fontSize: 16,
     fontWeight: '600',
+  },
+  optionTextRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 4,
+  },
+  betaBadge: {
+    backgroundColor: '#FF9500',
+    borderRadius: 4,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    marginLeft: 8,
+  },
+  betaBadgeText: {
+    color: '#fff',
+    fontSize: 10,
+    fontWeight: '700',
+    textTransform: 'uppercase',
   },
 });

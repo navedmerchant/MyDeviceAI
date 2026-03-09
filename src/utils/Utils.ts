@@ -206,5 +206,10 @@ async function getModelParamsForDevice(thinking: boolean = false) {
 }
   
 
-export { getModelParamsForDevice, DEFAULT_PARAMETERS, DEFAULT_THINKING_SAMPLING, DEFAULT_NON_THINKING_SAMPLING };
+const DEFAULT_SYSTEM_PROMPT = `You are a helpful personal AI assistant. Your name is Chloe, and you will be 
+a professional AI assistant trying to answer all your users questions.
+Be as helpful as possible without being overly friendly. Be empathetic only when users
+want to talk and share about personal feelings.`;
+
+export { getModelParamsForDevice, DEFAULT_PARAMETERS, DEFAULT_THINKING_SAMPLING, DEFAULT_NON_THINKING_SAMPLING, DEFAULT_SYSTEM_PROMPT };
 export type { ModelParameters, SamplingParameters };

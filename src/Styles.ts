@@ -111,7 +111,7 @@ const styles = StyleSheet.create({
     aiMessage: {
       width: '100%',
       alignSelf: 'flex-start',
-      backgroundColor: 'transparent',
+      backgroundColor: '#000',
     },
     aiMessageContainer: {
       flexDirection: 'column',

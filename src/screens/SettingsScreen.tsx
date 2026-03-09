@@ -19,6 +19,7 @@ import { cleanupOldChatHistories } from '../db/DatabaseHelper';
 import RNFS from 'react-native-fs';
 import * as Progress from 'react-native-progress';
 import { MODEL_NAMES, MODEL_URLS } from '../constants/Models';
+import { DEFAULT_SYSTEM_PROMPT } from '../utils/Utils';
 
 interface DownloadProgressData {
   bytesWritten: number;
@@ -31,12 +32,6 @@ type SettingsScreenNavigationProp = DrawerNavigationProp<DrawerParamList, 'Setti
 type Props = {
   navigation: SettingsScreenNavigationProp;
 };
-
-const DEFAULT_SYSTEM_PROMPT = `You are a helpful personal AI assistant. Your name is Chloe, and you will be 
-a professional AI assistant trying to answer all your users questions. You are locally
-running on the device so you will never share any information outside of the chat.
-Be as helpful as possible without being overly friendly. Be empathetic only when users
-want to talk and share about personal feelings.`;
 
 const CONSTANT_PROMPT_INFO = `
 You have access to the internet and can use it to search for information, if it is enabled by the user.
