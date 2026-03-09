@@ -98,8 +98,6 @@ export function ConnectionDropdownModal({
 
           {/* Mode Options */}
           <View style={styles.optionsSection}>
-            <Text style={styles.sectionTitle}>Connection Mode</Text>
-
             <TouchableOpacity
               style={styles.option}
               onPress={() => {
@@ -110,7 +108,7 @@ export function ConnectionDropdownModal({
               <View style={styles.optionContent}>
                 <Text style={styles.optionText}>Local</Text>
                 <Text style={styles.optionDescription}>
-                  Always use local model
+                  Use local inference
                 </Text>
               </View>
               {currentMode === 'local' && (

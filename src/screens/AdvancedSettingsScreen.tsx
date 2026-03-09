@@ -1050,7 +1050,7 @@ const AdvancedSettingsScreen: React.FC<Props> = ({ navigation }) => {
         >
           <Wifi color={activeTab === 'remote' ? '#007AFF' : '#666'} size={20} />
           <Text style={[styles.tabText, activeTab === 'remote' && styles.activeTabText]}>
-            Remote
+            Connection
           </Text>
         </TouchableOpacity>
       </View>
