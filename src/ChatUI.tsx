@@ -1158,7 +1158,7 @@ const ChatUI: React.FC<ChatUIProps> = ({ historyId, onMenuPress, MenuIcon, navig
           similarContexts.map(context => context.text).join("\n") + "\n\n";
       }
 
-      const searchResultsPrompt = searchResults ? `\nHere are some search results for your query: ${searchResults} \n\n Use these to enhance your response if needed. Provide all the links at the end of your response. Markdown format the links with link name and address in separate lines` : '';
+      const searchResultsPrompt = searchResults ? `\nHere are some search results for your query: ${searchResults} \n\n Use these to enhance your response if needed. Provide all the links at the end of your response in markdown format` : '';
 
       if (!contextRef.current) {
         console.log("context is undefined!")

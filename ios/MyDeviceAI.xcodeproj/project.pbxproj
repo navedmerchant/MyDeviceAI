@@ -14,7 +14,7 @@
 		13B07FC11A68108700A75B9A /* main.m in Sources */ = {isa = PBXBuildFile; fileRef = 13B07FB71A68108700A75B9A /* main.m */; };
 		81AB9BB82411601600AC10FF /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 81AB9BB72411601600AC10FF /* LaunchScreen.storyboard */; };
 		ABD72F0B1060EE335EEFC749 /* ExpoModulesProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1AD7540CFAF2F677D32CB00A /* ExpoModulesProvider.swift */; };
-		AF201EE72F5DFAA40036B291 /* Qwen_Qwen3.5-2B-Q4_K_M.gguf in Resources */ = {isa = PBXBuildFile; fileRef = AF201EE62F5DFAA40036B291 /* Qwen_Qwen3.5-2B-Q4_K_M.gguf */; };
+		AF201EE92F5FC1180036B291 /* Qwen3.5-2B-GPT-5.1-HighIQ-Deep-Thinking.i1-Q4_K_M.gguf in Resources */ = {isa = PBXBuildFile; fileRef = AF201EE82F5FC1180036B291 /* Qwen3.5-2B-GPT-5.1-HighIQ-Deep-Thinking.i1-Q4_K_M.gguf */; };
 		AF470C8A2D90783B002C274D /* bge-small-en-v1.5-q4_k_m.gguf in Resources */ = {isa = PBXBuildFile; fileRef = AF470C892D90783B002C274D /* bge-small-en-v1.5-q4_k_m.gguf */; };
 		AF8D37D4CAD8B1BEF527561B /* libPods-MyDeviceAI-MyDeviceAITests.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 3C3544CB1756B520276E67B6 /* libPods-MyDeviceAI-MyDeviceAITests.a */; };
 		B2870A1607FD5D4252BA9976 /* ExpoModulesProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = A9613C640AFEEA6FA6C97595 /* ExpoModulesProvider.swift */; };
@@ -51,7 +51,7 @@
 		81AB9BB72411601600AC10FF /* LaunchScreen.storyboard */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = file.storyboard; name = LaunchScreen.storyboard; path = MyDeviceAI/LaunchScreen.storyboard; sourceTree = "<group>"; };
 		A9613C640AFEEA6FA6C97595 /* ExpoModulesProvider.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = ExpoModulesProvider.swift; path = "Pods/Target Support Files/Pods-MyDeviceAI-MyDeviceAITests/ExpoModulesProvider.swift"; sourceTree = "<group>"; };
 		AD4BBB21602A7268DA166C8A /* libPods-MyDeviceAI.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = "libPods-MyDeviceAI.a"; sourceTree = BUILT_PRODUCTS_DIR; };
-		AF201EE62F5DFAA40036B291 /* Qwen_Qwen3.5-2B-Q4_K_M.gguf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "Qwen_Qwen3.5-2B-Q4_K_M.gguf"; sourceTree = "<group>"; };
+		AF201EE82F5FC1180036B291 /* Qwen3.5-2B-GPT-5.1-HighIQ-Deep-Thinking.i1-Q4_K_M.gguf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "Qwen3.5-2B-GPT-5.1-HighIQ-Deep-Thinking.i1-Q4_K_M.gguf"; sourceTree = "<group>"; };
 		AF470C892D90783B002C274D /* bge-small-en-v1.5-q4_k_m.gguf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "bge-small-en-v1.5-q4_k_m.gguf"; sourceTree = "<group>"; };
 		BD52693102F79C8748C80C9D /* Pods-MyDeviceAI.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-MyDeviceAI.release.xcconfig"; path = "Target Support Files/Pods-MyDeviceAI/Pods-MyDeviceAI.release.xcconfig"; sourceTree = "<group>"; };
 		ED297162215061F000B7C4FE /* JavaScriptCore.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = JavaScriptCore.framework; path = System/Library/Frameworks/JavaScriptCore.framework; sourceTree = SDKROOT; };
@@ -106,7 +106,7 @@
 		13B07FAE1A68108700A75B9A /* MyDeviceAI */ = {
 			isa = PBXGroup;
 			children = (
-				AF201EE62F5DFAA40036B291 /* Qwen_Qwen3.5-2B-Q4_K_M.gguf */,
+				AF201EE82F5FC1180036B291 /* Qwen3.5-2B-GPT-5.1-HighIQ-Deep-Thinking.i1-Q4_K_M.gguf */,
 				13B07FAF1A68108700A75B9A /* AppDelegate.h */,
 				13B07FB01A68108700A75B9A /* AppDelegate.mm */,
 				13B07FB51A68108700A75B9A /* Images.xcassets */,
@@ -285,10 +285,10 @@
 			buildActionMask = 2147483647;
 			files = (
 				81AB9BB82411601600AC10FF /* LaunchScreen.storyboard in Resources */,
-				AF201EE72F5DFAA40036B291 /* Qwen_Qwen3.5-2B-Q4_K_M.gguf in Resources */,
 				13B07FBF1A68108700A75B9A /* Images.xcassets in Resources */,
 				AF470C8A2D90783B002C274D /* bge-small-en-v1.5-q4_k_m.gguf in Resources */,
 				101F9BCBF74A0ED21E9B7A3A /* PrivacyInfo.xcprivacy in Resources */,
+				AF201EE92F5FC1180036B291 /* Qwen3.5-2B-GPT-5.1-HighIQ-Deep-Thinking.i1-Q4_K_M.gguf in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
