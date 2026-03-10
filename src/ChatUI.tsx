@@ -26,11 +26,12 @@ import {
   Animated,
   Image,
   ImageBackground,
+  Linking,
 } from 'react-native';
-import { Send, Square, CirclePlus, Search, Settings, ArrowDown, Brain, Copy, Share as ShareIcon, ChevronRight, Menu as MenuIcon, Download } from 'lucide-react-native';
+import { Send, Square, CirclePlus, Search, Settings, ArrowDown, Brain, Copy, Share as ShareIcon, ChevronRight, Menu as MenuIcon, Download, ExternalLink } from 'lucide-react-native';
 import { getModelParamsForDevice, DEFAULT_SYSTEM_PROMPT } from './utils/Utils';
 import { styles, markdownStyles, userMarkdownStyles, popoverStyles, menuOptionStyles } from './Styles';
-import { Message } from './model/Message';
+import { Message, SearchLink } from './model/Message';
 import { useRemoteConnection } from './connection/RemoteConnectionContext';
 import { ConnectionStatusIcon } from './components/ConnectionStatusIcon';
 import { ConnectionDropdownModal } from './components/ConnectionDropdownModal';
@@ -151,6 +152,7 @@ const ChatUI: React.FC<ChatUIProps> = ({ historyId, onMenuPress, MenuIcon, navig
   const [isLoadingModel, setIsLoadingModel] = useState(false);
   const [loadingProgress, setLoadingProgress] = useState(0);
   const [isSearching, setIsSearching] = useState(false);
+  const [currentSearchLinks, setCurrentSearchLinks] = useState<SearchLink[]>([]);
   const [isWaitingForModel, setIsWaitingForModel] = useState(false);
   const [showConnectionDropdown, setShowConnectionDropdown] = useState(false);
   const [showModelRequirementScreen, setShowModelRequirementScreen] = useState(false);
@@ -913,11 +915,11 @@ const ChatUI: React.FC<ChatUIProps> = ({ historyId, onMenuPress, MenuIcon, navig
     scrollViewRef.current?.scrollToEnd({ animated: true });
   };
 
-  const addMessage = useCallback(async (text: string, isUser: boolean, thumbnails?: string[]) => {
-    const newMessage = { id: Date.now(), text, isUser, thumbnails };
+  const addMessage = useCallback(async (text: string, isUser: boolean, thumbnails?: string[], searchLinks?: SearchLink[]) => {
+    const newMessage = { id: Date.now(), text, isUser, thumbnails, searchLinks };
     setMessages(prevMessages => [...prevMessages, newMessage]);
     if (currentHistoryIdRef.current) {
-      await saveChatMessage(currentHistoryIdRef.current, text, isUser);
+      await saveChatMessage(currentHistoryIdRef.current, text, isUser, searchLinks);
       loadHistories();
     } else if (isUser) {
       // Create new chat history for first message
@@ -930,7 +932,7 @@ const ChatUI: React.FC<ChatUIProps> = ({ historyId, onMenuPress, MenuIcon, navig
       // reload histories to update chat history list
       loadHistories();
       setGlobalHistoryId(newHistoryId);
-      saveChatMessage(newHistoryId, text, isUser);
+      saveChatMessage(newHistoryId, text, isUser, searchLinks);
     }
 
   }, [currentHistoryId]);
@@ -960,6 +962,7 @@ const ChatUI: React.FC<ChatUIProps> = ({ historyId, onMenuPress, MenuIcon, navig
 
       let searchResults = '';
       let thumbnails: string[] = [];
+      let searchLinks: SearchLink[] = [];
 
       // Perform search if enabled (same as local mode)
       if (searchModeEnabled) {
@@ -972,7 +975,9 @@ const ChatUI: React.FC<ChatUIProps> = ({ historyId, onMenuPress, MenuIcon, navig
           );
           searchResults = searchResponse.formattedText;
           thumbnails = searchResponse.thumbnails;
+          searchLinks = searchResponse.links;
           setCurrentThumbnails(thumbnails);
+          setCurrentSearchLinks(searchLinks);
         } catch (error) {
           console.log('Search error:', error);
           if (error instanceof Error) {
@@ -996,7 +1001,7 @@ const ChatUI: React.FC<ChatUIProps> = ({ historyId, onMenuPress, MenuIcon, navig
 
       try {
         // Build user content with search results if available
-        const searchResultsPrompt = searchResults ? `\nHere are some search results for your query: ${searchResults} \n\n Use these to enhance your response if needed. Provide all the links at the end of your response. Markdown format the links` : '';
+        const searchResultsPrompt = searchResults ? `\nHere are some search results for your query: ${searchResults} \n\n Use these to enhance your response if needed.` : '';
         const searchInstructions = searchModeEnabled ? `\nYou have access to the internet and can use it to search for information.
                 When provided with search results, use them to enhance your responses with current and accurate information.
                 Use these results to provide up-to-date information while maintaining your helpful and professional demeanor.\n` : '';
@@ -1036,7 +1041,7 @@ const ChatUI: React.FC<ChatUIProps> = ({ historyId, onMenuPress, MenuIcon, navig
         // Add final response with thumbnails
         if (accumulatedResponse.trim()) {
           const finalText = thinkingModeEnabled ? ensureThinkTag(accumulatedResponse) : accumulatedResponse;
-          addMessage(finalText, false, thumbnails);
+          addMessage(finalText, false, thumbnails, searchLinks);
         }
         remoteSucceeded = true;
       } catch (error) {
@@ -1048,6 +1053,7 @@ const ChatUI: React.FC<ChatUIProps> = ({ historyId, onMenuPress, MenuIcon, navig
         setIsTyping(false);
         setCurrentResponse('');
         setCurrentThumbnails([]);
+        setCurrentSearchLinks([]);
       }
 
       // Return if remote was successful (don't continue to local processing)
@@ -1118,6 +1124,7 @@ const ChatUI: React.FC<ChatUIProps> = ({ historyId, onMenuPress, MenuIcon, navig
       
       let searchResults = '';
       let thumbnails: string[] = [];
+      let searchLinks: SearchLink[] = [];
       
       if (searchModeEnabled) {
         setIsSearching(true);
@@ -1130,7 +1137,9 @@ const ChatUI: React.FC<ChatUIProps> = ({ historyId, onMenuPress, MenuIcon, navig
           );
           searchResults = searchResponse.formattedText;
           thumbnails = searchResponse.thumbnails;
+          searchLinks = searchResponse.links;
           setCurrentThumbnails(thumbnails);
+          setCurrentSearchLinks(searchLinks);
         } catch (error) {
           console.log('Search error:', error);
           if (error instanceof Error) {
@@ -1158,7 +1167,7 @@ const ChatUI: React.FC<ChatUIProps> = ({ historyId, onMenuPress, MenuIcon, navig
           similarContexts.map(context => context.text).join("\n") + "\n\n";
       }
 
-      const searchResultsPrompt = searchResults ? `\nHere are some search results for your query: ${searchResults} \n\n Use these to enhance your response if needed. Provide all the links at the end of your response in markdown format` : '';
+      const searchResultsPrompt = searchResults ? `\nHere are some search results for your query: ${searchResults} \n\n Use these to enhance your response if needed.` : '';
 
       if (!contextRef.current) {
         console.log("context is undefined!")
@@ -1185,8 +1194,7 @@ const ChatUI: React.FC<ChatUIProps> = ({ historyId, onMenuPress, MenuIcon, navig
                 role: 'user',
                 content: `${inputText}
                 ${searchModeEnabled ? `\nYou have access to the internet and can use it to search for information.
-                When provided with search results, use them to enhance your responses with current and accurate information. 
-                At the end of the \n` : ''}
+                When provided with search results, use them to enhance your responses with current and accurate information.\n` : ''}
                 ${searchResultsPrompt}
                 ${userContext}`
               }
@@ -1210,7 +1218,7 @@ const ChatUI: React.FC<ChatUIProps> = ({ historyId, onMenuPress, MenuIcon, navig
           },
         )
         const displayText = thinkingModeEnabled ? ensureThinkTag(text.trim()) : text.trim();
-        addMessage(displayText, false, thumbnails);
+        addMessage(displayText, false, thumbnails, searchLinks);
       } catch (error) {
         console.error('Error generating AI response:', error);
         addMessage('Sorry, I encountered an error. Please try again.', false);
@@ -1218,6 +1226,7 @@ const ChatUI: React.FC<ChatUIProps> = ({ historyId, onMenuPress, MenuIcon, navig
         setIsTyping(false);
         setCurrentResponse('');
         setCurrentThumbnails([]);
+        setCurrentSearchLinks([]);
       }
     }
   }, [inputText, addMessage, searchModeEnabled, thinkingModeEnabled, remoteState.isConnected, remoteState.mode]);
@@ -1230,6 +1239,7 @@ const ChatUI: React.FC<ChatUIProps> = ({ historyId, onMenuPress, MenuIcon, navig
       setIsSearching(false);
       setCurrentResponse('');
       setCurrentThumbnails([]);
+      setCurrentSearchLinks([]);
       // Set cancellation flag
       isCancelledRef.current = true;
       return;
@@ -1399,7 +1409,7 @@ const ChatUI: React.FC<ChatUIProps> = ({ historyId, onMenuPress, MenuIcon, navig
           
           {processThinkingContent(message.text, false, message.isUser ? userMarkdownStyles : markdownStyles)}
         </View>
-        {/* For AI messages, show copy and share buttons on the right/below */} 
+        {/* For AI messages, show copy, share buttons and search link bubbles */} 
         {isAIMessage && (
           <View style={styles.messageActionsContainer}>
             <TouchableOpacity onPress={() => handleCopyText(message.text)} style={styles.messageActionButton}>
@@ -1408,6 +1418,41 @@ const ChatUI: React.FC<ChatUIProps> = ({ historyId, onMenuPress, MenuIcon, navig
             <TouchableOpacity onPress={() => handleShareText(message.text)} style={styles.messageActionButton}>
               <ShareIcon color="#aaa" size={18} />
             </TouchableOpacity>
+            {message.searchLinks && message.searchLinks.length > 0 && (
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginLeft: 8 }}>
+                {message.searchLinks.map((link, index) => (
+                  <TouchableOpacity
+                    key={index}
+                    style={{
+                      flexDirection: 'row',
+                      alignItems: 'center',
+                      backgroundColor: '#1c1c1c',
+                      borderRadius: 20,
+                      borderWidth: 1,
+                      borderColor: '#333',
+                      paddingHorizontal: 14,
+                      paddingVertical: 10,
+                      marginRight: 8,
+                      minHeight: 40,
+                    }}
+                    onPress={() => Linking.openURL(link.url)}
+                  >
+                    <ExternalLink color="#999" size={15} />
+                    <Text
+                      numberOfLines={1}
+                      style={{
+                        color: '#d1d1d6',
+                        fontSize: 13,
+                        marginLeft: 5,
+                        maxWidth: 150,
+                      }}
+                    >
+                      {link.title}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </ScrollView>
+            )}
           </View>
         )}
       </View>

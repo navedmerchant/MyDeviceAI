@@ -41,6 +41,15 @@ export const initDatabase = async () => {
       );`
     );
 
+    // Migration: add search_links column for existing databases
+    try {
+      await db.execute(
+        `ALTER TABLE chat_messages ADD COLUMN search_links TEXT;`
+      );
+    } catch (_) {
+      // Column already exists — safe to ignore
+    }
+
     // Create context embeddings virtual table using vec0
     await db.execute(`
       CREATE VIRTUAL TABLE IF NOT EXISTS context_embeddings USING vec0(
@@ -109,15 +118,16 @@ export const saveNewChatHistory = async (title: string, firstMessage: string): P
   }
 };
 
-export const saveChatMessage = async (historyId: number, message: string, isUser: boolean) => {
+export const saveChatMessage = async (historyId: number, message: string, isUser: boolean, searchLinks?: { title: string; url: string }[]) => {
   if (!db) {
     await initDatabase();
   }
   
   try {
+    const linksJson = searchLinks && searchLinks.length > 0 ? JSON.stringify(searchLinks) : null;
     await db!.execute(
-      'INSERT INTO chat_messages (history_id, message, is_user, timestamp) VALUES (?, ?, ?, ?)',
-      [historyId, message, isUser ? 1 : 0, Date.now()]
+      'INSERT INTO chat_messages (history_id, message, is_user, timestamp, search_links) VALUES (?, ?, ?, ?, ?)',
+      [historyId, message, isUser ? 1 : 0, Date.now(), linksJson]
     );
     
     await db!.execute(
@@ -145,10 +155,19 @@ export const loadChatHistory = async (historyId: number): Promise<Message[]> => 
     
     const messages: Message[] = [];
     for (const row of result.rows) {
+      let searchLinks;
+      if (row.search_links) {
+        try {
+          searchLinks = JSON.parse(String(row.search_links));
+        } catch (_) {
+          searchLinks = undefined;
+        }
+      }
       messages.push({
         id: Number(row.id),
         text: String(row.message),
-        isUser: Boolean(row.is_user)
+        isUser: Boolean(row.is_user),
+        searchLinks,
       });
     }
     

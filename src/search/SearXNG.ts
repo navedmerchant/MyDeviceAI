@@ -22,6 +22,7 @@ interface SearXNGResult {
 interface SearchResult {
   formattedText: string;
   thumbnails: string[];
+  links: { title: string; url: string }[];
 }
 
 interface SearXNGResponse {
@@ -68,7 +69,8 @@ async function performSearXNGSearch(query: string, signal?: AbortSignal): Promis
     if (!data.results || data.results.length === 0) {
       return {
         formattedText: "No search results found.",
-        thumbnails: []
+        thumbnails: [],
+        links: []
       };
     }
 
@@ -81,6 +83,12 @@ async function performSearXNGSearch(query: string, signal?: AbortSignal): Promis
       .filter(result => result.thumbnail)
       .map(result => result.thumbnail as string);
 
+    // Collect links
+    const links = topResults.map(result => ({
+      title: result.title,
+      url: result.url
+    }));
+
     const formattedResults = topResults.map(result => {
       // Ensure newlines are correctly within the template literal for the desired output string
       let formattedResult = `Title: ${result.title}
@@ -92,7 +100,8 @@ URL: ${result.url}`;
 
     return {
       formattedText: `Here are some relevant search results:\n\n${formattedResults.trimEnd()}`,
-      thumbnails
+      thumbnails,
+      links
     };
 
   } catch (error) {
@@ -101,12 +110,14 @@ URL: ${result.url}`;
     if (error instanceof Error) {
         return {
           formattedText: `Error performing search: ${error.message}`,
-          thumbnails: []
+          thumbnails: [],
+          links: []
         };
     }
     return {
       formattedText: "An unknown error occurred during the search.",
-      thumbnails: []
+      thumbnails: [],
+      links: []
     };
   }
 }
