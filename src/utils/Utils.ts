@@ -44,7 +44,7 @@ interface DownloadedModel {
 // Default sampling parameters for thinking mode
 const DEFAULT_THINKING_SAMPLING: SamplingParameters = {
   n_predict: 4096,
-  temperature: 1.0,
+  temperature: 0.6,
   top_p: 0.95,
   top_k: 20,
   min_p: 0.0,
@@ -55,11 +55,11 @@ const DEFAULT_THINKING_SAMPLING: SamplingParameters = {
 // Default sampling parameters for non-thinking mode
 const DEFAULT_NON_THINKING_SAMPLING: SamplingParameters = {
   n_predict: 4096,
-  temperature: 1.0,
-  top_p: 1.0,
+  temperature: 0.7,
+  top_p: 0.8,
   top_k: 20,
   min_p: 0.0,
-  penalty_present: 2.0,
+  penalty_present: 1.5,
   penalty_repeat: 1.0,
 };
 
@@ -155,7 +155,7 @@ async function getModelParamsForDevice(thinking: boolean = false) {
 
       // On Android, check if model is downloaded to document directory
       if (Platform.OS === 'android') {
-        const androidModelPath = `${RNFS.DocumentDirectoryPath}/model/Qwen3.5-2B-GPT-5.1-HighIQ-Deep-Thinking.i1-Q4_K_M.gguf`;
+        const androidModelPath = `${RNFS.DocumentDirectoryPath}/model/Qwen3-1.7B-Q4_K_M.gguf`;
         const exists = await RNFS.exists(androidModelPath);
         if (exists) {
           console.log('Using downloaded model on Android');
@@ -174,7 +174,7 @@ async function getModelParamsForDevice(thinking: boolean = false) {
       }
 
       const modelParams = {
-        model: 'file://Qwen3.5-2B-GPT-5.1-HighIQ-Deep-Thinking.i1-Q4_K_M.gguf',
+        model: 'file://Qwen3-1.7B-Q4_K_M.gguf',
         is_model_asset: true,
         n_ctx: DEFAULT_PARAMETERS.n_ctx,
         n_gpu_layers: DEFAULT_PARAMETERS.n_gpu_layers,
@@ -191,7 +191,7 @@ async function getModelParamsForDevice(thinking: boolean = false) {
 
       const fallbackSampling = resolveSamplingParams(DEFAULT_PARAMETERS, thinking);
       const modelParams = {
-        model: 'file://Qwen3.5-2B-GPT-5.1-HighIQ-Deep-Thinking.i1-Q4_K_M.gguf',
+        model: 'file://Qwen3-1.7B-Q4_K_M.gguf',
         is_model_asset: true,
         n_ctx: DEFAULT_PARAMETERS.n_ctx,
         n_gpu_layers: DEFAULT_PARAMETERS.n_gpu_layers,
