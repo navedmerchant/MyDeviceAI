@@ -20,6 +20,7 @@ import { DrawerParamList } from '../../App';
 import RNFS from 'react-native-fs';
 import { ModelParameters, SamplingParameters, DEFAULT_PARAMETERS, DEFAULT_THINKING_SAMPLING, DEFAULT_NON_THINKING_SAMPLING } from '../utils/Utils';
 import { useRemoteConnection } from '../connection/RemoteConnectionContext';
+import { checkLocalNetworkAccess, requestLocalNetworkAccess } from '@generac/react-native-local-network-permission';
 
 type AdvancedSettingsScreenNavigationProp = DrawerNavigationProp<DrawerParamList, 'AdvancedSettings'>;
 
@@ -84,6 +85,7 @@ const AdvancedSettingsScreen: React.FC<Props> = ({ navigation }) => {
   const [availableGGUFFiles, setAvailableGGUFFiles] = useState<GGUFFile[]>([]);
   const [loadingGGUFFiles, setLoadingGGUFFiles] = useState(false);
   const [totalStorageUsed, setTotalStorageUsed] = useState<string>('0 B');
+  const networkPermissionRequested = React.useRef(false);
 
   // Parameter configuration modal state
   const [showParameterModal, setShowParameterModal] = useState(false);
@@ -1046,7 +1048,13 @@ const AdvancedSettingsScreen: React.FC<Props> = ({ navigation }) => {
         </TouchableOpacity>
         <TouchableOpacity
           style={[styles.tab, activeTab === 'remote' && styles.activeTab]}
-          onPress={() => setActiveTab('remote')}
+          onPress={() => {
+            setActiveTab('remote');
+            if (Platform.OS === 'ios' && !networkPermissionRequested.current) {
+              networkPermissionRequested.current = true;
+              requestLocalNetworkAccess();
+            }
+          }}
         >
           <Wifi color={activeTab === 'remote' ? '#007AFF' : '#666'} size={20} />
           <Text style={[styles.tabText, activeTab === 'remote' && styles.activeTabText]}>

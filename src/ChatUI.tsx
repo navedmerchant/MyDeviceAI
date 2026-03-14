@@ -54,7 +54,7 @@ import { useDatabase } from './db/DatabaseContext';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { performSearXNGSearch, SearchResult } from './search/SearXNG';
 import { Share } from 'react-native';
-import { checkLocalNetworkAccess, requestLocalNetworkAccess } from '@generac/react-native-local-network-permission';
+
 
 // Import the components we moved to separate files
 import EmptyState from './components/EmptyState';
@@ -173,6 +173,7 @@ const ChatUI: React.FC<ChatUIProps> = ({ historyId, onMenuPress, MenuIcon, navig
   const currentHistoryIdRef = useRef(currentHistoryId);
   const searchControllerRef = useRef<AbortController | null>(null);
   const isCancelledRef = useRef(false);
+  const remoteStateRef = useRef(remoteState);
   const modelLoadTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const isFloatingKeyboard = useIsFloatingKeyboard(); // Use the custom hook
 
@@ -185,6 +186,11 @@ const ChatUI: React.FC<ChatUIProps> = ({ historyId, onMenuPress, MenuIcon, navig
   const appState = useRef(AppState.currentState);
   const isModelLoadingRef = useRef(false); // Guard against concurrent load/unload
 
+  // Keep remoteStateRef in sync with latest remoteState
+  useEffect(() => {
+    remoteStateRef.current = remoteState;
+  }, [remoteState]);
+
   // Handle when a suggested prompt is selected
   const handlePromptSelect = useCallback((prompt: string) => {
     setInputText(prompt);
@@ -194,12 +200,7 @@ const ChatUI: React.FC<ChatUIProps> = ({ historyId, onMenuPress, MenuIcon, navig
     }, 100);
   }, []);
 
-  // Check and request local network permission on iOS at app startup
-  const checkAndRequestLocalNetworkPermission = useCallback(async () => {
-    if (Platform.OS === 'ios') {
-      await requestLocalNetworkAccess();
-    }
-  }, []);
+
   // Check Android model status
   const checkAndroidModelStatus = async () => {
     try {
@@ -382,9 +383,6 @@ const ChatUI: React.FC<ChatUIProps> = ({ historyId, onMenuPress, MenuIcon, navig
     loadSystemPrompt();
     loadContextSettings();
     initializeContext();
-    checkAndRequestLocalNetworkPermission();
-
-
     // Check model status on mount for Android
     if (Platform.OS === 'android') {
       checkAndroidModelStatus();
@@ -441,8 +439,16 @@ const ChatUI: React.FC<ChatUIProps> = ({ historyId, onMenuPress, MenuIcon, navig
     }
   };
 
+  const isEmbeddingLoadingRef = useRef(false);
+
   const loadEmbeddingModel = async () => {
+    // Guard against concurrent loading
+    if (isEmbeddingLoadingRef.current || embeddingContextRef.current) {
+      return;
+    }
+
     try {
+      isEmbeddingLoadingRef.current = true;
       let modelPath = 'file://bge-small-en-v1.5-q4_k_m.gguf';
       let isAsset = true;
 
@@ -468,10 +474,26 @@ const ChatUI: React.FC<ChatUIProps> = ({ historyId, onMenuPress, MenuIcon, navig
       });
     } catch (error) {
       console.error('Error loading embedding model:', error);
+    } finally {
+      isEmbeddingLoadingRef.current = false;
     }
   };
 
   const unloadEmbeddingModel = async () => {
+    if (isEmbeddingLoadingRef.current) {
+      let waitCount = 0;
+      while (isEmbeddingLoadingRef.current && waitCount < 10) {
+        await new Promise(resolve => setTimeout(resolve, 500));
+        waitCount++;
+      }
+    }
+    try {
+      if (embeddingContextRef.current) {
+        await embeddingContextRef.current.release();
+      }
+    } catch (error) {
+      console.error('Error releasing embedding context:', error);
+    }
     embeddingContextRef.current = undefined;
   };
 
@@ -757,10 +779,10 @@ const ChatUI: React.FC<ChatUIProps> = ({ historyId, onMenuPress, MenuIcon, navig
             }
 
             // Reconnect to desktop if we were in dynamic mode and have a room code
-            if (remoteState.mode === 'dynamic' && remoteState.config?.roomCode && !remoteState.isConnected) {
+            if (remoteStateRef.current.mode === 'dynamic' && remoteStateRef.current.config?.roomCode && !remoteStateRef.current.isConnected) {
               console.log("Reconnecting to desktop after foreground");
               try {
-                remoteConnect(remoteState.config.roomCode, false);
+                remoteConnect(remoteStateRef.current.config.roomCode, false);
               } catch (error) {
                 console.error('Failed to reconnect to desktop:', error);
               }
@@ -810,15 +832,15 @@ const ChatUI: React.FC<ChatUIProps> = ({ historyId, onMenuPress, MenuIcon, navig
         unloadEmbeddingModel();
       }
     };
-  }, [remoteState.isConnected, remoteState.isRetrying]);
+  }, []); // Run once on mount — uses remoteStateRef for latest remote state
 
   useEffect(() => {
     setParentIsTyping(isTyping);
   }, [isTyping]);
 
   const loadModel = async () => {
-    // Guard against concurrent loading
-    if (isModelLoadingRef.current) {
+    // Guard against concurrent loading or already-loaded model
+    if (isModelLoadingRef.current || contextRef.current) {
       return;
     }
 
