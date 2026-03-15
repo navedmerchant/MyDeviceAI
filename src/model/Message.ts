@@ -1,6 +1,7 @@
 export interface SearchLink {
     title: string;
     url: string;
+    thumbnail?: string;
 }
 
 export interface Message {

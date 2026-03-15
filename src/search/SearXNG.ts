@@ -83,10 +83,11 @@ async function performSearXNGSearch(query: string, signal?: AbortSignal): Promis
       .filter(result => result.thumbnail)
       .map(result => result.thumbnail as string);
 
-    // Collect links
+    // Collect links with their thumbnails
     const links = topResults.map(result => ({
       title: result.title,
-      url: result.url
+      url: result.url,
+      thumbnail: result.thumbnail,
     }));
 
     const formattedResults = topResults.map(result => {

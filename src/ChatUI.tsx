@@ -62,7 +62,6 @@ import TypingIndicator from './components/TypingIndicator';
 import SearchingIndicator from './components/SearchingIndicator';
 import ThinkingContent from './components/ThinkingContent';
 import StreamingThinkingIndicator from './components/StreamingThinkingIndicator';
-import ThumbnailGallery from './components/ThumbnailGallery';
 import * as Progress from 'react-native-progress';
 const chatWallpaper = require('./images/white-grey-15-pct.png');
 import { MODEL_NAMES, MODEL_URLS } from './constants/Models';
@@ -148,7 +147,7 @@ const ChatUI: React.FC<ChatUIProps> = ({ historyId, onMenuPress, MenuIcon, navig
   const { setGlobalHistoryId, loadHistories } = useDatabase();
   const [showScrollButton, setShowScrollButton] = useState(false);
   const [keyboardOffset, setKeyboardOffset] = useState(0);
-  const [expandedImage, setExpandedImage] = useState<string | null>(null);
+
   const [isLoadingModel, setIsLoadingModel] = useState(false);
   const [loadingProgress, setLoadingProgress] = useState(0);
   const [isSearching, setIsSearching] = useState(false);
@@ -1404,14 +1403,6 @@ const ChatUI: React.FC<ChatUIProps> = ({ historyId, onMenuPress, MenuIcon, navig
     return parts.length > 0 ? parts : <Markdown style={mdStyles}>{text}</Markdown>;
   };
 
-  const handleImagePress = (url: string, allImages: string[]) => {
-    const initialIndex = allImages.findIndex(image => image === url);
-    navigation.navigate('ImageGallery', {
-      images: allImages,
-      initialIndex: initialIndex >= 0 ? initialIndex : 0,
-    });
-  };
-
   const renderMessage = (message: Message) => {
     const isAIMessage = !message.isUser;
 
@@ -1432,13 +1423,6 @@ const ChatUI: React.FC<ChatUIProps> = ({ historyId, onMenuPress, MenuIcon, navig
             isAIMessage && { maxWidth: '100%' } // Override maxWidth for AI messages
           ]}
         >
-          {/* Show thumbnails at the top for AI messages */}
-          {isAIMessage && message.thumbnails && message.thumbnails.length > 0 && (
-            <ThumbnailGallery 
-              thumbnails={message.thumbnails} 
-              onImagePress={(url) => handleImagePress(url, message.thumbnails || [])} 
-            />
-          )}
           
           {processThinkingContent(message.text, false, message.isUser ? userMarkdownStyles : markdownStyles)}
         </View>
@@ -1470,7 +1454,14 @@ const ChatUI: React.FC<ChatUIProps> = ({ historyId, onMenuPress, MenuIcon, navig
                     }}
                     onPress={() => Linking.openURL(link.url)}
                   >
-                    <ExternalLink color="#999" size={15} />
+                    {link.thumbnail ? (
+                      <Image
+                        source={{ uri: link.thumbnail }}
+                        style={{ width: 24, height: 24, borderRadius: 12 }}
+                      />
+                    ) : (
+                      <ExternalLink color="#999" size={15} />
+                    )}
                     <Text
                       numberOfLines={1}
                       style={{
@@ -1640,13 +1631,6 @@ const ChatUI: React.FC<ChatUIProps> = ({ historyId, onMenuPress, MenuIcon, navig
                 styles.aiMessage,
                 { maxWidth: '100%' }
               ]}>
-                {currentThumbnails.length > 0 && (
-                  <ThumbnailGallery 
-                    thumbnails={currentThumbnails} 
-                    onImagePress={(url) => handleImagePress(url, currentThumbnails)} 
-                  />
-                )}
-                
                 {isSearching ? (
                   <SearchingIndicator />
                 ) : currentResponse ? (
