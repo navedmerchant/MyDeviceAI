@@ -70,6 +70,7 @@ function App(): React.JSX.Element {
                 swipeEnabled: false,
               }}
             />
+            {/* Memory feature disabled temporarily
             <Drawer.Screen 
               name="ContextSettings"
               component={ContextSettings}
@@ -77,6 +78,7 @@ function App(): React.JSX.Element {
                 swipeEnabled: false,
               }}
             />
+            */}
             <Drawer.Screen 
               name="AdvancedSettings"
               component={AdvancedSettingsScreen}

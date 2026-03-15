@@ -258,6 +258,7 @@ const SettingsScreen: React.FC<Props> = ({ navigation }) => {
           />
         </View>
 
+        {/* Memory feature disabled temporarily
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Context Memory</Text>
           <TouchableOpacity 
@@ -273,6 +274,7 @@ const SettingsScreen: React.FC<Props> = ({ navigation }) => {
             Configure how the AI remembers and uses context from your conversations.
           </Text>
         </View>
+        */}
 
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Advanced Settings</Text>
@@ -329,7 +331,8 @@ const SettingsScreen: React.FC<Props> = ({ navigation }) => {
               )}
             </View>
 
-            {/* Embedding Model Download */}
+            {/* Memory feature disabled temporarily
+            Embedding Model Download
             <View style={styles.downloadItem}>
               <View style={styles.downloadInfo}>
                 <Text style={styles.downloadTitle}>Embedding Model (BGE)</Text>
@@ -358,6 +361,7 @@ const SettingsScreen: React.FC<Props> = ({ navigation }) => {
                 </TouchableOpacity>
               )}
             </View>
+            */}
           </View>
         )}
 

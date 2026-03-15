@@ -212,7 +212,8 @@ const ChatUI: React.FC<ChatUIProps> = ({ historyId, onMenuPress, MenuIcon, navig
 
       setModelStatus(modelExists ? 'downloaded' : 'not_downloaded');
       setEmbeddingStatus(embeddingExists ? 'downloaded' : 'not_downloaded');
-      setShowModelRequirementScreen(!modelExists || !embeddingExists);
+      // Memory feature disabled temporarily - only require main model
+      setShowModelRequirementScreen(!modelExists);
     } catch (error) {
       console.error('Error checking model status:', error);
       setShowModelRequirementScreen(true);
@@ -252,7 +253,8 @@ const ChatUI: React.FC<ChatUIProps> = ({ historyId, onMenuPress, MenuIcon, navig
       if (embeddingExists) {
         console.log('Both models downloaded, loading them now...');
         loadModel();
-        loadEmbeddingModel();
+        // Memory feature disabled temporarily
+        // loadEmbeddingModel();
       }
     } catch (error) {
       console.error('Error downloading model:', error);
@@ -295,7 +297,8 @@ const ChatUI: React.FC<ChatUIProps> = ({ historyId, onMenuPress, MenuIcon, navig
       if (modelExists) {
         console.log('Both models downloaded, loading them now...');
         loadModel();
-        loadEmbeddingModel();
+        // Memory feature disabled temporarily
+        // loadEmbeddingModel();
       }
     } catch (error) {
       console.error('Error downloading embedding model:', error);
@@ -346,6 +349,7 @@ const ChatUI: React.FC<ChatUIProps> = ({ historyId, onMenuPress, MenuIcon, navig
 
         <View style={styles.modelDivider} />
 
+        {/* Memory feature disabled temporarily
         <Text style={styles.modelTypeTitle}>Embedding Model</Text>
         {embeddingStatus === 'not_downloaded' && !isEmbeddingDownloading && (
           <TouchableOpacity
@@ -375,14 +379,16 @@ const ChatUI: React.FC<ChatUIProps> = ({ historyId, onMenuPress, MenuIcon, navig
             <Text style={styles.modelInfoText}>Embedding model installed and ready to use</Text>
           </View>
         )}
+        */}
       </View>
     </View>
   );
 
   useEffect(() => {
     loadSystemPrompt();
-    loadContextSettings();
-    initializeContext();
+    // Memory feature disabled temporarily
+    // loadContextSettings();
+    // initializeContext();
     // Check model status on mount for Android
     if (Platform.OS === 'android') {
       checkAndroidModelStatus();
@@ -709,7 +715,8 @@ const ChatUI: React.FC<ChatUIProps> = ({ historyId, onMenuPress, MenuIcon, navig
           // which uses getModelParamsForDevice() to get the correct model
           console.log("Custom model active, loading...");
           if (embeddingExists) {
-            loadEmbeddingModel();
+            // Memory feature disabled temporarily
+            // loadEmbeddingModel();
           }
           loadModel();
           // Set lastLoadedModelId to prevent navigation focus listener from reloading
@@ -717,10 +724,11 @@ const ChatUI: React.FC<ChatUIProps> = ({ historyId, onMenuPress, MenuIcon, navig
         } else {
           // Built-in default - check if it exists and load
           const modelExists = await RNFS.exists(`${MODEL_DIR}/${MODEL_NAMES.QWEN_MODEL}`);
-          if (modelExists && embeddingExists) {
+          if (modelExists) {
             console.log("Models found, loading...");
             loadModel();
-            loadEmbeddingModel();
+            // Memory feature disabled temporarily
+            // if (embeddingExists) loadEmbeddingModel();
           } else {
             console.log('Models not downloaded yet, skipping initialization');
           }
@@ -730,7 +738,8 @@ const ChatUI: React.FC<ChatUIProps> = ({ historyId, onMenuPress, MenuIcon, navig
       // iOS: load models on mount since AppState won't fire a foreground transition on first launch
       console.log("iOS: Loading models on mount");
       loadModel();
-      loadEmbeddingModel();
+      // Memory feature disabled temporarily
+      // loadEmbeddingModel();
     }
   }, []);
 
@@ -756,25 +765,25 @@ const ChatUI: React.FC<ChatUIProps> = ({ historyId, onMenuPress, MenuIcon, navig
             // Check if models exist on Android before loading
             if (Platform.OS === 'android') {
               RNFS.exists(`${MODEL_DIR}/${MODEL_NAMES.QWEN_MODEL}`).then(modelExists => {
-                RNFS.exists(`${MODEL_DIR}/${MODEL_NAMES.BGE_EMBEDDING_MODEL}`).then(embeddingExists => {
-                  if (modelExists && embeddingExists) {
+                  if (modelExists) {
                     if (!contextRef.current) {
                       loadModel();
                     }
-                    if (!embeddingContextRef.current) {
-                      loadEmbeddingModel();
-                    }
+                    // Memory feature disabled temporarily
+                    // if (!embeddingContextRef.current) {
+                    //   loadEmbeddingModel();
+                    // }
                   } else {
                     console.log('Models not downloaded yet, skipping initialization');
                   }
-                });
               });
             } else {
               if (!contextRef.current) {
                 loadModel();
               }
               if (!embeddingContextRef.current) {
-                loadEmbeddingModel();
+                // Memory feature disabled temporarily
+                // loadEmbeddingModel();
               }
             }
 
@@ -805,7 +814,8 @@ const ChatUI: React.FC<ChatUIProps> = ({ historyId, onMenuPress, MenuIcon, navig
           contextRef.current?.stopCompletion();
         }
         unloadModel();
-        unloadEmbeddingModel();
+        // Memory feature disabled temporarily
+        // unloadEmbeddingModel();
       }
 
       appState.current = nextAppState;
@@ -820,16 +830,16 @@ const ChatUI: React.FC<ChatUIProps> = ({ historyId, onMenuPress, MenuIcon, navig
       // Only unload if models exist on Android
       if (Platform.OS === 'android') {
         RNFS.exists(`${MODEL_DIR}/${MODEL_NAMES.QWEN_MODEL}`).then(modelExists => {
-          RNFS.exists(`${MODEL_DIR}/${MODEL_NAMES.BGE_EMBEDDING_MODEL}`).then(embeddingExists => {
-            if (modelExists && embeddingExists) {
+            if (modelExists) {
               unloadModel();
-              unloadEmbeddingModel();
+              // Memory feature disabled temporarily
+              // unloadEmbeddingModel();
             }
-          });
         });
       } else {
         unloadModel();
-        unloadEmbeddingModel();
+        // Memory feature disabled temporarily
+        // unloadEmbeddingModel();
       }
     };
   }, []); // Run once on mount — uses remoteStateRef for latest remote state
@@ -1181,13 +1191,14 @@ const ChatUI: React.FC<ChatUIProps> = ({ historyId, onMenuPress, MenuIcon, navig
       // Only proceed with AI processing if not cancelled
       setIsTyping(true);
 
+      // Memory feature disabled temporarily
       // Get relevant context from previous conversations
       let userContext = '';
-      const similarContexts = await findSimilarContext(inputText);
-      if (similarContexts.length > 0) {
-        userContext = "Here's some relevant context from previous conversations:\n" +
-          similarContexts.map(context => context.text).join("\n") + "\n\n";
-      }
+      // const similarContexts = await findSimilarContext(inputText);
+      // if (similarContexts.length > 0) {
+      //   userContext = "Here's some relevant context from previous conversations:\n" +
+      //     similarContexts.map(context => context.text).join("\n") + "\n\n";
+      // }
 
       const searchResultsPrompt = searchResults ? `\nHere are some search results for your query: ${searchResults} \n\n Use these to enhance your response if needed.` : '';
 
