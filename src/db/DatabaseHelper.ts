@@ -50,6 +50,15 @@ export const initDatabase = async () => {
       // Column already exists — safe to ignore
     }
 
+    // Migration: add images column for multimodal image support
+    try {
+      await db.execute(
+        `ALTER TABLE chat_messages ADD COLUMN images TEXT;`
+      );
+    } catch (_) {
+      // Column already exists — safe to ignore
+    }
+
     // Create context embeddings virtual table using vec0
     await db.execute(`
       CREATE VIRTUAL TABLE IF NOT EXISTS context_embeddings USING vec0(
@@ -118,16 +127,17 @@ export const saveNewChatHistory = async (title: string, firstMessage: string): P
   }
 };
 
-export const saveChatMessage = async (historyId: number, message: string, isUser: boolean, searchLinks?: { title: string; url: string }[]) => {
+export const saveChatMessage = async (historyId: number, message: string, isUser: boolean, searchLinks?: { title: string; url: string }[], images?: string[]) => {
   if (!db) {
     await initDatabase();
   }
   
   try {
     const linksJson = searchLinks && searchLinks.length > 0 ? JSON.stringify(searchLinks) : null;
+    const imagesJson = images && images.length > 0 ? JSON.stringify(images) : null;
     await db!.execute(
-      'INSERT INTO chat_messages (history_id, message, is_user, timestamp, search_links) VALUES (?, ?, ?, ?, ?)',
-      [historyId, message, isUser ? 1 : 0, Date.now(), linksJson]
+      'INSERT INTO chat_messages (history_id, message, is_user, timestamp, search_links, images) VALUES (?, ?, ?, ?, ?, ?)',
+      [historyId, message, isUser ? 1 : 0, Date.now(), linksJson, imagesJson]
     );
     
     await db!.execute(
@@ -163,11 +173,20 @@ export const loadChatHistory = async (historyId: number): Promise<Message[]> => 
           searchLinks = undefined;
         }
       }
+      let images;
+      if (row.images) {
+        try {
+          images = JSON.parse(String(row.images));
+        } catch (_) {
+          images = undefined;
+        }
+      }
       messages.push({
         id: Number(row.id),
         text: String(row.message),
         isUser: Boolean(row.is_user),
         searchLinks,
+        images,
       });
     }
     

@@ -10,5 +10,6 @@ export interface Message {
     isUser: boolean;
     thumbnails?: string[];
     searchLinks?: SearchLink[];
+    images?: string[];
 }
   

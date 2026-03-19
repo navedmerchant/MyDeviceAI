@@ -3,6 +3,7 @@ import React, { useState, useCallback, useRef, useEffect } from 'react';
 import Markdown from 'react-native-markdown-display';
 import { showToast } from './utils/ToastUtils';
 import RNFS from 'react-native-fs';
+import { launchImageLibrary, launchCamera } from 'react-native-image-picker';
 
 import {
   View,
@@ -28,7 +29,7 @@ import {
   ImageBackground,
   Linking,
 } from 'react-native';
-import { Send, Square, CirclePlus, Search, Settings, ArrowDown, Brain, Copy, Share as ShareIcon, ChevronRight, Menu as MenuIcon, Download, ExternalLink } from 'lucide-react-native';
+import { Send, Square, CirclePlus, Search, Settings, ArrowDown, Brain, Copy, Share as ShareIcon, ChevronRight, Menu as MenuIcon, Download, ExternalLink, X, ImagePlus } from 'lucide-react-native';
 import { getModelParamsForDevice, DEFAULT_SYSTEM_PROMPT } from './utils/Utils';
 import { styles, markdownStyles, userMarkdownStyles, popoverStyles, menuOptionStyles } from './Styles';
 import { Message, SearchLink } from './model/Message';
@@ -130,6 +131,19 @@ const useIsFloatingKeyboard = () => {
   return floating;
 };
 
+const MessageImage: React.FC<{ uri: string }> = ({ uri }) => {
+  const [hasError, setHasError] = useState(false);
+  if (hasError) return null;
+  return (
+    <Image
+      source={{ uri }}
+      style={styles.messageImageThumbnail}
+      resizeMode="cover"
+      onError={() => setHasError(true)}
+    />
+  );
+};
+
 const ChatUI: React.FC<ChatUIProps> = ({ historyId, onMenuPress, MenuIcon, navigation, setParentIsTyping }) => {
   const [messages, setMessages] = useState<Message[]>([]);
   const [inputText, setInputText] = useState('');
@@ -155,6 +169,8 @@ const ChatUI: React.FC<ChatUIProps> = ({ historyId, onMenuPress, MenuIcon, navig
   const [isWaitingForModel, setIsWaitingForModel] = useState(false);
   const [showConnectionDropdown, setShowConnectionDropdown] = useState(false);
   const [showModelRequirementScreen, setShowModelRequirementScreen] = useState(false);
+  const [isMultimodalReady, setIsMultimodalReady] = useState(false);
+  const [pendingImages, setPendingImages] = useState<string[]>([]);
 
   // Add new state variables for model download
   const [modelStatus, setModelStatus] = useState<'default' | 'downloaded' | 'not_downloaded'>('not_downloaded');
@@ -856,6 +872,7 @@ const ChatUI: React.FC<ChatUIProps> = ({ historyId, onMenuPress, MenuIcon, navig
     try {
       isModelLoadingRef.current = true;
       setIsLoadingModel(true);
+      setIsMultimodalReady(false);
       updateLocalModelStatus(true); // Update remote connection status
       setLoadingProgress(0);
 
@@ -880,6 +897,25 @@ const ChatUI: React.FC<ChatUIProps> = ({ historyId, onMenuPress, MenuIcon, navig
       // Check if the model supports thinking via its chat template metadata
       const chatTemplate = (newContext.model.metadata as any)?.['tokenizer.chat_template'] || '';
       setSupportsThinking(chatTemplate.includes('enable_thinking'));
+
+      // Initialize multimodal support if the active model has an mmproj file
+      if (activeModelId) {
+        const downloadedModelsJson = await AsyncStorage.getItem('downloadedModels');
+        if (downloadedModelsJson) {
+          const downloadedModels = JSON.parse(downloadedModelsJson);
+          const activeModel = downloadedModels.find((m: any) => m.id === activeModelId);
+          if (activeModel?.mmprojFilePath) {
+            try {
+              await newContext.initMultimodal({ path: activeModel.mmprojFilePath });
+              setIsMultimodalReady(true);
+            } catch (error) {
+              console.error('Failed to init multimodal:', error);
+              showToast('Image support could not be enabled');
+              setIsMultimodalReady(false);
+            }
+          }
+        }
+      }
     } catch (error) {
       console.log("Error loading model" + error);
       Alert.alert("Failed to load model! please close the app and try again by closing some background apps");
@@ -946,28 +982,70 @@ const ChatUI: React.FC<ChatUIProps> = ({ historyId, onMenuPress, MenuIcon, navig
     scrollViewRef.current?.scrollToEnd({ animated: true });
   };
 
-  const addMessage = useCallback(async (text: string, isUser: boolean, thumbnails?: string[], searchLinks?: SearchLink[]) => {
-    const newMessage = { id: Date.now(), text, isUser, thumbnails, searchLinks };
+  const addMessage = useCallback(async (text: string, isUser: boolean, thumbnails?: string[], searchLinks?: SearchLink[], images?: string[]) => {
+    const newMessage: Message = { id: Date.now(), text, isUser, thumbnails, searchLinks, images };
     setMessages(prevMessages => [...prevMessages, newMessage]);
     if (currentHistoryIdRef.current) {
-      await saveChatMessage(currentHistoryIdRef.current, text, isUser, searchLinks);
+      await saveChatMessage(currentHistoryIdRef.current, text, isUser, searchLinks, images);
       loadHistories();
     } else if (isUser) {
       // Create new chat history for first message
+      const displayText = text || (images && images.length > 0 ? '[Image]' : '');
       const newHistoryId = await saveNewChatHistory(
-        text.slice(0, 50) + (text.length > 50 ? '...' : ''),
-        text
+        displayText.slice(0, 50) + (displayText.length > 50 ? '...' : ''),
+        displayText
       );
       setCurrentHistoryId(newHistoryId);
       currentHistoryIdRef.current = newHistoryId;
       // reload histories to update chat history list
       loadHistories();
       setGlobalHistoryId(newHistoryId);
-      saveChatMessage(newHistoryId, text, isUser, searchLinks);
+      saveChatMessage(newHistoryId, text, isUser, searchLinks, images);
     }
 
   }, [currentHistoryId]);
 
+  const removeImage = useCallback((index: number) => {
+    setPendingImages(prev => prev.filter((_, i) => i !== index));
+  }, []);
+
+  const handleImagePick = useCallback(() => {
+    Alert.alert('Attach Image', 'Choose an option', [
+      {
+        text: 'Photo Library',
+        onPress: () => {
+          launchImageLibrary(
+            { mediaType: 'photo', selectionLimit: 0 },
+            (response) => {
+              if (!response.didCancel && !response.errorCode && response.assets) {
+                const uris = response.assets
+                  .map(asset => asset.uri)
+                  .filter((uri): uri is string => !!uri);
+                setPendingImages(prev => [...prev, ...uris]);
+              }
+            },
+          );
+        },
+      },
+      {
+        text: 'Camera',
+        onPress: () => {
+          launchCamera(
+            { mediaType: 'photo' },
+            (response) => {
+              if (!response.didCancel && !response.errorCode && response.assets) {
+                const uris = response.assets
+                  .map(asset => asset.uri)
+                  .filter((uri): uri is string => !!uri);
+                setPendingImages(prev => [...prev, ...uris]);
+              }
+            },
+          );
+        },
+      },
+      { text: 'Cancel', style: 'cancel' },
+    ]);
+  }, []);
 
   const handleSend = useCallback(async () => {
     const length = inputText.split(/\s+/).length;
@@ -1145,10 +1223,12 @@ const ChatUI: React.FC<ChatUIProps> = ({ historyId, onMenuPress, MenuIcon, navig
       setIsWaitingForModel(false);
     }
 
-    if (inputText.trim()) {
+    if (inputText.trim() || pendingImages.length > 0) {
       Keyboard.dismiss();  // Dismiss keyboard when AI starts typing
-      addMessage(inputText, true);
+      const imagesToSend = [...pendingImages];
+      addMessage(inputText, true, undefined, undefined, imagesToSend.length > 0 ? imagesToSend : undefined);
       setInputText('');
+      setPendingImages([]);
       
       // Reset cancellation flag
       isCancelledRef.current = false;
@@ -1210,6 +1290,30 @@ const ChatUI: React.FC<ChatUIProps> = ({ historyId, onMenuPress, MenuIcon, navig
         // Get model parameters from Utils (resolved for thinking mode)
         const modelParams = await getModelParamsForDevice(thinkingModeEnabled);
         
+        // Build user message content - use content parts when images are attached
+        const userTextContent = `${inputText}
+                ${searchModeEnabled ? `\nYou have access to the internet and can use it to search for information.
+                When provided with search results, use them to enhance your responses with current and accurate information.\n` : ''}
+                ${searchResultsPrompt}
+                ${userContext}`;
+
+        let userMessageContent: any;
+        if (imagesToSend.length > 0) {
+          // Construct OpenAI-compatible content parts with image_url entries
+          const contentParts: any[] = imagesToSend.map(imagePath => {
+            // Strip file:// prefix if already present to avoid double-prefixing
+            const cleanPath = imagePath.startsWith('file://') ? imagePath.replace('file://', '') : imagePath;
+            return {
+              type: 'image_url',
+              image_url: { url: `file://${cleanPath}` },
+            };
+          });
+          contentParts.push({ type: 'text', text: userTextContent });
+          userMessageContent = contentParts;
+        } else {
+          userMessageContent = userTextContent;
+        }
+
         // Do completion using the configured parameters
         const { text, timings } = await contextRef.current.completion(
           {
@@ -1224,11 +1328,7 @@ const ChatUI: React.FC<ChatUIProps> = ({ historyId, onMenuPress, MenuIcon, navig
               })),
               {
                 role: 'user',
-                content: `${inputText}
-                ${searchModeEnabled ? `\nYou have access to the internet and can use it to search for information.
-                When provided with search results, use them to enhance your responses with current and accurate information.\n` : ''}
-                ${searchResultsPrompt}
-                ${userContext}`
+                content: userMessageContent
               }
             ],
             n_predict: modelParams.n_predict,
@@ -1261,7 +1361,7 @@ const ChatUI: React.FC<ChatUIProps> = ({ historyId, onMenuPress, MenuIcon, navig
         setCurrentSearchLinks([]);
       }
     }
-  }, [inputText, addMessage, searchModeEnabled, thinkingModeEnabled, remoteState.isConnected, remoteState.mode]);
+  }, [inputText, pendingImages, addMessage, searchModeEnabled, thinkingModeEnabled, remoteState.isConnected, remoteState.mode]);
 
   async function handleStop(event: GestureResponderEvent): Promise<void> {
     
@@ -1423,7 +1523,13 @@ const ChatUI: React.FC<ChatUIProps> = ({ historyId, onMenuPress, MenuIcon, navig
             isAIMessage && { maxWidth: '100%' } // Override maxWidth for AI messages
           ]}
         >
-          
+          {message.images && message.images.length > 0 && (
+            <View style={styles.messageImagesContainer}>
+              {message.images.map((uri, i) => (
+                <MessageImage key={i} uri={uri} />
+              ))}
+            </View>
+          )}
           {processThinkingContent(message.text, false, message.isUser ? userMarkdownStyles : markdownStyles)}
         </View>
         {/* For AI messages, show copy, share buttons and search link bubbles */} 
@@ -1664,6 +1770,17 @@ const ChatUI: React.FC<ChatUIProps> = ({ historyId, onMenuPress, MenuIcon, navig
 
       <View style={styles.inputContainer}>
         <View style={styles.modeToggleContainer}>
+          {isMultimodalReady && (
+            <TouchableOpacity
+              style={styles.modeToggleButton}
+              onPress={handleImagePick}
+              disabled={isTyping || isSearching}
+              accessibilityLabel="Attach image"
+              accessibilityRole="button"
+            >
+              <ImagePlus color="#666" size={20} />
+            </TouchableOpacity>
+          )}
           {supportsThinking && !remoteState.isConnected && (
             <TouchableOpacity
               style={[styles.modeToggleButton, thinkingModeEnabled && styles.modeToggleButtonActive]}
@@ -1683,6 +1800,23 @@ const ChatUI: React.FC<ChatUIProps> = ({ historyId, onMenuPress, MenuIcon, navig
             <Text style={[styles.modeToggleText, searchModeEnabled && styles.modeToggleTextActive]}>Web Search</Text>
           </TouchableOpacity>
         </View>
+        {pendingImages.length > 0 && (
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.attachmentBar}>
+            {pendingImages.map((uri, index) => (
+              <View key={index} style={styles.attachmentThumbnailContainer}>
+                <Image source={{ uri }} style={styles.attachmentThumbnail} />
+                <TouchableOpacity
+                  onPress={() => removeImage(index)}
+                  style={styles.attachmentRemoveButton}
+                  accessibilityLabel="Remove image"
+                  accessibilityRole="button"
+                >
+                  <X size={12} color="#fff" />
+                </TouchableOpacity>
+              </View>
+            ))}
+          </ScrollView>
+        )}
         <View style={styles.searchInputContainer}>
           <TextInput
             style={[styles.input, { maxHeight: 60 }]}

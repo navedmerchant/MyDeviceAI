@@ -26,6 +26,7 @@
     "react-native-device-info": "^13.1.0",
     "react-native-fs": "^2.20.0",
     "react-native-gesture-handler": "^2.21.2",
+    "react-native-image-picker": "^8.2.1",
     "react-native-markdown-display": "^7.0.2",
     "react-native-popup-menu": "^0.16.1",
     "react-native-progress": "^5.0.1",

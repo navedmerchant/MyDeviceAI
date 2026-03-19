@@ -39,6 +39,8 @@ interface DownloadedModel {
   filePath: string;
   isActive: boolean;
   parameters?: ModelParameters;
+  mmprojFilePath?: string;
+  isMultimodal?: boolean;
 }
 
 // Default sampling parameters for thinking mode

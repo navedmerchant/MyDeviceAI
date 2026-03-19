@@ -54,6 +54,8 @@ interface DownloadedModel {
   downloadStatus?: 'downloading' | 'cancelled' | 'completed' | 'failed';
   downloadProgress?: number;
   downloadJob?: any; // To store the RNFS download job for pause/cancel
+  mmprojFilePath?: string;
+  isMultimodal?: boolean;
 }
 
 interface GGUFFile {
@@ -83,7 +85,9 @@ const AdvancedSettingsScreen: React.FC<Props> = ({ navigation }) => {
   const [isEditingCode, setIsEditingCode] = useState(false);
   const [selectedModel, setSelectedModel] = useState<HuggingFaceModel | null>(null);
   const [availableGGUFFiles, setAvailableGGUFFiles] = useState<GGUFFile[]>([]);
+  const [availableMmprojFiles, setAvailableMmprojFiles] = useState<GGUFFile[]>([]);
   const [loadingGGUFFiles, setLoadingGGUFFiles] = useState(false);
+  const [mmprojDownloadJobs, setMmprojDownloadJobs] = useState<{[key: string]: any}>({});
   const [totalStorageUsed, setTotalStorageUsed] = useState<string>('0 B');
   const networkPermissionRequested = React.useRef(false);
 
@@ -267,18 +271,26 @@ const AdvancedSettingsScreen: React.FC<Props> = ({ navigation }) => {
       const filesResponse = await fetch(`https://huggingface.co/api/models/${model.id}/tree/main`);
       const files = await filesResponse.json();
       
-      // Find GGUF files
-      const ggufFiles = files.filter((file: any) => 
+      // Partition GGUF files into mmproj and main model files
+      const allGgufFiles = files.filter((file: any) => 
         file.path.toLowerCase().endsWith('.gguf')
       );
       
-      if (ggufFiles.length === 0) {
+      const mmprojFiles = allGgufFiles.filter((f: GGUFFile) =>
+        f.path.toLowerCase().includes('mmproj')
+      );
+      const mainGGUFFiles = allGgufFiles.filter((f: GGUFFile) =>
+        !f.path.toLowerCase().includes('mmproj')
+      );
+      
+      if (mainGGUFFiles.length === 0) {
         setShowGGUFModal(false);
         Alert.alert('Error', 'No GGUF files found in this model');
         return;
       }
       
-      setAvailableGGUFFiles(ggufFiles);
+      setAvailableGGUFFiles(mainGGUFFiles);
+      setAvailableMmprojFiles(mmprojFiles);
     } catch (error) {
       console.error('Error fetching GGUF files:', error);
       setShowGGUFModal(false);
@@ -308,6 +320,13 @@ const AdvancedSettingsScreen: React.FC<Props> = ({ navigation }) => {
     setIsDownloading(selectedModel.id);
     setShowGGUFModal(false);
     
+    // Capture mmproj files before closing modal clears state
+    const mmprojFiles = [...availableMmprojFiles];
+    
+    // Determine mmproj file to download (f16 preferred, fallback to first)
+    let mmprojToDownload: GGUFFile | null = null;
+    let mmprojFilePath: string | null = null;
+    
     try {
       // Create file path
       const fileName = `${selectedModel.id.replace('/', '_')}_${ggufFile.path}`.replace(/[^a-zA-Z0-9._-]/g, '_');
@@ -336,6 +355,16 @@ const AdvancedSettingsScreen: React.FC<Props> = ({ navigation }) => {
         return;
       }
       
+      // Resolve mmproj file to download
+      if (mmprojFiles.length > 0) {
+        const f16Variant = mmprojFiles.find((f: GGUFFile) =>
+          f.path.toLowerCase().includes('f16')
+        );
+        mmprojToDownload = f16Variant || mmprojFiles[0];
+        const mmprojFileName = `${selectedModel.id.replace('/', '_')}_${mmprojToDownload.path}`.replace(/[^a-zA-Z0-9._-]/g, '_');
+        mmprojFilePath = `${modelsDir}/${mmprojFileName}`;
+      }
+      
       // Create downloading model entry immediately
       const downloadingModel: DownloadedModel = {
         id: downloadKey,
@@ -362,7 +391,7 @@ const AdvancedSettingsScreen: React.FC<Props> = ({ navigation }) => {
       console.log("downloadUrl", downloadUrl);
       console.log("filePath", filePath);
 
-      // Start download with progress tracking
+      // Start main model download with progress tracking
       const downloadResult = RNFS.downloadFile({
         fromUrl: downloadUrl,
         toFile: filePath,
@@ -411,7 +440,26 @@ const AdvancedSettingsScreen: React.FC<Props> = ({ navigation }) => {
       console.log('Storing download job with jobId:', downloadResult.jobId);
       setDownloadJobs(prev => ({ ...prev, [downloadKey]: downloadResult }));
       
-      // Wait for download to complete
+      // Start mmproj download in parallel if available
+      let mmprojDownloadResult: ReturnType<typeof RNFS.downloadFile> | null = null;
+      if (mmprojToDownload && mmprojFilePath) {
+        const mmprojUrl = `https://huggingface.co/${selectedModel.id}/resolve/main/${mmprojToDownload.path}`;
+        console.log("mmproj downloadUrl", mmprojUrl);
+        console.log("mmproj filePath", mmprojFilePath);
+        
+        mmprojDownloadResult = RNFS.downloadFile({
+          fromUrl: mmprojUrl,
+          toFile: mmprojFilePath,
+          begin: () => {},
+          progress: () => {},
+          progressDivider: 10,
+        });
+        
+        // Store mmproj download job for cancellation
+        setMmprojDownloadJobs(prev => ({ ...prev, [downloadKey]: mmprojDownloadResult }));
+      }
+      
+      // Wait for main model download to complete
       const result = await downloadResult.promise;
       
       if (result.statusCode !== 200) {
@@ -422,12 +470,46 @@ const AdvancedSettingsScreen: React.FC<Props> = ({ navigation }) => {
       const fileInfo = await RNFS.stat(filePath);
       const actualSize = fileInfo.size;
       
+      // Wait for mmproj download and handle its result
+      let mmprojSucceeded = false;
+      if (mmprojDownloadResult && mmprojFilePath) {
+        try {
+          const mmprojResult = await mmprojDownloadResult.promise;
+          if (mmprojResult.statusCode === 200) {
+            mmprojSucceeded = true;
+          } else {
+            console.error(`mmproj download failed with status: ${mmprojResult.statusCode}`);
+          }
+        } catch (mmprojError) {
+          console.error('mmproj download error:', mmprojError);
+          // Clean up partial mmproj file
+          try {
+            if (await RNFS.exists(mmprojFilePath)) {
+              await RNFS.unlink(mmprojFilePath);
+            }
+          } catch (cleanupErr) {
+            console.error('Error cleaning up partial mmproj:', cleanupErr);
+          }
+        }
+        
+        // Clean up mmproj download job
+        setMmprojDownloadJobs(prev => {
+          const newJobs = { ...prev };
+          delete newJobs[downloadKey];
+          return newJobs;
+        });
+      }
+      
       // Update model with completion status
       const completedModel: DownloadedModel = {
         ...downloadingModel,
         size: formatFileSize(actualSize),
         downloadStatus: 'completed',
         downloadProgress: 100,
+        ...(mmprojSucceeded && mmprojFilePath ? {
+          mmprojFilePath: mmprojFilePath,
+          isMultimodal: true,
+        } : {}),
       };
       
       const finalModels = downloadedModels.map(model => 
@@ -444,6 +526,52 @@ const AdvancedSettingsScreen: React.FC<Props> = ({ navigation }) => {
       });
       
       Alert.alert('Success', `Model "${completedModel.name}" has been downloaded successfully!`);
+      
+      // Show mmproj failure alert with retry after success alert
+      if (mmprojToDownload && mmprojFilePath && !mmprojSucceeded) {
+        const retryMmprojDownload = async () => {
+          try {
+            const mmprojUrl = `https://huggingface.co/${selectedModel!.id}/resolve/main/${mmprojToDownload!.path}`;
+            const retryResult = RNFS.downloadFile({
+              fromUrl: mmprojUrl,
+              toFile: mmprojFilePath!,
+              begin: () => {},
+              progress: () => {},
+              progressDivider: 10,
+            });
+            const retryResponse = await retryResult.promise;
+            if (retryResponse.statusCode === 200) {
+              // Update the model record with mmproj info
+              const stored = await AsyncStorage.getItem('downloadedModels');
+              if (stored) {
+                const models: DownloadedModel[] = JSON.parse(stored);
+                const updatedRetryModels = models.map(m =>
+                  m.id === downloadKey
+                    ? { ...m, mmprojFilePath: mmprojFilePath!, isMultimodal: true }
+                    : m
+                );
+                await AsyncStorage.setItem('downloadedModels', JSON.stringify(updatedRetryModels));
+                setDownloadedModels(updatedRetryModels);
+              }
+              Alert.alert('Success', 'Vision support file downloaded successfully!');
+            } else {
+              Alert.alert('Error', 'Failed to download vision support file. The model will work in text-only mode.');
+            }
+          } catch (retryError) {
+            console.error('mmproj retry error:', retryError);
+            Alert.alert('Error', 'Failed to download vision support file. The model will work in text-only mode.');
+          }
+        };
+        
+        Alert.alert(
+          'Vision Support Download Failed',
+          'The main model was downloaded, but the vision support file (mmproj) failed to download. The model will work in text-only mode. Would you like to retry?',
+          [
+            { text: 'Skip', style: 'cancel' },
+            { text: 'Retry', onPress: retryMmprojDownload },
+          ]
+        );
+      }
     } catch (error) {
       console.error('Error downloading model:', error);
       
@@ -478,12 +606,25 @@ const AdvancedSettingsScreen: React.FC<Props> = ({ navigation }) => {
         if (fileExists) {
           await RNFS.unlink(filePath);
         }
+        
+        // Also clean up partial mmproj file
+        if (mmprojFilePath) {
+          const mmprojExists = await RNFS.exists(mmprojFilePath);
+          if (mmprojExists) {
+            await RNFS.unlink(mmprojFilePath);
+          }
+        }
       } catch (cleanupError) {
         console.error('Error cleaning up partial download:', cleanupError);
       }
       
-      // Clean up download job
+      // Clean up download jobs
       setDownloadJobs(prev => {
+        const newJobs = { ...prev };
+        delete newJobs[downloadKey];
+        return newJobs;
+      });
+      setMmprojDownloadJobs(prev => {
         const newJobs = { ...prev };
         delete newJobs[downloadKey];
         return newJobs;
@@ -553,6 +694,18 @@ const AdvancedSettingsScreen: React.FC<Props> = ({ navigation }) => {
               const fileExists = await RNFS.exists(modelToDelete.filePath);
               if (fileExists) {
                 await RNFS.unlink(modelToDelete.filePath);
+              }
+            }
+            
+            // Delete the mmproj file if it exists
+            if (modelToDelete && modelToDelete.mmprojFilePath) {
+              try {
+                const mmprojExists = await RNFS.exists(modelToDelete.mmprojFilePath);
+                if (mmprojExists) {
+                  await RNFS.unlink(modelToDelete.mmprojFilePath);
+                }
+              } catch (mmprojDeleteError) {
+                console.error('Error deleting mmproj file:', mmprojDeleteError);
               }
             }
             
@@ -829,6 +982,7 @@ const AdvancedSettingsScreen: React.FC<Props> = ({ navigation }) => {
           style: 'destructive',
           onPress: async () => {
             const downloadJob = downloadJobs[modelId];
+            const mmprojJob = mmprojDownloadJobs[modelId];
             console.log('Cancel download - downloadJob:', downloadJob);
             console.log('Download jobs state:', downloadJobs);
             
@@ -836,12 +990,18 @@ const AdvancedSettingsScreen: React.FC<Props> = ({ navigation }) => {
               // Mark this download as cancelled before stopping it
               setCancelledDownloads(prev => new Set([...prev, modelId]));
               
-              // Stop the download job if it exists
+              // Stop the main download job if it exists
               if (downloadJob && downloadJob.jobId) {
                 console.log('Stopping download with jobId:', downloadJob.jobId);
                 RNFS.stopDownload(downloadJob.jobId);
               } else {
                 console.warn('Download job not found or jobId not available:', downloadJob);
+              }
+              
+              // Stop the mmproj download job if it exists
+              if (mmprojJob && mmprojJob.jobId) {
+                console.log('Stopping mmproj download with jobId:', mmprojJob.jobId);
+                RNFS.stopDownload(mmprojJob.jobId);
               }
               
               // Clean up partial download file immediately
@@ -853,12 +1013,25 @@ const AdvancedSettingsScreen: React.FC<Props> = ({ navigation }) => {
                 }
               }
               
+              // Clean up partial mmproj file if it exists
+              if (modelToDelete && modelToDelete.mmprojFilePath) {
+                const mmprojExists = await RNFS.exists(modelToDelete.mmprojFilePath);
+                if (mmprojExists) {
+                  await RNFS.unlink(modelToDelete.mmprojFilePath);
+                }
+              }
+              
               // Remove the model from downloaded list
               const updatedModels = downloadedModels.filter(m => m.id !== modelId);
               setDownloadedModels(updatedModels);
               
-              // Clean up download job
+              // Clean up download jobs
               setDownloadJobs(prev => {
+                const newJobs = { ...prev };
+                delete newJobs[modelId];
+                return newJobs;
+              });
+              setMmprojDownloadJobs(prev => {
                 const newJobs = { ...prev };
                 delete newJobs[modelId];
                 return newJobs;
