@@ -9,7 +9,7 @@ const styles = StyleSheet.create({
     },
     container: {
       flex: 1,
-      backgroundColor: '#1c1c1c',
+      backgroundColor: '#000',
     },
     header: {
       flexDirection: 'row',
@@ -153,15 +153,14 @@ const styles = StyleSheet.create({
     },
     messageImagesContainer: {
       flexDirection: 'row',
-      flexWrap: 'wrap',
       marginBottom: 6,
-      gap: 4,
     },
     messageImageThumbnail: {
-      width: 180,
-      height: 180,
+      width: 120,
+      height: 120,
       borderRadius: 12,
       backgroundColor: '#333',
+      marginRight: 6,
     },
     attachmentBar: {
       flexDirection: 'row',

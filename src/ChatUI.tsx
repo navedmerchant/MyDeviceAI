@@ -1,5 +1,5 @@
 import { LlamaContext, initLlama } from 'llama.rn';
-import React, { useState, useCallback, useRef, useEffect } from 'react';
+import React, { useState, useCallback, useRef, useEffect, useMemo } from 'react';
 import Markdown from 'react-native-markdown-display';
 import { showToast } from './utils/ToastUtils';
 import RNFS from 'react-native-fs';
@@ -170,6 +170,7 @@ const ChatUI: React.FC<ChatUIProps> = ({ historyId, onMenuPress, MenuIcon, navig
   const [showConnectionDropdown, setShowConnectionDropdown] = useState(false);
   const [showModelRequirementScreen, setShowModelRequirementScreen] = useState(false);
   const [isMultimodalReady, setIsMultimodalReady] = useState(false);
+  const [modelSupportsImages, setModelSupportsImages] = useState(false);
   const [pendingImages, setPendingImages] = useState<string[]>([]);
 
   // Add new state variables for model download
@@ -401,6 +402,7 @@ const ChatUI: React.FC<ChatUIProps> = ({ historyId, onMenuPress, MenuIcon, navig
 
   useEffect(() => {
     loadSystemPrompt();
+    checkModelSupportsImages();
     // Memory feature disabled temporarily
     // loadContextSettings();
     // initializeContext();
@@ -620,6 +622,27 @@ const ChatUI: React.FC<ChatUIProps> = ({ historyId, onMenuPress, MenuIcon, navig
     }
   };
 
+  // Check if the active model is configured for image support (persisted flag).
+  // This is independent of whether the runtime multimodal context is loaded.
+  const checkModelSupportsImages = async () => {
+    try {
+      const activeModelId = await AsyncStorage.getItem('activeModelId');
+      if (activeModelId) {
+        const downloadedModelsJson = await AsyncStorage.getItem('downloadedModels');
+        if (downloadedModelsJson) {
+          const downloadedModels = JSON.parse(downloadedModelsJson);
+          const activeModel = downloadedModels.find((m: any) => m.id === activeModelId);
+          setModelSupportsImages(!!activeModel?.mmprojFilePath);
+          return;
+        }
+      }
+      setModelSupportsImages(false);
+    } catch (error) {
+      console.error('Error checking model image support:', error);
+      setModelSupportsImages(false);
+    }
+  };
+
   const loadSystemPrompt = async () => {
     try {
       const savedPrompt = await AsyncStorage.getItem('systemPrompt');
@@ -657,10 +680,25 @@ const ChatUI: React.FC<ChatUIProps> = ({ historyId, onMenuPress, MenuIcon, navig
     loadToggleStates();
   }, []);
 
+  // Auto-disable web search when images are attached (search + images not supported)
+  const chatHasImages = useMemo(() => messages.some(m => m.images && m.images.length > 0), [messages]);
+  const imagesPresent = pendingImages.length > 0 || chatHasImages;
+  const searchModeBeforeImagesRef = useRef<boolean | null>(null);
+  useEffect(() => {
+    if (imagesPresent && searchModeEnabled) {
+      searchModeBeforeImagesRef.current = true;
+      setSearchModeEnabled(false);
+    } else if (!imagesPresent && searchModeBeforeImagesRef.current) {
+      setSearchModeEnabled(true);
+      searchModeBeforeImagesRef.current = null;
+    }
+  }, [imagesPresent]);
+
   // Add a listener for when the settings screen is focused
   useEffect(() => {
     const unsubscribe = navigation.addListener('focus', async () => {
       loadSystemPrompt();
+      checkModelSupportsImages();
       
       // Check if active model has changed
       const currentActiveModelId = await AsyncStorage.getItem('activeModelId');
@@ -937,9 +975,19 @@ const ChatUI: React.FC<ChatUIProps> = ({ historyId, onMenuPress, MenuIcon, navig
       }
     }
     try {
-      // Release the specific context instead of all contexts
-      // This avoids potential deadlock in releaseAllLlama
       if (contextRef.current) {
+        // Release multimodal resources (mmproj) before releasing the context
+        // Without this, the projection model stays in memory across reloads
+        try {
+          if (await contextRef.current.isMultimodalEnabled()) {
+            await contextRef.current.releaseMultimodal();
+          }
+        } catch (mmError) {
+          console.error('Error releasing multimodal resources:', mmError);
+        }
+        setIsMultimodalReady(false);
+
+        // Release the main model context
         await contextRef.current.release();
       }
     } catch (error) {
@@ -958,7 +1006,6 @@ const ChatUI: React.FC<ChatUIProps> = ({ historyId, onMenuPress, MenuIcon, navig
 
     // Unload current model (will wait if loading is in progress)
     await unloadModel();
-    contextRef.current = undefined;
 
     // Load new model with progress tracking
     await loadModel();
@@ -1120,17 +1167,14 @@ const ChatUI: React.FC<ChatUIProps> = ({ historyId, onMenuPress, MenuIcon, navig
 
         // Convert message history to OpenAI format
         const openAIMessages = [
-          // Add system prompt
           {
             role: 'system',
             content: systemPrompt.current
           },
-          // Add conversation history
           ...messages.map(msg => ({
             role: msg.isUser ? 'user' : 'assistant',
             content: stripThinkingContent(msg.text)
           })),
-          // Add current user input with search results
           {
             role: 'user',
             content: userContent
@@ -1315,6 +1359,28 @@ const ChatUI: React.FC<ChatUIProps> = ({ historyId, onMenuPress, MenuIcon, navig
           userMessageContent = userTextContent;
         }
 
+        // Build conversation history, re-attaching image_url parts for
+        // messages that originally included images so the model can "see"
+        // them when continuing a restored chat.
+        const historyMessages = messages.map(msg => {
+          const cleanText = stripThinkingContent(msg.text);
+          if (msg.isUser && msg.images && msg.images.length > 0) {
+            const contentParts: any[] = msg.images.map(imagePath => {
+              const cleanPath = imagePath.startsWith('file://') ? imagePath.replace('file://', '') : imagePath;
+              return {
+                type: 'image_url',
+                image_url: { url: `file://${cleanPath}` },
+              };
+            });
+            contentParts.push({ type: 'text', text: cleanText });
+            return { role: 'user' as const, content: contentParts };
+          }
+          return {
+            role: (msg.isUser ? 'user' : 'assistant') as 'user' | 'assistant',
+            content: cleanText,
+          };
+        });
+
         // Do completion using the configured parameters
         const { text, timings } = await contextRef.current.completion(
           {
@@ -1323,10 +1389,7 @@ const ChatUI: React.FC<ChatUIProps> = ({ historyId, onMenuPress, MenuIcon, navig
                 role: 'system',
                 content: `${systemPrompt.current}`
               },
-              ...messages.map(msg => ({
-                role: msg.isUser ? 'user' : 'assistant',
-                content: stripThinkingContent(msg.text)
-              })),
+              ...historyMessages,
               {
                 role: 'user',
                 content: userMessageContent
@@ -1525,11 +1588,11 @@ const ChatUI: React.FC<ChatUIProps> = ({ historyId, onMenuPress, MenuIcon, navig
           ]}
         >
           {message.images && message.images.length > 0 && (
-            <View style={styles.messageImagesContainer}>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.messageImagesContainer}>
               {message.images.map((uri, i) => (
                 <MessageImage key={i} uri={uri} />
               ))}
-            </View>
+            </ScrollView>
           )}
           {processThinkingContent(message.text, false, message.isUser ? userMarkdownStyles : markdownStyles)}
         </View>
@@ -1771,7 +1834,7 @@ const ChatUI: React.FC<ChatUIProps> = ({ historyId, onMenuPress, MenuIcon, navig
 
       <View style={styles.inputContainer}>
         <View style={styles.modeToggleContainer}>
-          {isMultimodalReady && (
+          {modelSupportsImages && (
             <TouchableOpacity
               style={styles.modeToggleButton}
               onPress={handleImagePick}
@@ -1793,12 +1856,12 @@ const ChatUI: React.FC<ChatUIProps> = ({ historyId, onMenuPress, MenuIcon, navig
             </TouchableOpacity>
           )}
           <TouchableOpacity
-            style={[styles.modeToggleButton, searchModeEnabled && styles.modeToggleButtonActive]}
+            style={[styles.modeToggleButton, searchModeEnabled && !imagesPresent && styles.modeToggleButtonActive, imagesPresent && { opacity: 0.4 }]}
             onPress={handleSearchToggle}
-            disabled={isTyping || isSearching}
+            disabled={isTyping || isSearching || imagesPresent}
           >
-            <Search color={searchModeEnabled ? "#28a745" : "#666"} size={20} />
-            <Text style={[styles.modeToggleText, searchModeEnabled && styles.modeToggleTextActive]}>Web Search</Text>
+            <Search color={searchModeEnabled && !imagesPresent ? "#28a745" : "#666"} size={20} />
+            <Text style={[styles.modeToggleText, searchModeEnabled && !imagesPresent && styles.modeToggleTextActive]}>Web Search</Text>
           </TouchableOpacity>
         </View>
         {pendingImages.length > 0 && (
