@@ -440,25 +440,6 @@ const AdvancedSettingsScreen: React.FC<Props> = ({ navigation }) => {
       console.log('Storing download job with jobId:', downloadResult.jobId);
       setDownloadJobs(prev => ({ ...prev, [downloadKey]: downloadResult }));
       
-      // Start mmproj download in parallel if available
-      let mmprojDownloadResult: ReturnType<typeof RNFS.downloadFile> | null = null;
-      if (mmprojToDownload && mmprojFilePath) {
-        const mmprojUrl = `https://huggingface.co/${selectedModel.id}/resolve/main/${mmprojToDownload.path}`;
-        console.log("mmproj downloadUrl", mmprojUrl);
-        console.log("mmproj filePath", mmprojFilePath);
-        
-        mmprojDownloadResult = RNFS.downloadFile({
-          fromUrl: mmprojUrl,
-          toFile: mmprojFilePath,
-          begin: () => {},
-          progress: () => {},
-          progressDivider: 10,
-        });
-        
-        // Store mmproj download job for cancellation
-        setMmprojDownloadJobs(prev => ({ ...prev, [downloadKey]: mmprojDownloadResult }));
-      }
-      
       // Wait for main model download to complete
       const result = await downloadResult.promise;
       
@@ -468,15 +449,49 @@ const AdvancedSettingsScreen: React.FC<Props> = ({ navigation }) => {
       
       // Get actual downloaded file size
       const fileInfo = await RNFS.stat(filePath);
-      const actualSize = fileInfo.size;
+      let actualSize = fileInfo.size;
       
-      // Wait for mmproj download and handle its result
+      // Download mmproj sequentially after main model completes
       let mmprojSucceeded = false;
-      if (mmprojDownloadResult && mmprojFilePath) {
+      if (mmprojToDownload && mmprojFilePath) {
+        const mmprojUrl = `https://huggingface.co/${selectedModel.id}/resolve/main/${mmprojToDownload.path}`;
+        console.log("mmproj downloadUrl", mmprojUrl);
+        console.log("mmproj filePath", mmprojFilePath);
+        
         try {
+          const mmprojDownloadResult = RNFS.downloadFile({
+            fromUrl: mmprojUrl,
+            toFile: mmprojFilePath,
+            begin: () => {
+              // Reset progress for mmproj download phase
+              setDownloadedModels(prev => prev.map(model => 
+                model.id === downloadKey 
+                  ? { ...model, downloadProgress: 0, size: `Downloading vision support (${formatFileSize(mmprojToDownload.size)})...` }
+                  : model
+              ));
+            },
+            progress: (res) => {
+              if (res.contentLength && res.contentLength > 0) {
+                const progress = (res.bytesWritten / res.contentLength) * 100;
+                setDownloadedModels(prev => prev.map(model => 
+                  model.id === downloadKey 
+                    ? { ...model, downloadProgress: progress }
+                    : model
+                ));
+              }
+            },
+            progressDivider: 1,
+          });
+          
+          // Store mmproj download job for cancellation
+          setMmprojDownloadJobs(prev => ({ ...prev, [downloadKey]: mmprojDownloadResult }));
+          
           const mmprojResult = await mmprojDownloadResult.promise;
           if (mmprojResult.statusCode === 200) {
             mmprojSucceeded = true;
+            // Add mmproj file size to total
+            const mmprojFileInfo = await RNFS.stat(mmprojFilePath);
+            actualSize += mmprojFileInfo.size;
           } else {
             console.error(`mmproj download failed with status: ${mmprojResult.statusCode}`);
           }
@@ -657,6 +672,13 @@ const AdvancedSettingsScreen: React.FC<Props> = ({ navigation }) => {
           if (fileExists) {
             const fileInfo = await RNFS.stat(model.filePath);
             totalBytes += fileInfo.size;
+          }
+        }
+        if (model.mmprojFilePath) {
+          const mmprojExists = await RNFS.exists(model.mmprojFilePath);
+          if (mmprojExists) {
+            const mmprojInfo = await RNFS.stat(model.mmprojFilePath);
+            totalBytes += mmprojInfo.size;
           }
         }
       }

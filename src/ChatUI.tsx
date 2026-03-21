@@ -1010,12 +1010,13 @@ const ChatUI: React.FC<ChatUIProps> = ({ historyId, onMenuPress, MenuIcon, navig
   }, []);
 
   const handleImagePick = useCallback(() => {
+    Keyboard.dismiss();
     Alert.alert('Attach Image', 'Choose an option', [
       {
         text: 'Photo Library',
         onPress: () => {
           launchImageLibrary(
-            { mediaType: 'photo', selectionLimit: 0 },
+            { mediaType: 'photo', selectionLimit: 0, maxWidth: 1024, maxHeight: 1024, quality: 0.8 },
             (response) => {
               if (!response.didCancel && !response.errorCode && response.assets) {
                 const uris = response.assets
@@ -1031,7 +1032,7 @@ const ChatUI: React.FC<ChatUIProps> = ({ historyId, onMenuPress, MenuIcon, navig
         text: 'Camera',
         onPress: () => {
           launchCamera(
-            { mediaType: 'photo' },
+            { mediaType: 'photo', maxWidth: 1024, maxHeight: 1024, quality: 0.8 },
             (response) => {
               if (!response.didCancel && !response.errorCode && response.assets) {
                 const uris = response.assets
