@@ -4,6 +4,8 @@ import Markdown from 'react-native-markdown-display';
 import { showToast } from './utils/ToastUtils';
 import RNFS from 'react-native-fs';
 import { launchImageLibrary, launchCamera } from 'react-native-image-picker';
+import PdfPageImage from 'react-native-pdf-page-image';
+import { pick, types, isCancel } from 'react-native-document-picker';
 
 import {
   View,
@@ -28,6 +30,7 @@ import {
   Image,
   ImageBackground,
   Linking,
+  ActivityIndicator,
 } from 'react-native';
 import { Send, Square, CirclePlus, Search, Settings, ArrowDown, Brain, Copy, Share as ShareIcon, ChevronRight, Menu as MenuIcon, Download, ExternalLink, X, ImagePlus } from 'lucide-react-native';
 import { getModelParamsForDevice, DEFAULT_SYSTEM_PROMPT } from './utils/Utils';
@@ -85,6 +88,8 @@ interface DownloadProgressData {
   contentLength: number;
   jobId: number;
 }
+
+const MAX_PDF_SIZE_BYTES = 5_242_880; // 5MB
 
 const MODEL_DIR = Platform.select({
   ios: `${RNFS.DocumentDirectoryPath}/model`,
@@ -172,6 +177,8 @@ const ChatUI: React.FC<ChatUIProps> = ({ historyId, onMenuPress, MenuIcon, navig
   const [isMultimodalReady, setIsMultimodalReady] = useState(false);
   const [modelSupportsImages, setModelSupportsImages] = useState(false);
   const [pendingImages, setPendingImages] = useState<string[]>([]);
+  const [isExtractingPdf, setIsExtractingPdf] = useState(false);
+  const pdfExtractedPathsRef = useRef<Set<string>>(new Set());
 
   // Add new state variables for model download
   const [modelStatus, setModelStatus] = useState<'default' | 'downloaded' | 'not_downloaded'>('not_downloaded');
@@ -1053,8 +1060,50 @@ const ChatUI: React.FC<ChatUIProps> = ({ historyId, onMenuPress, MenuIcon, navig
   }, [currentHistoryId]);
 
   const removeImage = useCallback((index: number) => {
-    setPendingImages(prev => prev.filter((_, i) => i !== index));
+    setPendingImages(prev => {
+      const removedPath = prev[index];
+      if (removedPath && pdfExtractedPathsRef.current.has(removedPath)) {
+        pdfExtractedPathsRef.current.delete(removedPath);
+        cleanupPdfTempFiles([removedPath]);
+      }
+      return prev.filter((_, i) => i !== index);
+    });
   }, []);
+
+  const cleanupPdfTempFiles = async (filePaths: string[]) => {
+    for (const filePath of filePaths) {
+      try {
+        const exists = await RNFS.exists(filePath);
+        if (exists) {
+          await RNFS.unlink(filePath);
+        }
+      } catch (err) {
+        console.warn('Failed to delete temp file:', filePath, err);
+      }
+    }
+  };
+
+  const extractPdfPages = async (pdfUri: string) => {
+    setIsExtractingPdf(true);
+    let extractedPaths: string[] = [];
+    try {
+      const pages = await PdfPageImage.generateAllPages(pdfUri, 0.5);
+      extractedPaths = pages.map(page => page.uri);
+      if (extractedPaths.length === 0) {
+        showToast('The selected PDF is empty');
+        return;
+      }
+      // Track extracted paths for cleanup
+      extractedPaths.forEach(p => pdfExtractedPathsRef.current.add(p));
+      setPendingImages(prev => [...prev, ...extractedPaths]);
+    } catch (error) {
+      console.error('PDF extraction failed:', error);
+      showToast('Could not process the PDF file');
+      await cleanupPdfTempFiles(extractedPaths);
+    } finally {
+      setIsExtractingPdf(false);
+    }
+  };
 
   const handleImagePick = useCallback(() => {
     Keyboard.dismiss();
@@ -1089,6 +1138,33 @@ const ChatUI: React.FC<ChatUIProps> = ({ historyId, onMenuPress, MenuIcon, navig
               }
             },
           );
+        },
+      },
+      {
+        text: 'Document (PDF)',
+        onPress: async () => {
+          try {
+            const [result] = await pick({ type: [types.pdf] });
+            if (result?.uri) {
+              // Validate file size — prefer the size from the picker result;
+              // fall back to RNFS.stat with a decoded path when unavailable.
+              let fileSize: number | null = result.size ?? null;
+              if (fileSize === null) {
+                const statPath = decodeURIComponent(result.uri.replace(/^file:\/\//, ''));
+                const fileStat = await RNFS.stat(statPath);
+                fileSize = fileStat.size;
+              }
+              if (fileSize > MAX_PDF_SIZE_BYTES) {
+                showToast('PDF file exceeds the 5MB size limit');
+                return;
+              }
+              await extractPdfPages(result.uri);
+            }
+          } catch (err) {
+            if (!isCancel(err)) {
+              showToast('Failed to select PDF file');
+            }
+          }
         },
       },
       { text: 'Cancel', style: 'cancel' },
@@ -1274,6 +1350,7 @@ const ChatUI: React.FC<ChatUIProps> = ({ historyId, onMenuPress, MenuIcon, navig
       addMessage(inputText, true, undefined, undefined, imagesToSend.length > 0 ? imagesToSend : undefined);
       setInputText('');
       setPendingImages([]);
+      pdfExtractedPathsRef.current.clear();
       
       // Reset cancellation flag
       isCancelledRef.current = false;
@@ -1864,6 +1941,12 @@ const ChatUI: React.FC<ChatUIProps> = ({ historyId, onMenuPress, MenuIcon, navig
             <Text style={[styles.modeToggleText, searchModeEnabled && !imagesPresent && styles.modeToggleTextActive]}>Web Search</Text>
           </TouchableOpacity>
         </View>
+        {isExtractingPdf && (
+          <View style={styles.extractingIndicator}>
+            <ActivityIndicator size="small" color="#007AFF" />
+            <Text style={styles.extractingText}>Processing PDF...</Text>
+          </View>
+        )}
         {pendingImages.length > 0 && (
           <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.attachmentBar}>
             {pendingImages.map((uri, index) => (

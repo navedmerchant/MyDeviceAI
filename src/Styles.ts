@@ -162,6 +162,17 @@ const styles = StyleSheet.create({
       backgroundColor: '#333',
       marginRight: 6,
     },
+    extractingIndicator: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      paddingVertical: 8,
+      paddingHorizontal: 4,
+    },
+    extractingText: {
+      color: '#999',
+      fontSize: 13,
+      marginLeft: 8,
+    },
     attachmentBar: {
       flexDirection: 'row',
       paddingVertical: 8,
