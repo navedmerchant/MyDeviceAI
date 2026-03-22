@@ -1107,7 +1107,7 @@ const ChatUI: React.FC<ChatUIProps> = ({ historyId, onMenuPress, MenuIcon, navig
 
   const handleImagePick = useCallback(() => {
     Keyboard.dismiss();
-    Alert.alert('Attach Image', 'Choose an option', [
+    Alert.alert('Attach Media', 'Choose an option', [
       {
         text: 'Photo Library',
         onPress: () => {
